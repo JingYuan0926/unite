@@ -1,0 +1,29 @@
+{
+  "name": "tracesAPI",
+  "description": "Get transaction traces and block trace data from 1inch Traces API. IMPORTANT: You MUST provide the 'endpoint' and 'chain' parameters. For 'Get synced interval for Ethereum', you MUST call this function with endpoint='getSyncedInterval' and chain=1. EXAMPLES: For synced interval: {\"endpoint\": \"getSyncedInterval\", \"chain\": 1}. For block trace: {\"endpoint\": \"getBlockTraceByNumber\", \"chain\": 1, \"blockNumber\": \"15000000\"}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["getSyncedInterval", "getBlockTraceByNumber", "getTransactionTraceByHash", "getTransactionTraceByOffset"],
+      "description": "REQUIRED: The traces API endpoint to call. Use 'getSyncedInterval' for synced interval requests, 'getBlockTraceByNumber' for block trace requests, 'getTransactionTraceByHash' for transaction trace by hash, 'getTransactionTraceByOffset' for transaction trace by position."
+    },
+    "chain": {
+      "type": "number",
+      "description": "REQUIRED: Chain ID: 1 for Ethereum, 137 for Polygon, etc."
+    },
+    "blockNumber": {
+      "type": "string",
+      "description": "Block number (required for getBlockTraceByNumber, getTransactionTraceByHash, getTransactionTraceByOffset)"
+    },
+    "txHash": {
+      "type": "string",
+      "description": "Transaction hash (required for getTransactionTraceByHash)"
+    },
+    "offset": {
+      "type": "number",
+      "description": "Transaction position in block (required for getTransactionTraceByOffset)"
+    }
+  },
+  "required": ["endpoint", "chain"]
+} 

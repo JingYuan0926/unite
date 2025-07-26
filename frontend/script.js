@@ -2,27 +2,23 @@
 let isLoading = false;
 
 // DOM elements
-const chatContainer = document.getElementById('chatContainer');
+const chatMessages = document.getElementById('chatMessages');
 const messageInput = document.getElementById('messageInput');
 const sendButton = document.getElementById('sendButton');
-const chatForm = document.getElementById('chatForm');
 
 // API configuration
 const API_BASE_URL = 'http://localhost:3001';
 
 // Event listeners
-chatForm.addEventListener('submit', handleSubmit);
 messageInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    handleSubmit(e);
+    handleSubmit();
   }
 });
 
 // Handle form submission
-async function handleSubmit(e) {
-  e.preventDefault();
-  
+async function handleSubmit() {
   const message = messageInput.value.trim();
   if (!message || isLoading) return;
 
@@ -63,7 +59,7 @@ async function handleSubmit(e) {
 // Add message to chat
 function addMessage(text, sender, functionCalls = null) {
   const messageDiv = document.createElement('div');
-  messageDiv.className = `message ${sender}`;
+  messageDiv.className = `message ${sender}-message`;
   
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
@@ -104,7 +100,7 @@ function addMessage(text, sender, functionCalls = null) {
     messageDiv.appendChild(functionCallsDiv);
   }
   
-  chatContainer.appendChild(messageDiv);
+  chatMessages.appendChild(messageDiv);
   scrollToBottom();
 }
 
@@ -114,7 +110,7 @@ function setLoading(loading) {
   sendButton.disabled = loading;
   
   if (loading) {
-    sendButton.innerHTML = '<div class="loading"><div class="spinner"></div>Processing...</div>';
+    sendButton.innerHTML = '<div class="loading"></div>Processing...';
   } else {
     sendButton.textContent = 'Send';
   }
@@ -122,17 +118,23 @@ function setLoading(loading) {
 
 // Scroll to bottom of chat
 function scrollToBottom() {
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // Clear chat
 function clearChat() {
-  chatContainer.innerHTML = `
-    <div class="message ai">
-      <div class="message-content">
-        <strong>Welcome to 1inch Agent Kit!</strong><br>
-        Ask me anything about 1inch DeFi protocols. I can help you with quotes, swaps, gas prices, RPC calls, and more.
-      </div>
+  chatMessages.innerHTML = `
+    <div class="message ai-message">
+      Hello! I'm your 1inch AI assistant. I can help you with:
+      <ul>
+        <li>Getting quotes and swaps</li>
+        <li>Checking gas prices</li>
+        <li>Making RPC calls</li>
+        <li>Getting chart data</li>
+        <li>Token details and prices</li>
+        <li>Transaction traces</li>
+      </ul>
+      Try asking me something or use the example buttons below!
     </div>
   `;
 }
@@ -140,7 +142,7 @@ function clearChat() {
 // Send example message
 function sendExample(message) {
   messageInput.value = message;
-  handleSubmit(new Event('submit'));
+  handleSubmit();
 }
 
 // Check API health on page load

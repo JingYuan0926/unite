@@ -1,0 +1,35 @@
+{
+  "name": "spotPriceAPI",
+  "description": "Get real-time token price data from 1inch Spot Price API. IMPORTANT: You MUST provide the 'endpoint' and 'chain' parameters. For 'Get whitelisted token prices for Ethereum', you MUST call this function with endpoint='getWhitelistedPrices' and chain=1. EXAMPLES: For whitelisted prices: {\"endpoint\": \"getWhitelistedPrices\", \"chain\": 1}. For requested prices: {\"endpoint\": \"getRequestedPrices\", \"chain\": 1, \"tokens\": [\"0x111111111117dc0aa78b770fa6a738034120c302\"]}. For currencies: {\"endpoint\": \"getCurrencies\", \"chain\": 1}. For multiple addresses: {\"endpoint\": \"getPricesForAddresses\", \"chain\": 1, \"addresses\": [\"0x111111111117dc0aa78b770fa6a738034120c302\", \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"]}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["getWhitelistedPrices", "getRequestedPrices", "getCurrencies", "getPricesForAddresses"],
+      "description": "REQUIRED: The spot price API endpoint to call. Use 'getWhitelistedPrices' for whitelisted token prices, 'getRequestedPrices' for specific token prices via POST, 'getCurrencies' for supported currencies, 'getPricesForAddresses' for multiple token prices via GET."
+    },
+    "chain": {
+      "type": "number",
+      "description": "REQUIRED: Chain ID: 1 for Ethereum, 137 for Polygon, etc."
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of token addresses (required for getRequestedPrices)"
+    },
+    "addresses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of token addresses (required for getPricesForAddresses)"
+    },
+    "currency": {
+      "type": "string",
+      "description": "Optional currency (e.g., 'USD'). If not provided, price returned in native Wei"
+    }
+  },
+  "required": ["endpoint", "chain"]
+} 
