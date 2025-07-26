@@ -34,6 +34,7 @@
     "example:rpc": "ts-node -r dotenv/config examples/rpcAPI.ts",
     "example:charts": "ts-node -r dotenv/config examples/chartsAPI.ts",
     "example:token-details": "ts-node -r dotenv/config examples/tokenDetailsAPI.ts",
+    "example:history": "ts-node -r dotenv/config examples/historyAPI.ts",
     "gen-docs": "ts-node scripts/gen-docs.ts"
   },
   "keywords": [

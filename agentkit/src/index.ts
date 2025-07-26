@@ -15,6 +15,7 @@ export { gasAPI } from './functions/gasAPI';
 export { rpcAPI } from './functions/rpcAPI';
 export { chartsAPI, getLineChart, getCandleChart } from './functions/chartsAPI';
 export { tokenDetailsAPI, getNativeTokenDetails, getTokenDetails, getNativeTokenPricesByRange, getTokenPricesByRange, getNativeTokenPricesByInterval, getTokenPricesByInterval, getNativeTokenPriceChange, getTokenPriceChange, getTokenListPriceChange } from './functions/tokenDetailsAPI';
+export { historyAPI, getHistoryEvents, postHistoryEvents, searchHistoryEvents, getSwapEvents } from './functions/historyAPI';
 
 // Type exports
 export type { 
@@ -59,6 +60,30 @@ export type {
   GetTokenPriceChangeParams,
   GetTokenListPriceChangeParams
 } from './functions/tokenDetailsAPI';
+
+export type {
+  TokenActionDto,
+  TransactionDetailsMetaDto,
+  TransactionDetailsDto,
+  HistoryEventDto,
+  HistoryResponseDto,
+  HistoryEventResponseDto,
+  MultiFilterDto,
+  PostMultiFilterDto,
+  SearchAndMultiFilterDto,
+  SearchOrMultiFilterDto,
+  HistorySearchMultiFilterRootAndDto,
+  HistorySearchMultiFilterRootFilterDto,
+  HistorySearchMultiFilterRootDto,
+  UnifiedTokenAddress,
+  HistorySwapFilterDto,
+  HistorySwapFilterRootDto,
+  TransactionType,
+  GetHistoryEventsParams,
+  PostHistoryEventsParams,
+  SearchHistoryEventsParams,
+  GetSwapEventsParams
+} from './functions/historyAPI';
 
 // Utility exports
 export { OneInchFetcher } from './utils/fetcher';
