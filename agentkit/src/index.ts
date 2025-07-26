@@ -6,32 +6,41 @@
  */
 
 // Core exports
-export { OneInchAgentKit, createAgent, llmAgent } from './core/llmAgent';
+export { OneInchAgentKit } from './core/llmAgent';
+export { default as Registry } from './core/registry';
+export type { FunctionDefinition, FunctionRegistry } from './core/types';
+
+// Function exports
+export { gasAPI } from './functions/gasAPI';
+export { rpcAPI } from './functions/rpcAPI';
+export { chartsAPI, getLineChart, getCandleChart } from './functions/chartsAPI';
+
+// Type exports
 export type { 
-  AgentKitConfig, 
-  AgentResponse, 
-  FunctionDefinition, 
-  FunctionRegistry,
-  QuoteParams,
-  SwapParams,
-  ChainParams,
-  TokenParams,
-  OneInchError
-} from './core/types';
+  Eip1559GasValueResponse,
+  Eip1559GasPriceResponse
+} from './functions/gasAPI';
+
+export type { 
+  RpcRequest,
+  RpcResponse
+} from './functions/rpcAPI';
+
+export type { 
+  LineData,
+  LinesResponse,
+  CandleData,
+  CandlesResponse,
+  ChartPeriod,
+  CandleSeconds,
+  LineChartParams,
+  CandleChartParams
+} from './functions/chartsAPI';
 
 // Utility exports
 export { OneInchFetcher } from './utils/fetcher';
 export { Logger, logger, LogLevel } from './utils/logger';
 export type { LoggerOptions } from './utils/logger';
-
-export { gasAPI } from './functions/gasAPI';
-export type { Eip1559GasPriceResponse, Eip1559GasValueResponse } from './functions/gasAPI';
-
-export { rpcAPI } from './functions/rpcAPI';
-export type { RpcRequest, RpcResponse } from './functions/rpcAPI';
-
-// Registry export
-export { default as registry } from './core/registry';
 
 /**
  * Quick start example:

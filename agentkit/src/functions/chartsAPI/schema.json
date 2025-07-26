@@ -1,0 +1,52 @@
+{
+  "name": "chartsAPI",
+  "description": "Get historical chart data for token pairs. Supports both line charts and candle charts for various time periods.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["line", "candle"],
+        "description": "Type of chart data to retrieve. 'line' for simple price line charts, 'candle' for OHLC candlestick charts."
+      },
+      "token0": {
+        "type": "string",
+        "description": "Base token address (the token being priced)"
+      },
+      "token1": {
+        "type": "string",
+        "description": "Quote token address (the token used for pricing, usually a stablecoin like USDC)"
+      },
+      "period": {
+        "type": "string",
+        "enum": ["24H", "1W", "1M", "1Y", "AllTime"],
+        "description": "Time period for line charts. Required when type is 'line'."
+      },
+      "seconds": {
+        "type": "number",
+        "enum": [300, 900, 3600, 14400, 86400, 604800],
+        "description": "Time period in seconds for candle charts. Required when type is 'candle'. 300=5min, 900=15min, 3600=1hour, 14400=4hours, 86400=1day, 604800=1week"
+      },
+      "chainId": {
+        "type": "number",
+        "enum": [1, 56, 137, 42161, 43114, 100, 10, 8453, 324, 59144, 146, 130],
+        "description": "Chain ID where the tokens exist. 1=Ethereum, 56=BNB Chain, 137=Polygon, 42161=Arbitrum, 43114=Avalanche, 100=Gnosis, 10=Optimism, 8453=Base, 324=zkSync Era, 59144=Linea, 146=Arbitrum Nova, 130=Metis"
+      }
+    },
+    "required": ["type", "token0", "token1", "chainId"],
+    "anyOf": [
+      {
+        "required": ["type", "token0", "token1", "period", "chainId"],
+        "properties": {
+          "type": { "const": "line" }
+        }
+      },
+      {
+        "required": ["type", "token0", "token1", "seconds", "chainId"],
+        "properties": {
+          "type": { "const": "candle" }
+        }
+      }
+    ]
+  }
+} 
