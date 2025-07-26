@@ -17,6 +17,7 @@ export { chartsAPI } from "./functions/chartsAPI";
 export { tokenDetailsAPI } from "./functions/tokenDetailsAPI";
 export { historyAPI } from "./functions/historyAPI";
 export { tracesAPI } from "./functions/tracesAPI";
+export { spotPriceAPI } from "./functions/spotPriceAPI";
 
 // Type exports
 export type {
@@ -95,6 +96,15 @@ export type {
   BlockTraceResponse,
   TransactionTraceResponse
 } from "./functions/tracesAPI";
+
+export type {
+  GetWhitelistedPricesRequest,
+  GetRequestedPricesRequest,
+  GetCurrenciesRequest,
+  GetPricesForAddressesRequest,
+  SpotPriceResponse,
+  CurrenciesResponse
+} from "./functions/spotPriceAPI";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
