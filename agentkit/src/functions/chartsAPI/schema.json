@@ -33,20 +33,6 @@
         "description": "Chain ID where the tokens exist. 1=Ethereum, 56=BNB Chain, 137=Polygon, 42161=Arbitrum, 43114=Avalanche, 100=Gnosis, 10=Optimism, 8453=Base, 324=zkSync Era, 59144=Linea, 146=Arbitrum Nova, 130=Metis"
       }
     },
-    "required": ["type", "token0", "token1", "chainId"],
-    "anyOf": [
-      {
-        "required": ["type", "token0", "token1", "period", "chainId"],
-        "properties": {
-          "type": { "const": "line" }
-        }
-      },
-      {
-        "required": ["type", "token0", "token1", "seconds", "chainId"],
-        "properties": {
-          "type": { "const": "candle" }
-        }
-      }
-    ]
+    "required": ["type", "token0", "token1", "chainId"]
   }
 } 
