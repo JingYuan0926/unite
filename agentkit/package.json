@@ -1,6 +1,6 @@
 {
   "name": "1inch-agent-kit",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "AI Agent Kit for 1inch - Connect any LLM to 1inch DeFi protocols",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,14 +12,14 @@
     }
   },
   "files": [
-    "dist/src/**/*",
-    "dist/index.js",
-    "dist/index.d.ts",
+    "dist/**/*",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-schemas && npm run cleanup",
+    "copy-schemas": "node -e \"const fs=require('fs');const path=require('path');const src='src/functions';const dist='dist/functions';if(!fs.existsSync(dist))fs.mkdirSync(dist,{recursive:true});fs.readdirSync(src).forEach(dir=>{const srcDir=path.join(src,dir);const distDir=path.join(dist,dir);if(fs.statSync(srcDir).isDirectory()){if(!fs.existsSync(distDir))fs.mkdirSync(distDir,{recursive:true});fs.readdirSync(srcDir).forEach(file=>{if(file.endsWith('.json')){fs.copyFileSync(path.join(srcDir,file),path.join(distDir,file));}});}});\"",
+    "cleanup": "node -e \"const fs=require('fs');const path=require('path');const dist='dist/functions';if(fs.existsSync(dist)){fs.readdirSync(dist).forEach(dir=>{const distDir=path.join(dist,dir);if(fs.statSync(distDir).isDirectory()){fs.readdirSync(distDir).forEach(file=>{if(file.endsWith('.ts')||file.endsWith('.md')){fs.unlinkSync(path.join(distDir,file));}});}});}\"",
     "dev": "ts-node",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -29,12 +29,7 @@ class Registry implements FunctionRegistry {
         
         const fnDir = path.join(FUNCTIONS_ROOT, fnName);
         const schemaPath = path.join(fnDir, "schema.json");
-        
-        // Try .ts first (development), then .js (production)
-        let codePath = path.join(fnDir, "index.ts");
-        if (!await this.fileExists(codePath)) {
-          codePath = path.join(fnDir, "index.js");
-        }
+        const codePath = path.join(fnDir, "index.js");
         
         logger.debug(`Using code path: ${codePath}`);
 
