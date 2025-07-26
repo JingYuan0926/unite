@@ -6,29 +6,30 @@
  */
 
 // Core exports
-export { OneInchAgentKit } from './core/llmAgent';
-export { default as Registry } from './core/registry';
-export type { FunctionDefinition, FunctionRegistry } from './core/types';
+export { OneInchAgentKit } from "./core/llmAgent";
+export { default as Registry } from "./core/registry";
+export type { FunctionDefinition, FunctionRegistry, FunctionParametersSchema } from "./core/types";
 
 // Function exports
-export { gasAPI } from './functions/gasAPI';
-export { rpcAPI } from './functions/rpcAPI';
-export { chartsAPI, getLineChart, getCandleChart } from './functions/chartsAPI';
-export { tokenDetailsAPI, getNativeTokenDetails, getTokenDetails, getNativeTokenPricesByRange, getTokenPricesByRange, getNativeTokenPricesByInterval, getTokenPricesByInterval, getNativeTokenPriceChange, getTokenPriceChange, getTokenListPriceChange } from './functions/tokenDetailsAPI';
-export { historyAPI, getHistoryEvents, postHistoryEvents, searchHistoryEvents, getSwapEvents } from './functions/historyAPI';
+export { gasAPI } from "./functions/gasAPI";
+export { rpcAPI } from "./functions/rpcAPI";
+export { chartsAPI } from "./functions/chartsAPI";
+export { tokenDetailsAPI } from "./functions/tokenDetailsAPI";
+export { historyAPI } from "./functions/historyAPI";
+export { tracesAPI } from "./functions/tracesAPI";
 
 // Type exports
-export type { 
+export type {
   Eip1559GasValueResponse,
   Eip1559GasPriceResponse
-} from './functions/gasAPI';
+} from "./functions/gasAPI";
 
-export type { 
+export type {
   RpcRequest,
   RpcResponse
-} from './functions/rpcAPI';
+} from "./functions/rpcAPI";
 
-export type { 
+export type {
   LineData,
   LinesResponse,
   CandleData,
@@ -37,7 +38,7 @@ export type {
   CandleSeconds,
   LineChartParams,
   CandleChartParams
-} from './functions/chartsAPI';
+} from "./functions/chartsAPI";
 
 export type {
   SocialLink,
@@ -59,7 +60,7 @@ export type {
   GetNativeTokenPriceChangeParams,
   GetTokenPriceChangeParams,
   GetTokenListPriceChangeParams
-} from './functions/tokenDetailsAPI';
+} from "./functions/tokenDetailsAPI";
 
 export type {
   TokenActionDto,
@@ -83,25 +84,18 @@ export type {
   PostHistoryEventsParams,
   SearchHistoryEventsParams,
   GetSwapEventsParams
-} from './functions/historyAPI';
+} from "./functions/historyAPI";
+
+export type {
+  GetSyncedIntervalParams,
+  GetBlockTraceByNumberParams,
+  GetTransactionTraceByHashParams,
+  GetTransactionTraceByOffsetParams,
+  SyncedIntervalResponse,
+  BlockTraceResponse,
+  TransactionTraceResponse
+} from "./functions/tracesAPI";
 
 // Utility exports
-export { OneInchFetcher } from './utils/fetcher';
-export { Logger, logger, LogLevel } from './utils/logger';
-export type { LoggerOptions } from './utils/logger';
-
-/**
- * Quick start example:
- * 
- * ```typescript
- * import { OneInchAgentKit } from '1inch-agent-kit';
- * 
- * const agent = new OneInchAgentKit({
- *   openaiApiKey: 'your-openai-key',
- *   oneinchApiKey: 'your-1inch-key'
- * });
- * 
- * const response = await agent.chat('Get me a quote for swapping 1 ETH to USDC on Ethereum');
- * console.log(response.content);
- * ```
- */ 
+export { OneInchFetcher } from "./utils/fetcher";
+export { logger } from "./utils/logger";

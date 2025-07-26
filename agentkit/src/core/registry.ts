@@ -6,7 +6,7 @@ import { logger } from "../utils/logger";
 // Determine the correct functions root path
 // In development (ts-node), __dirname points to src/core
 // In production (compiled), __dirname points to dist/core
-const isDevelopment = process.env.NODE_ENV !== 'production' || require.main?.filename?.includes('ts-node');
+const isDevelopment = require.main?.filename?.includes('ts-node') || false;
 const FUNCTIONS_ROOT = path.resolve(__dirname, "../functions");
 
 class Registry implements FunctionRegistry {
@@ -35,7 +35,7 @@ class Registry implements FunctionRegistry {
         const fnDir = path.join(FUNCTIONS_ROOT, fnName);
         const schemaPath = path.join(fnDir, "schema.json");
         
-        // In development, look for .ts files, in production look for .js files
+        // In development (ts-node), look for .ts files, in production look for .js files
         const codePath = isDevelopment 
           ? path.join(fnDir, "index.ts")
           : path.join(fnDir, "index.js");
@@ -98,32 +98,22 @@ class Registry implements FunctionRegistry {
     if (!fn) throw new Error(`Function "${name}" not registered`);
     
     logger.debug(`Calling function: ${name} with args:`, args);
-    try {
-      const result = await fn(args);
-      logger.debug(`Function ${name} completed successfully`);
-      return result;
-    } catch (error) {
-      logger.error(`Function ${name} failed:`, error);
-      throw error;
-    }
+    return await fn(args);
   }
 
-  /**
-   * Get list of available function names
-   */
   getAvailableFunctions(): string[] {
-    return Object.keys(this.handlers);
+    if (!this.initialized) {
+      throw new Error("Registry not initialized. Call init() first.");
+    }
+    return this.defs.map(d => d.name);
   }
 
-  /**
-   * Check if a function is available
-   */
   hasFunction(name: string): boolean {
-    return name in this.handlers;
+    if (!this.initialized) {
+      throw new Error("Registry not initialized. Call init() first.");
+    }
+    return this.handlers.hasOwnProperty(name);
   }
 }
 
-// Create singleton instance
-const registry = new Registry();
-
-export default registry; 
+export default new Registry(); 

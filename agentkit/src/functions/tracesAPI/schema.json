@@ -1,0 +1,49 @@
+{
+  "name": "tracesAPI",
+  "description": "Get transaction traces and block trace data from 1inch Traces API. Supports getting synced intervals, block traces by number, and transaction traces by hash or offset.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["getSyncedInterval", "getBlockTraceByNumber", "getTransactionTraceByHash", "getTransactionTraceByOffset"],
+      "description": "The specific traces API endpoint to call"
+    },
+    "chain": {
+      "type": "number",
+      "description": "Chain ID (1 for Ethereum, 137 for Polygon, etc.)"
+    },
+    "blockNumber": {
+      "type": "string",
+      "description": "Block number (required for getBlockTraceByNumber, getTransactionTraceByHash, getTransactionTraceByOffset)"
+    },
+    "txHash": {
+      "type": "string",
+      "description": "Transaction hash (required for getTransactionTraceByHash)"
+    },
+    "offset": {
+      "type": "number",
+      "description": "Offset of transaction in block (required for getTransactionTraceByOffset)"
+    }
+  },
+  "required": ["endpoint", "chain"],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "endpoint": { "const": "getBlockTraceByNumber" } }
+      },
+      "then": { "required": ["blockNumber"] }
+    },
+    {
+      "if": {
+        "properties": { "endpoint": { "const": "getTransactionTraceByHash" } }
+      },
+      "then": { "required": ["blockNumber", "txHash"] }
+    },
+    {
+      "if": {
+        "properties": { "endpoint": { "const": "getTransactionTraceByOffset" } }
+      },
+      "then": { "required": ["blockNumber", "offset"] }
+    }
+  ]
+} 
