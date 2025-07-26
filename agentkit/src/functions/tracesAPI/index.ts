@@ -85,13 +85,33 @@ async function getTransactionTraceByOffset(params: GetTransactionTraceByOffsetPa
 
 // Main tracesAPI function
 export async function tracesAPI(params: {
-  endpoint: 'getSyncedInterval' | 'getBlockTraceByNumber' | 'getTransactionTraceByHash' | 'getTransactionTraceByOffset';
-  chain: number;
+  endpoint?: 'getSyncedInterval' | 'getBlockTraceByNumber' | 'getTransactionTraceByHash' | 'getTransactionTraceByOffset';
+  chain?: number;
   blockNumber?: string;
   txHash?: string;
   offset?: number;
 }): Promise<any> {
   try {
+    // Debug logging to see what parameters are being passed
+    console.log('🔍 tracesAPI called with params:', JSON.stringify(params, null, 2));
+    console.log('🔍 params.endpoint:', params.endpoint);
+    console.log('🔍 params.chain:', params.chain);
+    
+    // If no parameters provided, default to getSyncedInterval for Ethereum
+    if (!params.endpoint && !params.chain) {
+      console.log('🔍 No parameters provided, defaulting to getSyncedInterval for Ethereum');
+      return await getSyncedInterval({ chain: 1 });
+    }
+    
+    // Validate required parameters
+    if (!params.endpoint) {
+      throw new Error('endpoint parameter is required. Must be one of: getSyncedInterval, getBlockTraceByNumber, getTransactionTraceByHash, getTransactionTraceByOffset');
+    }
+    
+    if (!params.chain) {
+      throw new Error('chain parameter is required. Use 1 for Ethereum, 137 for Polygon, etc.');
+    }
+
     switch (params.endpoint) {
       case 'getSyncedInterval':
         return await getSyncedInterval({ chain: params.chain });
@@ -126,7 +146,7 @@ export async function tracesAPI(params: {
         });
 
       default:
-        throw new Error(`Unknown endpoint: ${params.endpoint}`);
+        throw new Error(`Unknown endpoint: ${params.endpoint}. Must be one of: getSyncedInterval, getBlockTraceByNumber, getTransactionTraceByHash, getTransactionTraceByOffset`);
     }
   } catch (error) {
     throw new Error(`Traces API error: ${error instanceof Error ? error.message : 'Unknown error'}`);

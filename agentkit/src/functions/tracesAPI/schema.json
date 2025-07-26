@@ -1,16 +1,16 @@
 {
   "name": "tracesAPI",
-  "description": "Get transaction traces and block trace data from 1inch Traces API. Supports getting synced intervals, block traces by number, and transaction traces by hash or offset.",
+  "description": "Get transaction traces and block trace data from 1inch Traces API. IMPORTANT: You MUST provide the 'endpoint' and 'chain' parameters. For 'Get synced interval for Ethereum', you MUST call this function with endpoint='getSyncedInterval' and chain=1. EXAMPLES: For synced interval: {\"endpoint\": \"getSyncedInterval\", \"chain\": 1}. For block trace: {\"endpoint\": \"getBlockTraceByNumber\", \"chain\": 1, \"blockNumber\": \"15000000\"}.",
   "type": "object",
   "properties": {
     "endpoint": {
       "type": "string",
       "enum": ["getSyncedInterval", "getBlockTraceByNumber", "getTransactionTraceByHash", "getTransactionTraceByOffset"],
-      "description": "The specific traces API endpoint to call"
+      "description": "REQUIRED: The traces API endpoint to call. Use 'getSyncedInterval' for synced interval requests, 'getBlockTraceByNumber' for block trace requests, 'getTransactionTraceByHash' for transaction trace by hash, 'getTransactionTraceByOffset' for transaction trace by position."
     },
     "chain": {
       "type": "number",
-      "description": "Chain ID (1 for Ethereum, 137 for Polygon, etc.)"
+      "description": "REQUIRED: Chain ID: 1 for Ethereum, 137 for Polygon, etc."
     },
     "blockNumber": {
       "type": "string",
@@ -22,28 +22,8 @@
     },
     "offset": {
       "type": "number",
-      "description": "Offset of transaction in block (required for getTransactionTraceByOffset)"
+      "description": "Transaction position in block (required for getTransactionTraceByOffset)"
     }
   },
-  "required": ["endpoint", "chain"],
-  "allOf": [
-    {
-      "if": {
-        "properties": { "endpoint": { "const": "getBlockTraceByNumber" } }
-      },
-      "then": { "required": ["blockNumber"] }
-    },
-    {
-      "if": {
-        "properties": { "endpoint": { "const": "getTransactionTraceByHash" } }
-      },
-      "then": { "required": ["blockNumber", "txHash"] }
-    },
-    {
-      "if": {
-        "properties": { "endpoint": { "const": "getTransactionTraceByOffset" } }
-      },
-      "then": { "required": ["blockNumber", "offset"] }
-    }
-  ]
+  "required": ["endpoint", "chain"]
 } 

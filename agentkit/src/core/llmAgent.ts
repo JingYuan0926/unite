@@ -34,12 +34,20 @@ export class OneInchAgentKit {
     // Initialize registry if not already done
     await registry.init();
     
-    logger.debug("Starting chat with prompt:", userPrompt);
+    logger.info("Starting chat with prompt:", userPrompt);
     
     // 1) ask the model, giving it all your function definitions
     const fnDefs: FunctionDefinition[] = registry.getFunctionDefinitions();
-    logger.debug(`Available functions: ${fnDefs.map(f => f.name).join(', ')}`);
+    logger.info(`Available functions: ${fnDefs.map(f => f.name).join(', ')}`);
     
+    // Debug: Log the tracesAPI function definition
+    const tracesAPIDef = fnDefs.find(f => f.name === 'tracesAPI');
+    if (tracesAPIDef) {
+        logger.info('tracesAPI function definition:', JSON.stringify(tracesAPIDef, null, 2));
+    } else {
+        logger.error('tracesAPI function not found in registry!');
+    }
+
     const first = await this.openai.chat.completions.create({
       model: this.config.openaiModel!,
       messages: [{ role: "user", content: userPrompt }],
@@ -51,11 +59,11 @@ export class OneInchAgentKit {
     });
 
     const msg = first.choices[0].message!;
-    logger.debug("First response received:", msg);
+    logger.info("First response received:", msg);
     
     // 2) If it didn't call a function, just return the text
     if (!msg.tool_calls || msg.tool_calls.length === 0) {
-      logger.debug("No function calls made, returning direct response");
+      logger.info("No function calls made, returning direct response");
       return {
         content: msg.content ?? "",
       };
@@ -66,9 +74,10 @@ export class OneInchAgentKit {
     
     for (const toolCall of msg.tool_calls) {
       const { name, arguments: argStr } = toolCall.function;
+      logger.info(`Raw function call - name: ${name}, arguments: ${argStr}`);
       const args = JSON.parse(argStr || "{}");
       
-      logger.debug(`Calling function: ${name} with args:`, args);
+      logger.info(`Calling function: ${name} with args:`, args);
       
       try {
         const result = await registry.callFunction(name, args);
@@ -77,7 +86,7 @@ export class OneInchAgentKit {
           arguments: args,
           result,
         });
-        logger.debug(`Function ${name} completed successfully`);
+        logger.info(`Function ${name} completed successfully`);
       } catch (error) {
         logger.error(`Function ${name} failed:`, error);
         functionCalls.push({
