@@ -1,0 +1,85 @@
+{
+  "name": "1inch-agent-kit",
+  "version": "1.0.0",
+  "description": "AI Agent Kit for 1inch - Connect any LLM to 1inch DeFi protocols",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/src/**/*",
+    "dist/index.js",
+    "dist/index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "example:quote": "ts-node -r dotenv/config examples/quote.ts",
+    "example:swap": "ts-node -r dotenv/config examples/swap.ts",
+    "example:health": "ts-node -r dotenv/config examples/healthCheck.ts",
+    "example:gas": "ts-node -r dotenv/config examples/gasAPI.ts",
+    "example:rpc": "ts-node -r dotenv/config examples/rpcAPI.ts",
+    "gen-docs": "ts-node scripts/gen-docs.ts"
+  },
+  "keywords": [
+    "1inch",
+    "defi",
+    "ai",
+    "agent",
+    "llm",
+    "openai",
+    "swap",
+    "quote",
+    "ethereum",
+    "blockchain",
+    "gas",
+    "gas-price",
+    "rpc",
+    "web3"
+  ],
+  "author": "Derek Liew",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/derekliew/1inch-agent-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/derekliew/1inch-agent-kit/issues"
+  },
+  "homepage": "https://github.com/derekliew/1inch-agent-kit#readme",
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "openai": "^4.0.0"
+  },
+  "peerDependencies": {
+    "openai": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
