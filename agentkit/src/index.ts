@@ -27,6 +27,9 @@ export type { LoggerOptions } from './utils/logger';
 export { gasAPI } from './functions/gasAPI';
 export type { Eip1559GasPriceResponse, Eip1559GasValueResponse } from './functions/gasAPI';
 
+export { rpcAPI } from './functions/rpcAPI';
+export type { RpcRequest, RpcResponse } from './functions/rpcAPI';
+
 // Registry export
 export { default as registry } from './core/registry';
 

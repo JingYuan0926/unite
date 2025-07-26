@@ -5,7 +5,7 @@
 [![npm version](https://badge.fury.io/js/1inch-agent-kit.svg)](https://badge.fury.io/js/1inch-agent-kit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The 1inch Agent Kit allows you to interact with 1inch's DeFi protocols using natural language, powered by OpenAI's GPT models. Get quotes, execute swaps, check gas prices, and monitor protocol health through simple chat interactions.
+The 1inch Agent Kit allows you to interact with 1inch's DeFi protocols using natural language, powered by OpenAI's GPT models. Get quotes, execute swaps, check gas prices, perform RPC calls, and monitor protocol health through simple chat interactions.
 
 ## 🚀 Quick Start
 
@@ -62,6 +62,7 @@ const agent = new OneInchAgentKit({
 - **Get Quotes**: Get the best swap routes and estimated output amounts
 - **Execute Swaps**: Create swap transactions for execution
 - **Gas Price Data**: Get real-time gas prices across multiple chains
+- **RPC Calls**: Perform JSON-RPC calls against blockchain nodes
 - **Health Checks**: Monitor API and chain health status
 - **Multi-Chain Support**: Ethereum, Polygon, BNB Chain, Arbitrum, and more
 
@@ -103,6 +104,13 @@ const response = await agent.chat('Get me the current gas prices for Ethereum ma
 console.log(response.content);
 ```
 
+### Perform RPC Calls
+
+```typescript
+const response = await agent.chat('Get the latest block number on Ethereum mainnet');
+console.log(response.content);
+```
+
 ### Check Health
 
 ```typescript
@@ -116,7 +124,7 @@ console.log(response.content);
 const response = await agent.chat(`
   Get me a quote for swapping 1000 USDC to ETH on Polygon with 0.5% slippage.
   Use complexity level 4 and split into 5 parts for better rates.
-  Also show me the current gas prices for both chains.
+  Also show me the current gas prices and latest block number for both chains.
 `);
 console.log(response.content);
 ```
@@ -126,7 +134,7 @@ console.log(response.content);
 You can also use the functions directly without the LLM agent:
 
 ```typescript
-import { getQuote, swap, healthCheck, gasAPI } from '1inch-agent-kit';
+import { getQuote, swap, healthCheck, gasAPI, rpcAPI } from '1inch-agent-kit';
 
 // Get quote directly
 const quote = await getQuote({
@@ -150,6 +158,12 @@ const swapTx = await swap({
 // Get gas prices
 const gasPrices = await gasAPI({ chain: 1 });
 
+// Perform RPC call
+const blockNumber = await rpcAPI({
+  chainId: 1,
+  method: 'eth_blockNumber'
+});
+
 // Check health
 const health = await healthCheck({ chainId: 1 });
 ```
@@ -168,6 +182,7 @@ src/
 │   ├── getQuote/   # Quote functionality
 │   ├── swap/       # Swap functionality
 │   ├── gasAPI/     # Gas price functionality
+│   ├── rpcAPI/     # RPC functionality
 │   └── healthCheck/# Health check functionality
 └── utils/          # Utilities
     ├── fetcher.ts  # HTTP client
@@ -187,6 +202,9 @@ npm run example:swap
 
 # Run gas price example
 npm run example:gas
+
+# Run RPC example
+npm run example:rpc
 
 # Run health check example
 npm run example:health

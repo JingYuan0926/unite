@@ -28,6 +28,7 @@
     "example:swap": "ts-node -r dotenv/config examples/swap.ts",
     "example:health": "ts-node -r dotenv/config examples/healthCheck.ts",
     "example:gas": "ts-node -r dotenv/config examples/gasAPI.ts",
+    "example:rpc": "ts-node -r dotenv/config examples/rpcAPI.ts",
     "gen-docs": "ts-node scripts/gen-docs.ts"
   },
   "keywords": [
@@ -42,7 +43,9 @@
     "ethereum",
     "blockchain",
     "gas",
-    "gas-price"
+    "gas-price",
+    "rpc",
+    "web3"
   ],
   "author": "Your Name",
   "license": "MIT",

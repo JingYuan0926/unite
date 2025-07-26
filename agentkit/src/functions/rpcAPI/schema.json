@@ -1,0 +1,114 @@
+{
+  "name": "rpcAPI",
+  "description": "Perform JSON-RPC calls against blockchain nodes using 1inch Web3 RPC API. This function provides reliable, real-time data access and interaction capabilities for executing transactions, monitoring block events, and querying network data efficiently.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "chainId": {
+        "type": "integer",
+        "description": "The unique identifier for the blockchain network",
+        "enum": [1, 10, 56, 100, 137, 324, 42161, 43114, 8453, 7565164],
+        "examples": [
+          {
+            "value": 1,
+            "description": "Ethereum Mainnet"
+          },
+          {
+            "value": 137,
+            "description": "Polygon"
+          },
+          {
+            "value": 42161,
+            "description": "Arbitrum One"
+          },
+          {
+            "value": 56,
+            "description": "BNB Chain"
+          },
+          {
+            "value": 10,
+            "description": "Optimism"
+          },
+          {
+            "value": 43114,
+            "description": "Avalanche C-Chain"
+          },
+          {
+            "value": 8453,
+            "description": "Base"
+          },
+          {
+            "value": 324,
+            "description": "zkSync Era"
+          },
+          {
+            "value": 100,
+            "description": "Gnosis"
+          },
+          {
+            "value": 7565164,
+            "description": "Solana"
+          }
+        ]
+      },
+      "nodeType": {
+        "type": "string",
+        "description": "The node type you require for your call. If not provided, 'full' will be used as the default value",
+        "enum": ["full", "archive", "validator"],
+        "default": "full"
+      },
+      "method": {
+        "type": "string",
+        "description": "The JSON-RPC method to call",
+        "examples": [
+          {
+            "value": "eth_blockNumber",
+            "description": "Get the latest block number"
+          },
+          {
+            "value": "eth_getBalance",
+            "description": "Get account balance"
+          },
+          {
+            "value": "eth_getBlockByNumber",
+            "description": "Get block information by number"
+          },
+          {
+            "value": "eth_call",
+            "description": "Execute a call without creating a transaction"
+          },
+          {
+            "value": "eth_getTransactionReceipt",
+            "description": "Get transaction receipt"
+          },
+          {
+            "value": "eth_getLogs",
+            "description": "Get event logs"
+          },
+          {
+            "value": "eth_estimateGas",
+            "description": "Estimate gas for a transaction"
+          },
+          {
+            "value": "eth_gasPrice",
+            "description": "Get current gas price"
+          }
+        ]
+      },
+      "params": {
+        "type": "array",
+        "description": "Parameters for the JSON-RPC method call",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      },
+      "id": {
+        "type": ["integer", "string", "null"],
+        "description": "Request ID for the JSON-RPC call",
+        "default": 1
+      }
+    },
+    "required": ["chainId", "method"]
+  }
+} 
