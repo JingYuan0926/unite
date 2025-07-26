@@ -14,6 +14,7 @@ export type { FunctionDefinition, FunctionRegistry } from './core/types';
 export { gasAPI } from './functions/gasAPI';
 export { rpcAPI } from './functions/rpcAPI';
 export { chartsAPI, getLineChart, getCandleChart } from './functions/chartsAPI';
+export { tokenDetailsAPI, getNativeTokenDetails, getTokenDetails, getNativeTokenPricesByRange, getTokenPricesByRange, getNativeTokenPricesByInterval, getTokenPricesByInterval, getNativeTokenPriceChange, getTokenPriceChange, getTokenListPriceChange } from './functions/tokenDetailsAPI';
 
 // Type exports
 export type { 
@@ -36,6 +37,28 @@ export type {
   LineChartParams,
   CandleChartParams
 } from './functions/chartsAPI';
+
+export type {
+  SocialLink,
+  AssetsResponse,
+  DetailsResponse,
+  InfoDataResponse,
+  ChartPointResponse,
+  ChartDataResponse,
+  TokenPriceChangeResponseDto,
+  TokenListPriceChangeResponseDto,
+  GetTokenListPriceRequestDto,
+  SupportedInterval,
+  GetNativeTokenDetailsParams,
+  GetTokenDetailsParams,
+  GetNativeTokenPricesByRangeParams,
+  GetTokenPricesByRangeParams,
+  GetNativeTokenPricesByIntervalParams,
+  GetTokenPricesByIntervalParams,
+  GetNativeTokenPriceChangeParams,
+  GetTokenPriceChangeParams,
+  GetTokenListPriceChangeParams
+} from './functions/tokenDetailsAPI';
 
 // Utility exports
 export { OneInchFetcher } from './utils/fetcher';

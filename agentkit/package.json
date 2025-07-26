@@ -1,6 +1,6 @@
 {
   "name": "1inch-agent-kit",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "AI Agent Kit for 1inch - Connect any LLM to 1inch DeFi protocols",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,6 +33,7 @@
     "example:gas": "ts-node -r dotenv/config examples/gasAPI.ts",
     "example:rpc": "ts-node -r dotenv/config examples/rpcAPI.ts",
     "example:charts": "ts-node -r dotenv/config examples/chartsAPI.ts",
+    "example:token-details": "ts-node -r dotenv/config examples/tokenDetailsAPI.ts",
     "gen-docs": "ts-node scripts/gen-docs.ts"
   },
   "keywords": [
