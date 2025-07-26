@@ -3,6 +3,10 @@ import path from "path";
 import { FunctionDefinition, FunctionRegistry } from "./types";
 import { logger } from "../utils/logger";
 
+// Determine the correct functions root path
+// In development (ts-node), __dirname points to src/core
+// In production (compiled), __dirname points to dist/core
+const isDevelopment = process.env.NODE_ENV !== 'production' || require.main?.filename?.includes('ts-node');
 const FUNCTIONS_ROOT = path.resolve(__dirname, "../functions");
 
 class Registry implements FunctionRegistry {
@@ -10,12 +14,13 @@ class Registry implements FunctionRegistry {
   private handlers: Record<string, (args: any) => Promise<any>> = {};
   private initialized = false;
 
-  /** Scan every subfolder under src/functions */
+  /** Scan every subfolder under functions */
   async init() {
     if (this.initialized) return;
     
     logger.info("Initializing function registry...");
     logger.debug(`Functions root: ${FUNCTIONS_ROOT}`);
+    logger.debug(`Development mode: ${isDevelopment}`);
     
     try {
       const entries = await fs.readdir(FUNCTIONS_ROOT, { withFileTypes: true });
@@ -30,13 +35,18 @@ class Registry implements FunctionRegistry {
         const fnDir = path.join(FUNCTIONS_ROOT, fnName);
         const schemaPath = path.join(fnDir, "schema.json");
         
-        // Try .ts first (development), then .js (production)
-        let codePath = path.join(fnDir, "index.ts");
-        if (!await this.fileExists(codePath)) {
-          codePath = path.join(fnDir, "index.js");
-        }
+        // In development, look for .ts files, in production look for .js files
+        const codePath = isDevelopment 
+          ? path.join(fnDir, "index.ts")
+          : path.join(fnDir, "index.js");
         
         logger.debug(`Using code path: ${codePath}`);
+
+        // Check if the code file exists
+        if (!(await this.fileExists(codePath))) {
+          logger.warn(`Code file not found: ${codePath}, skipping function: ${fnName}`);
+          continue;
+        }
 
         // 1) load JSON schema
         const raw = await fs.readFile(schemaPath, "utf-8");

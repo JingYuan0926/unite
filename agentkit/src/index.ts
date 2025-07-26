@@ -6,32 +6,89 @@
  */
 
 // Core exports
-export { OneInchAgentKit, createAgent, llmAgent } from './core/llmAgent';
+export { OneInchAgentKit } from './core/llmAgent';
+export { default as Registry } from './core/registry';
+export type { FunctionDefinition, FunctionRegistry } from './core/types';
+
+// Function exports
+export { gasAPI } from './functions/gasAPI';
+export { rpcAPI } from './functions/rpcAPI';
+export { chartsAPI, getLineChart, getCandleChart } from './functions/chartsAPI';
+export { tokenDetailsAPI, getNativeTokenDetails, getTokenDetails, getNativeTokenPricesByRange, getTokenPricesByRange, getNativeTokenPricesByInterval, getTokenPricesByInterval, getNativeTokenPriceChange, getTokenPriceChange, getTokenListPriceChange } from './functions/tokenDetailsAPI';
+export { historyAPI, getHistoryEvents, postHistoryEvents, searchHistoryEvents, getSwapEvents } from './functions/historyAPI';
+
+// Type exports
 export type { 
-  AgentKitConfig, 
-  AgentResponse, 
-  FunctionDefinition, 
-  FunctionRegistry,
-  QuoteParams,
-  SwapParams,
-  ChainParams,
-  TokenParams,
-  OneInchError
-} from './core/types';
+  Eip1559GasValueResponse,
+  Eip1559GasPriceResponse
+} from './functions/gasAPI';
+
+export type { 
+  RpcRequest,
+  RpcResponse
+} from './functions/rpcAPI';
+
+export type { 
+  LineData,
+  LinesResponse,
+  CandleData,
+  CandlesResponse,
+  ChartPeriod,
+  CandleSeconds,
+  LineChartParams,
+  CandleChartParams
+} from './functions/chartsAPI';
+
+export type {
+  SocialLink,
+  AssetsResponse,
+  DetailsResponse,
+  InfoDataResponse,
+  ChartPointResponse,
+  ChartDataResponse,
+  TokenPriceChangeResponseDto,
+  TokenListPriceChangeResponseDto,
+  GetTokenListPriceRequestDto,
+  SupportedInterval,
+  GetNativeTokenDetailsParams,
+  GetTokenDetailsParams,
+  GetNativeTokenPricesByRangeParams,
+  GetTokenPricesByRangeParams,
+  GetNativeTokenPricesByIntervalParams,
+  GetTokenPricesByIntervalParams,
+  GetNativeTokenPriceChangeParams,
+  GetTokenPriceChangeParams,
+  GetTokenListPriceChangeParams
+} from './functions/tokenDetailsAPI';
+
+export type {
+  TokenActionDto,
+  TransactionDetailsMetaDto,
+  TransactionDetailsDto,
+  HistoryEventDto,
+  HistoryResponseDto,
+  HistoryEventResponseDto,
+  MultiFilterDto,
+  PostMultiFilterDto,
+  SearchAndMultiFilterDto,
+  SearchOrMultiFilterDto,
+  HistorySearchMultiFilterRootAndDto,
+  HistorySearchMultiFilterRootFilterDto,
+  HistorySearchMultiFilterRootDto,
+  UnifiedTokenAddress,
+  HistorySwapFilterDto,
+  HistorySwapFilterRootDto,
+  TransactionType,
+  GetHistoryEventsParams,
+  PostHistoryEventsParams,
+  SearchHistoryEventsParams,
+  GetSwapEventsParams
+} from './functions/historyAPI';
 
 // Utility exports
 export { OneInchFetcher } from './utils/fetcher';
 export { Logger, logger, LogLevel } from './utils/logger';
 export type { LoggerOptions } from './utils/logger';
-
-export { gasAPI } from './functions/gasAPI';
-export type { Eip1559GasPriceResponse, Eip1559GasValueResponse } from './functions/gasAPI';
-
-export { rpcAPI } from './functions/rpcAPI';
-export type { RpcRequest, RpcResponse } from './functions/rpcAPI';
-
-// Registry export
-export { default as registry } from './core/registry';
 
 /**
  * Quick start example:

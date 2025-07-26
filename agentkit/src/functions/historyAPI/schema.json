@@ -1,0 +1,141 @@
+{
+  "name": "historyAPI",
+  "description": "Get comprehensive transaction history data from the 1inch History API. Supports 4 different endpoints for retrieving transaction events, filtered events, search events, and swap events.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "enum": [
+          "get-events",
+          "post-events", 
+          "search-events",
+          "swap-events"
+        ],
+        "description": "The specific endpoint to call. get-events: Get basic transaction events, post-events: Get filtered transaction events, search-events: Search transaction events with complex filters, swap-events: Get swap-specific transaction events"
+      },
+      "address": {
+        "type": "string",
+        "description": "Account address to get transaction history for"
+      },
+      "limit": {
+        "type": "number",
+        "description": "Amount of events to return, default is 100, max is 2048"
+      },
+      "tokenAddress": {
+        "type": "string",
+        "description": "Token address used at event (for get-events endpoint)"
+      },
+      "chainId": {
+        "type": "number",
+        "enum": [1, 45, 137, 10, 56, 42161, 43114, 100, 250, 1313161554, 8217, 324, 8453, 59144, 501, 146, 130],
+        "description": "Chain ID for the transaction. 1=Ethereum, 45=Arbitrum, 137=Polygon, 10=Optimism, 56=BNB Chain, 42161=Arbitrum, 43114=Avalanche, 100=Gnosis, 250=Fantom, 1313161554=Aurora, 8217=Klaytn, 324=zkSync Era, 8453=Base, 59144=Linea, 501=Calypso, 146=Arbitrum Nova, 130=Metis"
+      },
+      "toTimestampMs": {
+        "type": "string",
+        "description": "To time at milliseconds (for get-events endpoint)"
+      },
+      "fromTimestampMs": {
+        "type": "string",
+        "description": "From time at milliseconds (for get-events endpoint)"
+      },
+      "filter": {
+        "type": "object",
+        "description": "Filter object for post-events endpoint",
+        "properties": {
+          "from_time_ms": {
+            "type": "number",
+            "description": "From time in milliseconds"
+          },
+          "to_time_ms": {
+            "type": "number",
+            "description": "To time in milliseconds"
+          },
+          "chain_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of chain IDs to filter by"
+          },
+          "transaction_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["Unknown", "Approve", "Wrap", "Unwrap", "Transfer", "SwapExactInput", "SwapExactOutput", "LimitOrderFill", "LimitOrderCancel", "LimitOrderCancelAll", "Multicall", "AddLiquidity", "RemoveLiquidity", "Borrow", "Repay", "Stake", "Unstake", "Vote", "DelegateVotePower", "UnDelegateVotePower", "DiscardVote", "DeployPool", "Claim", "AbiDecoded", "TraceDecoded", "Action", "Bridge", "BuyNft", "BidNft", "OfferSellNft", "Burn", "WrappedTx", "RegisterENSDomain", "Revoke", "CreateSafe", "AddOwner", "Send", "Receive", "MultiStage", "Swap", "LimitOrderCreate"]
+            },
+            "description": "Array of transaction types to filter by"
+          },
+          "token_addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of token addresses to filter by"
+          },
+          "chain_based_token_addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of chain-based token addresses to filter by"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Limit for number of results"
+          }
+        }
+      },
+      "searchFilter": {
+        "type": "object",
+        "description": "Complex search filter object for search-events endpoint",
+        "properties": {
+          "and": {
+            "type": "object",
+            "description": "AND filter conditions",
+            "properties": {
+              "and": {
+                "type": "object",
+                "description": "Nested AND conditions"
+              },
+              "or": {
+                "type": "object",
+                "description": "OR conditions"
+              }
+            }
+          },
+          "limit": {
+            "type": "number",
+            "description": "Limit for number of results"
+          }
+        }
+      },
+      "swapFilter": {
+        "type": "object",
+        "description": "Swap filter object for swap-events endpoint",
+        "properties": {
+          "chain_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of chain IDs to filter by"
+          },
+          "token_address_from": {
+            "type": "object",
+            "description": "Token address from mapping"
+          },
+          "token_address_to": {
+            "type": "object",
+            "description": "Token address to mapping"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Limit for number of results"
+          }
+        }
+      }
+    },
+    "required": ["endpoint", "address"]
+  }
+} 
