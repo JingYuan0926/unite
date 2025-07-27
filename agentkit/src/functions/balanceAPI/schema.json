@@ -1,0 +1,123 @@
+{
+  "name": "balanceAPI",
+  "description": "Get real-time token balances and allowances from 1inch Balance API. This function provides accurate information about token balances and allowances across multiple chains. ALWAYS provide both 'endpoint' and 'chain' parameters - they are mandatory.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "enum": [
+          "aggregatedBalancesAndAllowances",
+          "getBalances",
+          "getCustomTokenBalances",
+          "getMultipleWalletsTokenBalances",
+          "getBalancesAndAllowances",
+          "getCustomTokenBalancesAndAllowances",
+          "getAllowances",
+          "getCustomTokenAllowances"
+        ],
+        "description": "REQUIRED: The balance API endpoint to call",
+        "examples": [
+          {
+            "value": "getBalances",
+            "description": "Get all token balances for a wallet address"
+          },
+          {
+            "value": "getCustomTokenBalances",
+            "description": "Get balances for specific tokens for a wallet address"
+          },
+          {
+            "value": "getBalancesAndAllowances",
+            "description": "Get balances and allowances by spender for a wallet address"
+          },
+          {
+            "value": "getAllowances",
+            "description": "Get token allowances by spender for a wallet address"
+          },
+          {
+            "value": "aggregatedBalancesAndAllowances",
+            "description": "Get aggregated balances and allowances for multiple wallets"
+          },
+          {
+            "value": "getMultipleWalletsTokenBalances",
+            "description": "Get balances for specific tokens across multiple wallets"
+          }
+        ]
+      },
+      "chain": {
+        "type": "number",
+        "description": "REQUIRED: Chain ID for the blockchain network",
+        "enum": [1, 10, 56, 100, 137, 324, 42161, 43114, 8453, 7565164],
+        "examples": [
+          {
+            "value": 1,
+            "description": "Ethereum Mainnet"
+          },
+          {
+            "value": 137,
+            "description": "Polygon"
+          },
+          {
+            "value": 42161,
+            "description": "Arbitrum One"
+          },
+          {
+            "value": 56,
+            "description": "BNB Chain"
+          },
+          {
+            "value": 10,
+            "description": "Optimism"
+          },
+          {
+            "value": 43114,
+            "description": "Avalanche C-Chain"
+          },
+          {
+            "value": 8453,
+            "description": "Base"
+          },
+          {
+            "value": 324,
+            "description": "zkSync Era"
+          },
+          {
+            "value": 100,
+            "description": "Gnosis"
+          },
+          {
+            "value": 7565164,
+            "description": "Solana"
+          }
+        ]
+      },
+      "walletAddress": {
+        "type": "string",
+        "description": "Wallet address to get balances/allowances for (required for most endpoints, can be auto-filled from connected wallet)"
+      },
+      "spender": {
+        "type": "string",
+        "description": "Spender address for allowance-related endpoints (e.g., 1inch router address)"
+      },
+      "wallets": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Array of wallet addresses (required for aggregatedBalancesAndAllowances and getMultipleWalletsTokenBalances endpoints)"
+      },
+      "tokens": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Array of token contract addresses (required for custom token endpoints)"
+      },
+      "filterEmpty": {
+        "type": "boolean",
+        "description": "Filter out empty balances and allowances (optional, for aggregatedBalancesAndAllowances endpoint)"
+      }
+    },
+    "required": ["endpoint", "chain"]
+  }
+}

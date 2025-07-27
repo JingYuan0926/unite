@@ -42,10 +42,46 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Wallet endpoint
+app.post('/api/wallet', async (req, res) => {
+  try {
+    const { address, chainId, balance, walletType } = req.body;
+
+    // Validate wallet data
+    if (!address || !chainId) {
+      return res.status(400).json({ 
+        error: 'Address and chainId are required' 
+      });
+    }
+
+    // Set wallet in agent if available
+    if (agent) {
+      agent.setWallet({
+        address,
+        chainId,
+        balance,
+        walletType: walletType || 'metamask'
+      });
+      console.log('💼 Wallet set in agent:', address, 'on chain', chainId);
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Wallet connected successfully' 
+    });
+
+  } catch (error) {
+    console.error('❌ Wallet API Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process wallet connection' 
+    });
+  }
+});
+
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, wallet } = req.body;
 
     // Validate input
     if (!message || typeof message !== 'string') {
@@ -62,6 +98,12 @@ app.post('/api/chat', async (req, res) => {
     }
 
     console.log('🤖 Processing message:', message);
+    
+    // Set wallet if provided in request
+    if (wallet && agent) {
+      agent.setWallet(wallet);
+      console.log('💼 Using wallet from request:', wallet.address);
+    }
 
     // Send message to the agent
     const response = await agent.chat(message);
@@ -113,4 +155,5 @@ app.listen(PORT, () => {
   console.log(`🌐 Frontend: http://localhost:${PORT}`);
   console.log(`📡 Health check: http://localhost:${PORT}/health`);
   console.log(`💬 Chat API: http://localhost:${PORT}/api/chat`);
-}); 
+  console.log(`💼 Wallet API: http://localhost:${PORT}/api/wallet`);
+});
