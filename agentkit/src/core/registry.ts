@@ -4,10 +4,23 @@ import { FunctionDefinition, FunctionRegistry } from "./types";
 import { logger } from "../utils/logger";
 
 // Determine the correct functions root path
-// In development (ts-node), __dirname points to src/core
-// In production (compiled), __dirname points to dist/core
-const isDevelopment = require.main?.filename?.includes('ts-node') || false;
-const FUNCTIONS_ROOT = path.resolve(__dirname, "../functions");
+// Check if we're running in development mode by looking for ts-node in process.argv
+const isDevelopment = process.argv.some(arg => arg.includes('ts-node')) || 
+                     process.argv.some(arg => arg.includes('ts-node-esm')) ||
+                     process.argv.some(arg => arg.includes('tsx'));
+
+// More robust path resolution
+const getFunctionsRoot = () => {
+  if (isDevelopment) {
+    // When running with ts-node, resolve from current working directory
+    return path.resolve(process.cwd(), "src/functions");
+  } else {
+    // When running compiled code, resolve from __dirname
+    return path.resolve(__dirname, "../functions");
+  }
+};
+
+const FUNCTIONS_ROOT = getFunctionsRoot();
 
 class Registry implements FunctionRegistry {
   private defs: FunctionDefinition[] = [];
@@ -21,6 +34,8 @@ class Registry implements FunctionRegistry {
     logger.info("Initializing function registry...");
     logger.debug(`Functions root: ${FUNCTIONS_ROOT}`);
     logger.debug(`Development mode: ${isDevelopment}`);
+    logger.debug(`Current working directory: ${process.cwd()}`);
+    logger.debug(`Process argv: ${process.argv.join(' ')}`);
     
     try {
       const entries = await fs.readdir(FUNCTIONS_ROOT, { withFileTypes: true });
