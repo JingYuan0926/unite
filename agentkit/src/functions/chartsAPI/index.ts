@@ -1,4 +1,5 @@
 import { OneInchFetcher } from "../../utils/fetcher";
+import { Wallet } from "../../utils/wallet";
 
 export interface LineData {
   time: number;
@@ -78,6 +79,7 @@ export async function chartsAPI(params: {
   period?: ChartPeriod;
   seconds?: CandleSeconds;
   chainId: number;
+  wallet?: Wallet;
 }): Promise<LinesResponse | CandlesResponse> {
   if (params.type === "line") {
     if (!params.period) {

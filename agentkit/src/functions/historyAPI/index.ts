@@ -1,4 +1,5 @@
 import { OneInchFetcher } from "../../utils/fetcher";
+import { Wallet } from "../../utils/wallet";
 
 // Response interfaces
 export interface TokenActionDto {
@@ -235,6 +236,7 @@ export async function historyAPI(params: {
   filter?: MultiFilterDto;
   searchFilter?: HistorySearchMultiFilterRootFilterDto;
   swapFilter?: HistorySwapFilterDto;
+  wallet?: Wallet;
 }): Promise<any> {
   switch (params.endpoint) {
     case "get-events":

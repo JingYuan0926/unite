@@ -1,4 +1,5 @@
 import { OneInchFetcher } from "../../utils/fetcher";
+import { Wallet } from "../../utils/wallet";
 
 export interface Eip1559GasValueResponse {
   maxPriorityFeePerGas: string;
@@ -19,6 +20,7 @@ export interface Eip1559GasPriceResponse {
  */
 export async function gasAPI(params: {
   chain: number;
+  wallet?: Wallet;
 }): Promise<Eip1559GasPriceResponse> {
   const apiKey = process.env.ONEINCH_API_KEY;
   if (!apiKey) {

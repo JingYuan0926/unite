@@ -1,4 +1,5 @@
 import { OneInchFetcher } from "../../utils/fetcher";
+import { Wallet } from "../../utils/wallet";
 
 export interface RpcRequest {
   jsonrpc: "2.0";
@@ -28,6 +29,7 @@ export async function rpcAPI(params: {
   method: string;
   params?: any[];
   id?: number | string | null;
+  wallet?: Wallet;
 }): Promise<RpcResponse> {
   const apiKey = process.env.ONEINCH_API_KEY;
   if (!apiKey) {

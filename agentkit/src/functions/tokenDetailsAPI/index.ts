@@ -1,4 +1,5 @@
 import { OneInchFetcher } from "../../utils/fetcher";
+import { Wallet } from "../../utils/wallet";
 
 // Response interfaces
 export interface SocialLink {
@@ -289,6 +290,7 @@ export async function tokenDetailsAPI(params: {
   to?: number;
   provider?: string;
   from_time?: number;
+  wallet?: Wallet;
 }): Promise<any> {
   switch (params.endpoint) {
     case "native-details":
