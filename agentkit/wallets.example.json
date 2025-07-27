@@ -1,0 +1,13 @@
+
+{
+    "_comment_IMPORTANT_!!": "REMOVE THIS COMMENT, REMEMBER TO RENAME THIS FILE TO wallet.json and add in your credentials. Make sure to put wallets.json in .gitignore",
+    "address": "0x.......",
+    "chainId": 1,
+    "privateKey": "0x.......",
+    "isTestWallet": true,
+    "name": "Wallet Name",
+    "balance": "......",
+    "ensName": null,
+    "walletType": "test"
+  }
+  
