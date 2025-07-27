@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import registry from "./registry";
 import { FunctionDefinition, AgentKitConfig, AgentResponse } from "./types";
 import { logger } from "../utils/logger";
+import { walletManager, Wallet } from "../utils/wallet";
 
 /**
  * 1inch Agent Kit - Connect any LLM to 1inch DeFi protocols
@@ -25,12 +26,49 @@ export class OneInchAgentKit {
       apiKey,
       baseURL: this.config.baseUrl,
     });
+
+    // Initialize wallet manager
+    this.initializeWallet();
+  }
+
+  /**
+   * Initialize wallet (local for scripts, or wait for frontend wallet)
+   */
+  private async initializeWallet(): Promise<void> {
+    try {
+      await walletManager.initialize();
+      const context = walletManager.getWalletContext();
+      if (context.isConnected) {
+        logger.info(`Wallet initialized: ${context.wallet?.address} (${context.source})`);
+      }
+    } catch (error) {
+      logger.warn('Wallet initialization failed:', error);
+    }
+  }
+
+  /**
+   * Set wallet for frontend usage
+   */
+  setWallet(wallet: Wallet): void {
+    walletManager.setFrontendWallet(wallet);
+    logger.info(`Frontend wallet set: ${wallet.address} on chain ${wallet.chainId}`);
+  }
+
+  /**
+   * Get current wallet info
+   */
+  getWallet(): Wallet | null {
+    return walletManager.getWalletContext().wallet;
   }
 
   /**
    * Send a user prompt → let the model call your functions → return final answer.
    */
-  async chat(userPrompt: string): Promise<AgentResponse> {
+  async chat(userPrompt: string, wallet?: Wallet): Promise<AgentResponse> {
+    // Set wallet if provided
+    if (wallet) {
+      this.setWallet(wallet);
+    }
     // Initialize registry if not already done
     await registry.init();
     

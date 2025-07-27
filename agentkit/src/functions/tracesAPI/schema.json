@@ -1,29 +1,64 @@
 {
   "name": "tracesAPI",
-  "description": "Get transaction traces and block trace data from 1inch Traces API. IMPORTANT: You MUST provide the 'endpoint' and 'chain' parameters. For 'Get synced interval for Ethereum', you MUST call this function with endpoint='getSyncedInterval' and chain=1. EXAMPLES: For synced interval: {\"endpoint\": \"getSyncedInterval\", \"chain\": 1}. For block trace: {\"endpoint\": \"getBlockTraceByNumber\", \"chain\": 1, \"blockNumber\": \"15000000\"}.",
-  "type": "object",
-  "properties": {
-    "endpoint": {
-      "type": "string",
-      "enum": ["getSyncedInterval", "getBlockTraceByNumber", "getTransactionTraceByHash", "getTransactionTraceByOffset"],
-      "description": "REQUIRED: The traces API endpoint to call. Use 'getSyncedInterval' for synced interval requests, 'getBlockTraceByNumber' for block trace requests, 'getTransactionTraceByHash' for transaction trace by hash, 'getTransactionTraceByOffset' for transaction trace by position."
+  "description": "Get transaction traces and block trace data from 1inch Traces API. This function provides detailed transaction execution traces and block information. ALWAYS provide both 'endpoint' and 'chain' parameters - they are mandatory.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "enum": ["getSyncedInterval", "getBlockTraceByNumber", "getTransactionTraceByHash", "getTransactionTraceByOffset"],
+        "description": "REQUIRED: The traces API endpoint to call",
+        "examples": [
+          {
+            "value": "getSyncedInterval",
+            "description": "Get the synced block interval range for the chain"
+          },
+          {
+            "value": "getBlockTraceByNumber",
+            "description": "Get full trace data for a specific block (requires blockNumber)"
+          },
+          {
+            "value": "getTransactionTraceByHash",
+            "description": "Get trace data for a specific transaction by hash (requires blockNumber and txHash)"
+          },
+          {
+            "value": "getTransactionTraceByOffset",
+            "description": "Get trace data for a transaction by its position in block (requires blockNumber and offset)"
+          }
+        ]
+      },
+      "chain": {
+        "type": "number",
+        "description": "REQUIRED: Chain ID for the blockchain network",
+        "enum": [1, 10, 56, 100, 137, 324, 42161, 43114, 8453, 7565164],
+        "examples": [
+          {
+            "value": 1,
+            "description": "Ethereum Mainnet"
+          },
+          {
+            "value": 137,
+            "description": "Polygon"
+          },
+          {
+            "value": 42161,
+            "description": "Arbitrum One"
+          }
+        ]
+      },
+      "blockNumber": {
+        "type": "string",
+        "description": "Block number as string (required for getBlockTraceByNumber, getTransactionTraceByHash, getTransactionTraceByOffset endpoints)"
+      },
+      "txHash": {
+        "type": "string",
+        "description": "Transaction hash (required for getTransactionTraceByHash endpoint)"
+      },
+      "offset": {
+        "type": "number",
+        "description": "Transaction position/index in the block (required for getTransactionTraceByOffset endpoint)"
+      }
     },
-    "chain": {
-      "type": "number",
-      "description": "REQUIRED: Chain ID: 1 for Ethereum, 137 for Polygon, etc."
-    },
-    "blockNumber": {
-      "type": "string",
-      "description": "Block number (required for getBlockTraceByNumber, getTransactionTraceByHash, getTransactionTraceByOffset)"
-    },
-    "txHash": {
-      "type": "string",
-      "description": "Transaction hash (required for getTransactionTraceByHash)"
-    },
-    "offset": {
-      "type": "number",
-      "description": "Transaction position in block (required for getTransactionTraceByOffset)"
-    }
-  },
-  "required": ["endpoint", "chain"]
-} 
+    "required": ["endpoint", "chain"]
+  }
+}

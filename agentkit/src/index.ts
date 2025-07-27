@@ -18,6 +18,7 @@ export { tokenDetailsAPI } from "./functions/tokenDetailsAPI";
 export { historyAPI } from "./functions/historyAPI";
 export { tracesAPI } from "./functions/tracesAPI";
 export { spotPriceAPI } from "./functions/spotPriceAPI";
+export { balanceAPI } from "./functions/balanceAPI";
 
 // Type exports
 export type {
@@ -106,6 +107,24 @@ export type {
   CurrenciesResponse
 } from "./functions/spotPriceAPI";
 
+export type {
+  CustomTokensRequest,
+  CustomTokensAndWalletsRequest,
+  TokenBalance,
+  AggregatedBalancesAndAllowancesResponse,
+  BalancesAndAllowancesResponse,
+  GetAggregatedBalancesAndAllowancesParams,
+  GetBalancesParams,
+  GetCustomTokenBalancesParams,
+  GetMultipleWalletsTokenBalancesParams,
+  GetBalancesAndAllowancesParams,
+  GetCustomTokenBalancesAndAllowancesParams,
+  GetAllowancesParams,
+  GetCustomTokenAllowancesParams
+} from "./functions/balanceAPI";
+
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
 export { logger } from "./utils/logger";
+export { walletManager, WalletUtils } from "./utils/wallet";
+export type { Wallet, WalletContext } from "./utils/wallet";

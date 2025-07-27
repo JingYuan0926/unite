@@ -1,4 +1,5 @@
 import { OneInchFetcher } from '../../utils/fetcher';
+import { Wallet } from '../../utils/wallet';
 
 // Interfaces for request parameters
 export interface GetWhitelistedPricesRequest {
@@ -113,6 +114,7 @@ export async function spotPriceAPI(params: {
   tokens?: string[];
   addresses?: string[];
   currency?: string;
+  wallet?: Wallet;
 }): Promise<any> {
   try {
     // If no parameters provided, default to getWhitelistedPrices for Ethereum

@@ -1,4 +1,5 @@
 import { OneInchFetcher } from "../../utils/fetcher";
+import { Wallet } from "../../utils/wallet";
 
 // Interfaces for request parameters
 export interface GetSyncedIntervalParams {
@@ -90,6 +91,7 @@ export async function tracesAPI(params: {
   blockNumber?: string;
   txHash?: string;
   offset?: number;
+  wallet?: Wallet;
 }): Promise<any> {
   try {
     // Debug logging to see what parameters are being passed
