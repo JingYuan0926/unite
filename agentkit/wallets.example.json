@@ -1,0 +1,13 @@
+// NOTE: Remember to rename this file to wallets.json before using it!
+// REMOVE THE COMMENTS
+{
+    "address": "0x.......",
+    "chainId": 1,
+    "privateKey": "0x.......",
+    "isTestWallet": true,
+    "name": "Wallet Name",
+    "balance": "......",
+    "ensName": null,
+    "walletType": "test"
+  }
+  
