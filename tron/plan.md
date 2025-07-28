@@ -7,59 +7,239 @@ _Each phase is designed to be self-contained and can be handed to an AI assistan
 
 ## 📋 **Project Overview**
 
-**Goal**: Build a working cross-chain swap system between Optimism Sepolia and Tron Nile using 1inch's Fusion+ HTLC contracts.
+**Goal**: Build a complete cross-chain swap system between Optimism Sepolia and Tron Nile using 1inch's Fusion+ infrastructure, including both user-facing order creation and resolver-side order processing.
 
 **Success Criteria**: 
-- ✅ Live demo of OP ETH → TRX swap
-- ✅ Live demo of TRX → OP ETH swap  
+- ✅ Live demo of OP ETH → TRX swap using 1inch SDK
+- ✅ Live demo of TRX → OP ETH swap using 1inch SDK
+- ✅ Working resolver bot that processes cross-chain orders
+- ✅ Complete user experience from order creation to completion
 - ✅ Reproducible from README instructions
 - ✅ All tests passing
 
 ---
 
-## 🎯 **Phase 1: Environment Setup & Repository Preparation**
-**Duration**: 1-2 hours  
+## 🎯 **Phase 0: SDK Setup & Dependencies**
+**Duration**: 30-45 minutes  
 **Prerequisites**: Node.js ≥18, Git
 
 ### **Objective**
-Set up the development environment, clone 1inch repositories, and verify all dependencies work correctly.
+Set up the 1inch Cross-Chain SDK for order creation and user interaction alongside the core repositories.
 
 ### **Detailed Instructions for AI**
 ```bash
 # 1. Create project workspace
 mkdir fusion-tron-project && cd fusion-tron-project
 
-# 2. Clone 1inch repositories
+# 2. Clone all necessary 1inch repositories
 git clone https://github.com/1inch/cross-chain-swap.git fusion-cross
 git clone https://github.com/1inch/cross-chain-resolver-example.git fusion-resolver
+git clone https://github.com/1inch/cross-chain-sdk.git fusion-sdk
 
-# 3. Install dependencies
-cd fusion-cross && pnpm install
-cd ../fusion-resolver && pnpm install
+# 3. Install dependencies for all repos
+cd fusion-cross && pnpm install && cd ..
+cd fusion-resolver && pnpm install && cd ..
+cd fusion-sdk && pnpm install && cd ..
 
-# 4. Install Foundry for resolver repo
-cd fusion-resolver && forge install
+# 4. Create main project directory
+mkdir fusion-tron-main && cd fusion-tron-main
+pnpm init
+```
 
-# 5. Verify installations work
-cd ../fusion-cross && pnpm test
-cd ../fusion-resolver && SRC_CHAIN_RPC=https://eth.merkle.io DST_CHAIN_RPC=wss://bsc-rpc.publicnode.com pnpm test
+### **Files to Create**
+```json
+// File: fusion-tron-main/package.json (create project integrating all components)
+{
+  "name": "fusion-tron-cross-chain",
+  "version": "1.0.0",
+  "description": "OP Sepolia ↔ Tron Nile cross-chain swap using 1inch Fusion+",
+  "main": "index.js",
+  "scripts": {
+    "setup": "npm run install-deps",
+    "install-deps": "cd ../fusion-cross && pnpm i && cd ../fusion-resolver && pnpm i && cd ../fusion-sdk && pnpm i",
+    "test": "npm run test-contracts && npm run test-resolver && npm run test-sdk",
+    "demo": "node src/demo.js"
+  },
+  "dependencies": {
+    "@1inch/cross-chain-sdk": "latest",
+    "ethers": "^6.0.0",
+    "tronweb": "^5.3.0",
+    "web3": "^4.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+```
+
+```typescript
+// File: fusion-tron-main/src/config.ts (create unified configuration)
+export const CONFIG = {
+  // 1inch Fusion+ API
+  FUSION_API_URL: 'https://api.1inch.dev/fusion-plus',
+  
+  // Chain configurations
+  CHAINS: {
+    OP_SEPOLIA: {
+      chainId: 11155420,
+      name: 'optimism-sepolia',
+      rpc: 'https://sepolia.optimism.io',
+      explorer: 'https://sepolia.optimism.io',
+      nativeToken: 'ETH'
+    },
+    TRON_NILE: {
+      chainId: 3448148188,
+      name: 'tron-nile', 
+      rpc: 'https://api.nileex.io',
+      explorer: 'https://nile.tronscan.org',
+      nativeToken: 'TRX'
+    }
+  },
+  
+  // Contract addresses (to be filled after deployment)
+  CONTRACTS: {
+    OP_ESCROW_FACTORY: process.env.OP_ESCROW_FACTORY || '',
+    OP_ESCROW_SRC: process.env.OP_ESCROW_SRC || '',
+    TRON_ESCROW_FACTORY: process.env.TRON_ESCROW_FACTORY || '',
+    TRON_ESCROW_DST: process.env.TRON_ESCROW_DST || ''
+  }
+};
+```
+
+### **Success Criteria**
+- [ ] All three 1inch repositories cloned and dependencies installed
+- [ ] Main project directory with integrated package.json
+- [ ] Unified configuration file created
+- [ ] No installation errors
+- [ ] Project structure documented
+
+---
+
+## 🎯 **Phase 1: Verification & Testing**
+**Duration**: 1-2 hours  
+**Prerequisites**: Phase 0 complete
+
+### **Objective**
+Verify all repositories work correctly and understand the existing implementations before customization.
+
+### **Detailed Instructions for AI**
+
+#### **1.1 Test Cross-Chain Swap Contracts**
+```bash
+# Test existing HTLC contracts
+cd fusion-cross
+pnpm test
+
+# Test contract compilation
+npx hardhat compile
+
+# Verify gas snapshots
+forge snapshot
+```
+
+#### **1.2 Test Cross-Chain Resolver**
+```bash
+# Test existing resolver implementation
+cd ../fusion-resolver
+forge install  # Install Foundry dependencies
+
+# Run resolver tests with ETH/BSC forks
+SRC_CHAIN_RPC=https://eth.merkle.io DST_CHAIN_RPC=wss://bsc-rpc.publicnode.com pnpm test
+```
+
+#### **1.3 Test Cross-Chain SDK**
+```bash
+# Examine SDK structure and run tests
+cd ../fusion-sdk
+pnpm test
+
+# Check TypeScript compilation
+pnpm build
+```
+
+#### **1.4 Create Development Environment**
+```bash
+# File: fusion-tron-main/.env.example (create comprehensive environment template)
+# 1inch Fusion+ API Configuration
+FUSION_API_URL=https://api.1inch.dev/fusion-plus
+FUSION_AUTH_KEY=your-auth-key-here
+FUSION_SOURCE=fusion-tron-demo
+
+# Network RPC URLs
+OP_SEPOLIA_RPC=https://sepolia.optimism.io
+TRON_NILE_RPC=https://api.nileex.io
+ETH_MAINNET_RPC=https://eth.merkle.io
+BSC_MAINNET_RPC=wss://bsc-rpc.publicnode.com
+
+# Private Keys (will be generated in Phase 3)
+OP_SEPOLIA_PK=
+TRON_NILE_PK=
+USER_PK=
+
+# Contract Addresses (will be filled in Phase 4)
+OP_ESCROW_FACTORY=
+OP_ESCROW_SRC=
+TRON_ESCROW_FACTORY=
+TRON_ESCROW_DST=
+
+# Test Token Addresses (to be researched)
+OP_SEPOLIA_USDT=
+TRON_NILE_USDT=
+```
+
+#### **1.5 Create Workspace Documentation**
+```markdown
+# File: fusion-tron-main/WORKSPACE.md
+# Fusion+ OP Sepolia ↔ Tron Nile - Workspace Guide
+
+## Repository Structure
+```
+fusion-tron-project/
+├── fusion-cross/          # 1inch HTLC contracts
+├── fusion-resolver/       # 1inch resolver example (ETH ↔ BSC)
+├── fusion-sdk/           # 1inch cross-chain SDK
+└── fusion-tron-main/     # Our main integration project
+```
+
+## What Each Repo Provides
+- **fusion-cross**: EscrowSrc, EscrowDst, EscrowFactory contracts
+- **fusion-resolver**: TypeScript resolver implementation
+- **fusion-sdk**: Order creation, secret management, status monitoring
+- **fusion-tron-main**: Integration layer for OP Sepolia ↔ Tron
+
+## Testing Status
+- [ ] fusion-cross tests passing
+- [ ] fusion-resolver tests passing  
+- [ ] fusion-sdk tests passing
+- [ ] All TypeScript compilation successful
+
+## Next Steps
+1. Configure contracts for OP Sepolia + Tron timing
+2. Set up test wallets and funding
+3. Deploy contracts to both testnets
+4. Extend resolver for Tron support
+5. Create order creation flow using SDK
 ```
 
 ### **Files to Create/Modify**
-- `fusion-cross/.env.local` - Environment variables template
-- `fusion-resolver/.env.local` - Resolver configuration template  
-- `workspace-setup.md` - Document the setup process
+- 🆕 `fusion-tron-main/.env.example` - Comprehensive environment template
+- 🆕 `fusion-tron-main/WORKSPACE.md` - Workspace documentation
+- 🆕 `fusion-tron-main/src/utils/testConnections.ts` - Connection verification script
 
 ### **Success Criteria**
-- [ ] Both repositories cloned and dependencies installed
-- [ ] All existing tests pass
-- [ ] Development environment documented
-- [ ] No compilation errors
+- [ ] All repository tests pass
+- [ ] TypeScript compilation successful
+- [ ] Workspace structure documented
+- [ ] Environment template created
+- [ ] No critical errors or warnings
 
 ### **Troubleshooting Guide**
 - If tests fail: Check Node.js version ≥18
 - If pnpm missing: `npm install -g pnpm`
 - If Foundry missing: `curl -L https://foundry.paradigm.xyz | bash`
+- If SDK tests fail: Check if auth key is needed (may be optional for tests)
 
 ---
 
@@ -375,12 +555,314 @@ echo "📋 Check deployment addresses and update .env file"
 
 ---
 
-## 🤖 **Phase 5: Resolver Bot Development**
-**Duration**: 3-4 hours (reduced - leveraging existing code)  
+## 📱 **Phase 5: SDK Integration & Order Creation**
+**Duration**: 2-3 hours  
 **Prerequisites**: Phase 4 complete, contracts deployed
 
 ### **Objective**
-Extend the existing 1inch TypeScript resolver to support OP Sepolia ↔ Tron Nile swaps.
+Integrate the 1inch Cross-Chain SDK to enable order creation and user-side interaction with our OP Sepolia ↔ Tron swaps.
+
+### **Detailed Instructions for AI**
+
+#### **5.1 Create SDK Configuration for Custom Chains**
+```typescript
+// File: fusion-tron-main/src/sdk/CustomSDK.ts (new file)
+import { SDK, NetworkEnum, PrivateKeyProviderConnector } from '@1inch/cross-chain-sdk';
+import Web3 from 'web3';
+import { CONFIG } from '../config';
+
+export class CustomCrossChainSDK {
+  private sdk: SDK;
+  private web3: Web3;
+  private walletAddress: string;
+
+  constructor(privateKey: string, authKey: string) {
+    // Initialize Web3 for OP Sepolia
+    this.web3 = new Web3(CONFIG.CHAINS.OP_SEPOLIA.rpc);
+    this.walletAddress = this.web3.eth.accounts.privateKeyToAccount(privateKey).address;
+
+    // Initialize 1inch SDK
+    this.sdk = new SDK({
+      url: CONFIG.FUSION_API_URL,
+      authKey,
+      blockchainProvider: new PrivateKeyProviderConnector(privateKey, this.web3)
+    });
+  }
+
+  // Extend SDK to support custom chain combinations
+  async createCustomChainOrder(params: {
+    amount: string;
+    srcChainId: number;
+    dstChainId: number;
+    srcTokenAddress: string;
+    dstTokenAddress: string;
+  }) {
+    console.log('🔄 Creating order for custom chain pair:', {
+      src: params.srcChainId,
+      dst: params.dstChainId
+    });
+
+    // Check if this is our custom OP Sepolia ↔ Tron combination
+    const isCustomPair = 
+      (params.srcChainId === CONFIG.CHAINS.OP_SEPOLIA.chainId && 
+       params.dstChainId === CONFIG.CHAINS.TRON_NILE.chainId) ||
+      (params.srcChainId === CONFIG.CHAINS.TRON_NILE.chainId && 
+       params.dstChainId === CONFIG.CHAINS.OP_SEPOLIA.chainId);
+
+    if (isCustomPair) {
+      // Handle our custom chain logic
+      return await this.createOPSepoliaTronOrder(params);
+    } else {
+      // Use standard SDK for supported pairs
+      return await this.sdk.getQuote({
+        ...params,
+        enableEstimate: true,
+        walletAddress: this.walletAddress
+      });
+    }
+  }
+
+  private async createOPSepoliaTronOrder(params: any) {
+    console.log('🌉 Creating OP Sepolia ↔ Tron Nile order...');
+    
+    // Since Tron isn't natively supported by 1inch Fusion+,
+    // we'll create a custom order structure that our resolver can handle
+    const customOrder = {
+      srcChainId: params.srcChainId,
+      dstChainId: params.dstChainId,
+      srcToken: params.srcTokenAddress,
+      dstToken: params.dstTokenAddress,
+      amount: params.amount,
+      maker: this.walletAddress,
+      timestamp: Date.now(),
+      // Add custom fields for our resolver to recognize
+      isCustomChain: true,
+      requiresCustomResolver: true
+    };
+
+    return customOrder;
+  }
+
+  getWalletAddress(): string {
+    return this.walletAddress;
+  }
+
+  getSDK(): SDK {
+    return this.sdk;
+  }
+}
+```
+
+#### **5.2 Create Order Creation Interface**
+```typescript
+// File: fusion-tron-main/src/orders/OrderCreator.ts (new file)
+import { CustomCrossChainSDK } from '../sdk/CustomSDK';
+import { HashLock, PresetEnum } from '@1inch/cross-chain-sdk';
+import { randomBytes } from 'crypto';
+
+export class OrderCreator {
+  private sdk: CustomCrossChainSDK;
+
+  constructor(privateKey: string, authKey: string) {
+    this.sdk = new CustomCrossChainSDK(privateKey, authKey);
+  }
+
+  async createOPToTronOrder(amount: string, tokenAddresses: {
+    opToken: string;
+    tronToken: string;
+  }) {
+    console.log('📱 Creating OP Sepolia → Tron Nile order...');
+
+    // 1. Generate secrets for the swap
+    const secrets = Array.from({ length: 1 }).map(() => 
+      '0x' + randomBytes(32).toString('hex')
+    );
+
+    // 2. Create hash lock
+    const hashLock = HashLock.forSingleFill(secrets[0]);
+    const secretHashes = secrets.map(s => HashLock.hashSecret(s));
+
+    // 3. Create the order
+    const orderParams = {
+      amount,
+      srcChainId: 11155420, // OP Sepolia
+      dstChainId: 3448148188, // Tron Nile (custom)
+      srcTokenAddress: tokenAddresses.opToken,
+      dstTokenAddress: tokenAddresses.tronToken
+    };
+
+    const order = await this.sdk.createCustomChainOrder(orderParams);
+
+    return {
+      order,
+      secrets,
+      hashLock,
+      secretHashes,
+      walletAddress: this.sdk.getWalletAddress()
+    };
+  }
+
+  async createTronToOPOrder(amount: string, tokenAddresses: {
+    tronToken: string;
+    opToken: string;
+  }) {
+    console.log('📱 Creating Tron Nile → OP Sepolia order...');
+
+    // Similar to above but reversed direction
+    const secrets = Array.from({ length: 1 }).map(() => 
+      '0x' + randomBytes(32).toString('hex')
+    );
+
+    const hashLock = HashLock.forSingleFill(secrets[0]);
+    const secretHashes = secrets.map(s => HashLock.hashSecret(s));
+
+    const orderParams = {
+      amount,
+      srcChainId: 3448148188, // Tron Nile (custom)
+      dstChainId: 11155420, // OP Sepolia  
+      srcTokenAddress: tokenAddresses.tronToken,
+      dstTokenAddress: tokenAddresses.opToken
+    };
+
+    const order = await this.sdk.createCustomChainOrder(orderParams);
+
+    return {
+      order,
+      secrets,
+      hashLock,
+      secretHashes,
+      walletAddress: this.sdk.getWalletAddress()
+    };
+  }
+}
+```
+
+#### **5.3 Create Order Monitoring**
+```typescript
+// File: fusion-tron-main/src/orders/OrderMonitor.ts (new file)
+import { CustomCrossChainSDK } from '../sdk/CustomSDK';
+import { OrderStatus } from '@1inch/cross-chain-sdk';
+
+export class OrderMonitor {
+  private sdk: CustomCrossChainSDK;
+
+  constructor(privateKey: string, authKey: string) {
+    this.sdk = new CustomCrossChainSDK(privateKey, authKey);
+  }
+
+  async monitorOrder(orderHash: string, secrets: string[]) {
+    console.log(`👀 Monitoring order ${orderHash}...`);
+
+    while (true) {
+      try {
+        // For custom orders, we'll implement our own status checking
+        const status = await this.checkCustomOrderStatus(orderHash);
+
+        if (status === 'completed' || status === 'failed' || status === 'expired') {
+          console.log(`✅ Order ${orderHash} finished with status: ${status}`);
+          break;
+        }
+
+        // Check if secrets need to be submitted
+        await this.handleSecretSubmission(orderHash, secrets);
+
+        await this.sleep(5000); // Check every 5 seconds
+      } catch (error) {
+        console.error('Error monitoring order:', error);
+        await this.sleep(10000); // Wait longer on error
+      }
+    }
+  }
+
+  private async checkCustomOrderStatus(orderHash: string) {
+    // For now, return a mock status
+    // In full implementation, this would check our custom order database
+    // or blockchain state
+    return 'pending';
+  }
+
+  private async handleSecretSubmission(orderHash: string, secrets: string[]) {
+    // Check if our resolver needs secrets
+    // This would integrate with the resolver bot from Phase 6
+    console.log(`🔑 Checking if secrets needed for ${orderHash}...`);
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+```
+
+#### **5.4 Create Demo Script Using SDK**
+```typescript
+// File: fusion-tron-main/src/demo/demo-with-sdk.ts (new file)
+import { OrderCreator } from '../orders/OrderCreator';
+import { OrderMonitor } from '../orders/OrderMonitor';
+import { CONFIG } from '../config';
+
+async function demoSDKIntegration() {
+  console.log('🚀 Starting SDK Integration Demo...');
+
+  // Initialize components
+  const privateKey = process.env.USER_PK!;
+  const authKey = process.env.FUSION_AUTH_KEY || 'demo-key';
+
+  const orderCreator = new OrderCreator(privateKey, authKey);
+  const orderMonitor = new OrderMonitor(privateKey, authKey);
+
+  try {
+    // Demo 1: OP Sepolia → Tron Nile
+    console.log('\n📱 Demo 1: Creating OP Sepolia → Tron Nile order...');
+    
+    const opToTronOrder = await orderCreator.createOPToTronOrder('1000000', {
+      opToken: '0x0000000000000000000000000000000000000000', // ETH
+      tronToken: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb' // TRX (example)
+    });
+
+    console.log('✅ Order created:', {
+      walletAddress: opToTronOrder.walletAddress,
+      secretHash: opToTronOrder.secretHashes[0]
+    });
+
+    // Start monitoring (this would run in background)
+    console.log('👀 Starting order monitoring...');
+    // await orderMonitor.monitorOrder(opToTronOrder.order.hash, opToTronOrder.secrets);
+
+  } catch (error) {
+    console.error('❌ Demo failed:', error);
+  }
+}
+
+// Run demo if called directly
+if (require.main === module) {
+  demoSDKIntegration().catch(console.error);
+}
+
+export { demoSDKIntegration };
+```
+
+### **Files to Create**
+- 🆕 `fusion-tron-main/src/sdk/CustomSDK.ts` - Extended SDK for custom chains
+- 🆕 `fusion-tron-main/src/orders/OrderCreator.ts` - Order creation interface
+- 🆕 `fusion-tron-main/src/orders/OrderMonitor.ts` - Order monitoring
+- 🆕 `fusion-tron-main/src/demo/demo-with-sdk.ts` - SDK integration demo
+- ✏️ `fusion-tron-main/package.json` - Add SDK dependencies
+
+### **Success Criteria**
+- [ ] Custom SDK wrapper created for OP Sepolia ↔ Tron
+- [ ] Order creation flow implemented
+- [ ] Order monitoring system in place
+- [ ] Demo script runs without errors
+- [ ] Integration with 1inch SDK successful
+
+---
+
+## 🤖 **Phase 6: Resolver Bot Development**
+**Duration**: 3-4 hours (reduced - leveraging existing code)  
+**Prerequisites**: Phase 5 complete, SDK integration working
+
+### **Objective**
+Extend the existing 1inch TypeScript resolver to support OP Sepolia ↔ Tron Nile swaps and integrate with our custom order creation flow.
 
 ### **Detailed Instructions for AI**
 
@@ -609,9 +1091,9 @@ describe('OP Sepolia ↔ Tron Nile Integration', () => {
 
 ---
 
-## 🧪 **Phase 6: Integration Testing**
+## 🧪 **Phase 7: Integration Testing**
 **Duration**: 3-4 hours  
-**Prerequisites**: Phase 5 complete, resolver bot working
+**Prerequisites**: Phase 6 complete, resolver bot working
 
 ### **Objective**
 Create and run comprehensive integration tests that verify the complete cross-chain swap flow.
@@ -799,9 +1281,9 @@ echo "✅ All integration tests complete!"
 
 ---
 
-## 🎬 **Phase 7: Demo Script & Documentation**  
+## 🎬 **Phase 8: Demo Script & Documentation**  
 **Duration**: 2-3 hours  
-**Prerequisites**: Phase 6 complete, all tests passing
+**Prerequisites**: Phase 7 complete, all tests passing
 
 ### **Objective**
 Create a polished demo script and comprehensive documentation for the complete system.
@@ -1013,9 +1495,9 @@ echo "✅ Demo recording complete!"
 
 ---
 
-## 🎯 **Phase 8: Final Polish & Delivery**
+## 🎯 **Phase 9: Final Polish & Delivery**
 **Duration**: 1-2 hours  
-**Prerequisites**: Phase 7 complete, demo working
+**Prerequisites**: Phase 8 complete, demo working
 
 ### **Objective**
 Final cleanup, optimization, and preparation for submission/handover.
@@ -1182,6 +1664,21 @@ generateMetrics().catch(console.error);
 
 ---
 
-**🎯 Total Estimated Time: 13-18 hours across 8 phases (reduced due to leveraging existing 1inch resolver)**
+**🎯 Total Estimated Time: 15-21 hours across 9 phases (includes complete SDK integration)**
 
-Each phase builds on the previous one and can be handed to an AI assistant with the instruction: _"Implement Phase X exactly as specified in plan.md"_ 
+Each phase builds on the previous one and can be handed to an AI assistant with the instruction: _"Implement Phase X exactly as specified in plan.md"_
+
+## 📊 **Phase Summary**
+
+| Phase | Focus | Duration | Key Deliverable |
+|-------|-------|----------|-----------------|
+| 0 | SDK Setup | 30-45 min | All 1inch repos + unified config |
+| 1 | Verification | 1-2 hours | All tests passing |
+| 2 | Contract Config | 2-3 hours | OP Sepolia + Tron contracts |
+| 3 | Wallet Funding | 1 hour | Test wallets with funds |
+| 4 | Deployment | 2-3 hours | Live contracts on both chains |
+| 5 | SDK Integration | 2-3 hours | Order creation + monitoring |
+| 6 | Resolver Bot | 3-4 hours | Cross-chain order processing |
+| 7 | Integration Tests | 3-4 hours | End-to-end test suite |
+| 8 | Demo & Docs | 2-3 hours | Polished demo + documentation |
+| 9 | Final Polish | 1-2 hours | Production-ready delivery | 
