@@ -11,6 +11,7 @@
   "dependencies": {
     "dotenv": "^17.2.1",
     "ethers": "^6.15.0",
+    "sqlite3": "^5.1.7",
     "xrpl": "^4.3.0"
   }
 }
