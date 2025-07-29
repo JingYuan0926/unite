@@ -38,10 +38,10 @@ TRON_ESCROW_FACTORY_ADDRESS=TByM1nxjJsgZuh9SeEniex2Sa9iKNfu4hD
 
 ```bash
 # Run health check (optional)
-node contract-diagnostic-fix.js
+node utils/diagnostics.js
 
 # Execute atomic swap
-node final-working-swap.js
+node atomic-swap.js
 ```
 
 ## 🎯 What Happens
@@ -86,4 +86,4 @@ node final-working-swap.js
 - **Duration**: ~2 minutes total
 - **Networks**: Ethereum Sepolia ↔ TRON Nile
 
-Ready to swap? Run `node final-working-swap.js` 🚀
+Ready to swap? Run `node atomic-swap.js` 🚀
