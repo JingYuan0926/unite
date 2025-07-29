@@ -44,32 +44,64 @@ if (!fs.existsSync(envPath)) {
     console.log("✅ Created .env from .env.example");
   } else {
     // Create basic .env file
-    const basicEnv = `# 1inch Fusion+ Cross-Chain Swap Configuration
-# ============================================
+    const basicEnv = `# Fusion+ Cross-Chain Resolver Configuration
 
-# Ethereum Sepolia Configuration
+# Network Settings
+ETH_NETWORK=sepolia
+TRON_NETWORK=nile
+
+# ========================================
+# DEPLOYMENT CONFIGURATION (Required for deployment)
+# ========================================
+
+# Ethereum Deployment (hardhat.config.js expects these)
 ETHEREUM_RPC_URL=https://rpc.sepolia.org
 ETHEREUM_PRIVATE_KEY=your_ethereum_private_key_here
+
+# Tron Deployment (tronbox.js expects these)  
+TRON_PRIVATE_KEY=your_tron_private_key_here
+
+# Optional: Etherscan verification
 ETHERSCAN_API_KEY=your_etherscan_api_key_here
 
-# Tron Nile Configuration  
-TRON_PRIVATE_KEY=your_tron_private_key_here
+# ========================================
+# RESOLVER CONFIGURATION (Required for resolver)
+# ========================================
+
+# RPC Endpoints for resolver - using same values as deployment
+ETH_RPC_URL=https://rpc.sepolia.org
+ETH_WS_URL=wss://sepolia.gateway.tenderly.co
 TRON_RPC_URL=https://api.nileex.io
 
-# Application Settings
-NODE_ENV=development
-PORT=3000
+# Contract Addresses (fill these after deployment)
+ETH_ESCROW_FACTORY_ADDRESS=0x0000000000000000000000000000000000000000
+TRON_ESCROW_FACTORY_ADDRESS=T000000000000000000000000000000000000
+
+# Resolver Credentials (can be same as deployment key)
+RESOLVER_PRIVATE_KEY=your_resolver_private_key_here
+
+# ========================================
+# OPTIONAL SETTINGS
+# ========================================
+
+# Performance Settings
+MAX_CONCURRENT_SWAPS=10
+RETRY_MAX_ATTEMPTS=3
+METRICS_INTERVAL=30000
+
+# Health Monitoring
+HEALTH_PORT=3001
+LOG_LEVEL=info
+
+# Gas/Energy Settings
+ETH_GAS_PRICE_GWEI=20
+TRON_FEE_LIMIT=100000000
+TRON_ENERGY_USAGE_PERCENT=30
+
+# Demo Mode Settings
 DEMO_MODE=false
-
-# Security Settings
-REVEAL_DELAY_SECONDS=60
-MIN_CANCEL_DELAY_SECONDS=1800
-ETH_FINALITY_BLOCKS=20
-TRON_FINALITY_BLOCKS=12
-
-# Contract Addresses (will be populated after deployment)
-ETHEREUM_ESCROW_FACTORY_ADDRESS=
-TRON_ESCROW_FACTORY_ADDRESS=
+DEMO_ETH_AMOUNT=0.01
+DEMO_TRX_AMOUNT=100
 `;
     fs.writeFileSync(envPath, basicEnv);
     console.log("✅ Created basic .env file");

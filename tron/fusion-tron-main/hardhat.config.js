@@ -17,7 +17,10 @@ module.exports = {
   networks: {
     // Ethereum Sepolia Testnet
     sepolia: {
-      url: process.env.ETHEREUM_RPC_URL || "https://rpc.sepolia.org",
+      url:
+        process.env.ETH_RPC_URL ||
+        process.env.ETHEREUM_RPC_URL ||
+        "https://rpc.sepolia.org",
       accounts: process.env.ETHEREUM_PRIVATE_KEY
         ? [process.env.ETHEREUM_PRIVATE_KEY]
         : [],
@@ -41,6 +44,7 @@ module.exports = {
     // Ethereum Mainnet (for reference/fork testing)
     mainnet: {
       url:
+        process.env.ETH_MAINNET_RPC_URL ||
         process.env.ETHEREUM_MAINNET_RPC_URL ||
         "https://eth-mainnet.g.alchemy.com/v2/demo",
       accounts: process.env.ETHEREUM_PRIVATE_KEY
