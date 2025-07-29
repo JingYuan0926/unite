@@ -3,3 +3,4 @@ node_modules/
 readme.md
 .DS_Store
 testConnection.js
+xrpl-tee/
