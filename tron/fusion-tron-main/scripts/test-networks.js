@@ -21,7 +21,7 @@ const networks = [
   },
   {
     name: "Tron Nile",
-    urls: ["https://api.nileex.io", "https://nile.trongrid.io"],
+    urls: ["https://nile.trongrid.io"],
   },
 ];
 
