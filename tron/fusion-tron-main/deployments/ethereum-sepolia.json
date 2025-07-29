@@ -1,0 +1,19 @@
+{
+  "network": "sepolia",
+  "chainId": "11155111",
+  "deployedAt": "2025-07-29T05:09:22.688Z",
+  "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
+  "contracts": {
+    "EscrowFactory": {
+      "address": "0x78aCb19366A0042dA3263747bda14BA43d68B0de",
+      "txHash": "0x03afcca2e10abc91360424eee62601586e67991560ac4cbaa281500c44a06d4a",
+      "blockNumber": null
+    }
+  },
+  "configuration": {
+    "finalityBlocks": "20",
+    "minCancelDelay": "1800",
+    "minSafetyDeposit": "1000000000000000",
+    "revealDelay": "60"
+  }
+}

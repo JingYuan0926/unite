@@ -36,11 +36,13 @@ async function main() {
   const revealDelay = await escrowFactory.REVEAL_DELAY();
 
   console.log(
-    `Finality Blocks: ${finalityBlocks} (≈${finalityBlocks * 12} seconds)`
+    `Finality Blocks: ${finalityBlocks} (≈${
+      Number(finalityBlocks) * 12
+    } seconds)`
   );
   console.log(
     `Min Cancel Delay: ${minCancelDelay} seconds (${
-      minCancelDelay / 60
+      Number(minCancelDelay) / 60
     } minutes)`
   );
   console.log(

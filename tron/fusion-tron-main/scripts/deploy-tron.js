@@ -1,4 +1,4 @@
-const TronWeb = require("tronweb");
+const { TronWeb } = require("tronweb");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
