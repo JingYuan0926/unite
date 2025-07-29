@@ -642,7 +642,11 @@ export class AdvancedCrossChainResolver extends EventEmitter {
    * Helper methods
    */
   private getResolverAddress(): string {
-    return this.tronWeb.address.fromPrivateKey(this.config.resolverPrivateKey);
+    // TronWeb expects private key without 0x prefix
+    const tronPrivateKey = this.config.resolverPrivateKey.startsWith("0x")
+      ? this.config.resolverPrivateKey.slice(2)
+      : this.config.resolverPrivateKey;
+    return this.tronWeb.address.fromPrivateKey(tronPrivateKey);
   }
 
   private mapEthTokenToTron(ethToken: string): string {

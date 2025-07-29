@@ -6,7 +6,8 @@
  */
 
 const { ethers } = require("ethers");
-const TronWeb = require("tronweb");
+const TronWebModule = require("tronweb");
+const TronWeb = TronWebModule.TronWeb; // TronWeb v6.x uses .TronWeb for constructor
 require("dotenv").config();
 
 // Demo configuration
@@ -24,10 +25,17 @@ const DEMO_CONFIG = {
 class ResolverDemo {
   constructor() {
     this.ethProvider = new ethers.JsonRpcProvider(process.env.ETH_RPC_URL);
+
+    // TronWeb expects private key without 0x prefix
+    const privateKey =
+      process.env.DEMO_PRIVATE_KEY || process.env.RESOLVER_PRIVATE_KEY;
+    const tronPrivateKey = privateKey.startsWith("0x")
+      ? privateKey.slice(2)
+      : privateKey;
+
     this.tronWeb = new TronWeb({
       fullHost: process.env.TRON_RPC_URL,
-      privateKey:
-        process.env.DEMO_PRIVATE_KEY || process.env.RESOLVER_PRIVATE_KEY,
+      privateKey: tronPrivateKey,
     });
   }
 
