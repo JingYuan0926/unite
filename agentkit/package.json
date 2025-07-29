@@ -39,6 +39,7 @@
     "example:spot-price": "ts-node -r dotenv/config examples/spotPriceAPI.ts",
     "example:balance": "ts-node -r dotenv/config examples/balanceAPI.ts",
     "example:balance-direct": "ts-node -r dotenv/config examples/balanceAPIDirect.ts",
+    "example:fusion": "ts-node -r dotenv/config examples/fusionAPI.ts",
     "example:wallet": "ts-node -r dotenv/config examples/walletIntegration.ts",
     "gen-docs": "ts-node scripts/gen-docs.ts",
     "docs": "node scripts/generate-docs.js"

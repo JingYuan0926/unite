@@ -19,6 +19,7 @@ export { historyAPI } from "./functions/historyAPI";
 export { tracesAPI } from "./functions/tracesAPI";
 export { spotPriceAPI } from "./functions/spotPriceAPI";
 export { balanceAPI } from "./functions/balanceAPI";
+export { fusionAPI } from "./functions/fusionAPI";
 
 // Type exports
 export type {
@@ -122,6 +123,43 @@ export type {
   GetAllowancesParams,
   GetCustomTokenAllowancesParams
 } from "./functions/balanceAPI";
+
+export type {
+  FusionOrder,
+  FusionOrderV4,
+  ActiveOrdersOutput,
+  Meta,
+  GetActiveOrdersOutput,
+  SettlementAddressOutput,
+  OrdersByHashesInput,
+  AuctionPointOutput,
+  FillsOutput,
+  LimitOrderV4StructOutput,
+  GetOrderFillsByHashOutput,
+  FillOutputDto,
+  OrderFillsByMakerOutput,
+  ResolverFee,
+  AuctionPointClass,
+  GasCostConfigClass,
+  PresetClass,
+  QuotePresetsClass,
+  PairCurrencyValue,
+  TokenPairValue,
+  GetQuoteOutput,
+  CustomPresetInput,
+  OrderInput,
+  SignedOrderInput,
+  GetActiveOrdersParams,
+  GetSettlementAddressParams,
+  GetOrderByHashParams,
+  GetOrdersByHashesParams,
+  GetOrdersByMakerParams,
+  GetQuoteParams,
+  GetQuoteWithCustomPresetParams,
+  SubmitOrderParams,
+  SubmitMultipleOrdersParams,
+  FusionAPIParams
+} from "./functions/fusionAPI";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
