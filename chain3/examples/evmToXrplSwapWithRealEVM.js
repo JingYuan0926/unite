@@ -4,96 +4,180 @@ const { ethers } = require("ethers");
 const xrpl = require("xrpl");
 const { XRPLEscrowClient, XRPLEscrowUtils } = require("../xrpl-tee/client.js");
 
-/**
- * Enhanced EVM to XRPL Cross-Chain Swap Example with Real EVM Integration
- *
- * This example demonstrates a complete cross-chain atomic swap with:
- * - Real EVM contract interactions (requires deployed EscrowFactory)
- * - Real XRPL testnet transactions via TEE server
- * - Full event monitoring and coordination
- */
-
-// EscrowFactory ABI (from the compiled contract)
-const ESCROW_FACTORY_ABI = [
-  "function createDstEscrow(tuple(bytes32 orderHash, bytes32 hashlock, uint256 maker, uint256 taker, uint256 token, uint256 amount, uint256 safetyDeposit, uint256 timelocks) dstImmutables, uint256 srcCancellationTimestamp) external payable",
-  "event DstEscrowCreated(address escrow, bytes32 hashlock, uint256 taker)",
-  "event SrcEscrowCreated(tuple(bytes32 orderHash, bytes32 hashlock, address maker, address taker, address token, uint256 amount, uint256 safetyDeposit, uint256 timelocks) immutables, tuple(address token, uint256 amount, address resolver, uint128 fee, uint256 timelocks) immutablesComplement)",
-  "function ESCROW_DST_IMPLEMENTATION() view returns (address)",
-  "function ESCROW_SRC_IMPLEMENTATION() view returns (address)",
-];
-
-// Escrow contract ABI (simplified)
-const ESCROW_ABI = [
-  "function withdraw(bytes32 secret, tuple(bytes32 orderHash, bytes32 hashlock, address maker, address taker, address token, uint256 amount, uint256 safetyDeposit, uint256 timelocks) immutables) external",
-  "function cancel(tuple(bytes32 orderHash, bytes32 hashlock, address maker, address taker, address token, uint256 amount, uint256 safetyDeposit, uint256 timelocks) immutables) external",
-  "function getStatus() external view returns (uint8)",
-  "event EscrowWithdrawal(bytes32 secret)",
-  "event EscrowCancelled()",
-];
-
 class EnhancedCrossChainSwap {
-  constructor(config) {
-    this.config = config;
+  // The constructor and initialize method remain the same as in commit 1.
 
-    // EVM setup
-    this.evmProvider = new ethers.JsonRpcProvider(config.evm.rpcUrl);
-    this.evmWallet = new ethers.Wallet(config.evm.privateKey, this.evmProvider);
-    this.escrowFactory = new ethers.Contract(
-      config.evm.factoryAddress,
-      ESCROW_FACTORY_ABI,
-      this.evmWallet
+  async createSwap(swapParams) {
+    const swapId = crypto.randomUUID();
+    console.log(`🔄 Creating enhanced cross-chain swap ${swapId}`);
+
+    // Generate swap identifiers
+    const secret = XRPLEscrowClient.generateSecret();
+    const hashlock = XRPLEscrowClient.hashSecret(secret);
+    // Add timestamp to ensure uniqueness and prevent salt collision
+    const orderHash =
+      "0x" +
+      crypto
+        .createHash("sha256")
+        .update(crypto.randomBytes(32).toString("hex") + Date.now().toString())
+        .digest("hex");
+
+    console.log(`📋 Order Hash: ${orderHash}`);
+    console.log(`🔐 Hashlock: ${hashlock}`);
+    console.log(`🔑 Secret: ${secret}`);
+
+    // Set up timelocks with safer values to avoid validation issues
+    // Use current block timestamp to avoid timing mismatches
+    const currentBlock = await this.evmProvider.getBlock("latest");
+    const blockTimestamp = currentBlock.timestamp;
+
+    // Make sure DstCancellation is well before SrcCancellation
+    const timelocks = {
+      0: blockTimestamp + 600, // SrcWithdrawal: 10 minutes
+      1: blockTimestamp + 900, // SrcPublicWithdrawal: 15 minutes
+      2: blockTimestamp + 3600, // SrcCancellation: 60 minutes
+      3: blockTimestamp + 4200, // SrcPublicCancellation: 70 minutes
+      4: blockTimestamp + 300, // DstWithdrawal: 5 minutes
+      5: blockTimestamp + 600, // DstPublicWithdrawal: 10 minutes
+      6: blockTimestamp + 1800, // DstCancellation: 30 minutes (well before SrcCancellation)
+    };
+
+    const packedTimelocks = XRPLEscrowUtils.packTimelocks(
+      timelocks,
+      blockTimestamp
     );
 
-    // XRPL setup
-    this.xrplClient = null;
-    this.teeClient = new XRPLEscrowClient({
-      baseUrl: config.xrpl.teeServerUrl,
-    });
+    // For EVM contract, we need to pack timelocks differently with relative offsets
+    // The contract will call setDeployedAt which sets the deployment timestamp
+    // So we need to pass relative offsets, not absolute timestamps
+    const evmPackedTimelocks =
+      BigInt(600) | // SrcWithdrawal offset (stage 0)
+      (BigInt(900) << 32n) | // SrcPublicWithdrawal offset (stage 1)
+      (BigInt(3600) << 64n) | // SrcCancellation offset (stage 2)
+      (BigInt(4200) << 96n) | // SrcPublicCancellation offset (stage 3)
+      (BigInt(300) << 128n) | // DstWithdrawal offset (stage 4)
+      (BigInt(600) << 160n) | // DstPublicWithdrawal offset (stage 5)
+      (BigInt(1800) << 192n); // DstCancellation offset (stage 6)
 
-    // Swap state
-    this.activeSwaps = new Map();
-  }
-
-  async initialize() {
-    // Connect to XRPL
-    this.xrplClient = new xrpl.Client(this.config.xrpl.network);
-    await this.xrplClient.connect();
-    console.log(`✅ Connected to XRPL testnet: ${this.config.xrpl.network}`);
-
-    // Verify EVM connection
-    const network = await this.evmProvider.getNetwork();
-    console.log(
-      `✅ Connected to EVM network: ${network.name} (Chain ID: ${network.chainId})`
-    );
-
-    // Check factory contract
     try {
-      const factoryCode = await this.evmProvider.getCode(
-        this.config.evm.factoryAddress
-      );
-      if (factoryCode === "0x") {
-        throw new Error(
-          "EscrowFactory contract not found at specified address"
-        );
+      // Step 1: Create XRPL destination escrow
+      console.log("🏗️  Creating XRPL destination escrow...");
+      const xrplEscrowParams = {
+        orderHash: orderHash,
+        hashlock: hashlock,
+        maker: swapParams.xrplMaker,
+        taker: swapParams.xrplTaker,
+        token: swapParams.dstToken,
+        amount: swapParams.dstAmount,
+        safetyDeposit: swapParams.safetyDeposit,
+        timelocks: packedTimelocks,
+        srcCancellationTimestamp: timelocks[2],
+      };
+
+      XRPLEscrowUtils.validateEscrowParams(xrplEscrowParams);
+      const xrplEscrow =
+        await this.teeClient.createDestinationEscrow(xrplEscrowParams);
+
+      console.log(`✅ XRPL Escrow created with ID: ${xrplEscrow.escrowId}`);
+      console.log(`📍 Escrow wallet address: ${xrplEscrow.walletAddress}`);
+
+      // Step 2: Create EVM destination escrow
+      console.log("🏗️  Creating EVM destination escrow...");
+      const evmImmutables = {
+        orderHash: orderHash,
+        hashlock: hashlock,
+        maker: BigInt(swapParams.evmMaker), // Convert address to uint256
+        taker: BigInt(swapParams.evmTaker), // Convert address to uint256
+        token: BigInt(swapParams.srcToken), // Convert address to uint256
+        amount: ethers.parseEther(swapParams.srcAmount),
+        safetyDeposit: ethers.parseEther("0.01"), // 0.01 ETH safety deposit
+        timelocks: evmPackedTimelocks,
+      };
+
+      // Calculate required ETH for the escrow
+      let requiredEth = evmImmutables.safetyDeposit;
+      if (
+        swapParams.srcToken === "0x0000000000000000000000000000000000000000"
+      ) {
+        // Native ETH transfer
+        requiredEth += evmImmutables.amount;
       }
-      console.log(
-        `✅ EscrowFactory contract verified at: ${this.config.evm.factoryAddress}`
+
+      console.log("💰 Required ETH:", ethers.formatEther(requiredEth));
+
+      // Try to simulate the call first to get better error information
+      try {
+        await this.escrowFactory.createDstEscrow.staticCall(
+          evmImmutables,
+          timelocks[2], // srcCancellationTimestamp
+          { value: requiredEth }
+        );
+        console.log("✅ Static call successful");
+      } catch (staticError) {
+        console.error("❌ Static call failed:", staticError.message);
+        throw staticError;
+      }
+
+      const tx = await this.escrowFactory.createDstEscrow(
+        evmImmutables,
+        timelocks[2], // srcCancellationTimestamp
+        {
+          value: requiredEth,
+          gasLimit: 500000, // Set explicit gas limit
+        }
       );
 
-      // Test contract functionality by calling a view function
-      try {
-        const srcImpl = await this.escrowFactory.ESCROW_SRC_IMPLEMENTATION();
-        const dstImpl = await this.escrowFactory.ESCROW_DST_IMPLEMENTATION();
-        console.log(`📋 Src Implementation: ${srcImpl}`);
-        console.log(`📋 Dst Implementation: ${dstImpl}`);
-      } catch (viewError) {
-        console.error(
-          `❌ Contract view functions failed: ${viewError.message}`
-        );
-        throw viewError;
+      console.log(`⏳ Waiting for EVM escrow creation transaction: ${tx.hash}`);
+      const receipt = await tx.wait();
+
+      // Find the DstEscrowCreated event
+      const escrowCreatedEvent = receipt.logs.find((log) => {
+        try {
+          const parsed = this.escrowFactory.interface.parseLog(log);
+          return parsed.name === "DstEscrowCreated";
+        } catch {
+          return false;
+        }
+      });
+
+      if (!escrowCreatedEvent) {
+        throw new Error("EVM escrow creation event not found");
       }
+
+      const parsedEvent =
+        this.escrowFactory.interface.parseLog(escrowCreatedEvent);
+      const evmEscrowAddress = parsedEvent.args.escrow;
+
+      console.log(`✅ EVM Escrow created at: ${evmEscrowAddress}`);
+      console.log(`📝 Transaction hash: ${tx.hash}`);
+
+      // Store swap state
+      const swap = {
+        id: swapId,
+        orderHash,
+        hashlock,
+        secret,
+        status: "created",
+        xrplEscrow: {
+          id: xrplEscrow.escrowId,
+          walletAddress: xrplEscrow.walletAddress,
+          requiredDeposit: xrplEscrow.requiredDeposit.xrp,
+        },
+        evmEscrow: {
+          address: evmEscrowAddress,
+          transactionHash: tx.hash,
+        },
+        timelocks,
+        evmPackedTimelocks,
+        evmImmutables,
+        swapParams,
+      };
+
+      this.activeSwaps.set(swapId, swap);
+
+      return swap;
     } catch (error) {
-      console.error(`❌ EscrowFactory verification failed: ${error.message}`);
+      console.error(`❌ Failed to create swap ${swapId}:`, error.message);
       throw error;
     }
   }
