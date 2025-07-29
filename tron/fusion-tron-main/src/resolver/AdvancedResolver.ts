@@ -1,12 +1,15 @@
 import { EventEmitter } from "events";
 import { ethers } from "ethers";
-import TronWeb from "tronweb";
+import * as TronWebModule from "tronweb";
 import WebSocket from "ws";
 import { Logger } from "../utils/logger";
 import { PerformanceMetrics } from "./PerformanceMetrics";
 import { SwapContext, ResolverConfig, SwapDirection } from "./types";
 import { EscrowFactoryABI } from "./abis/EscrowFactory";
 import { TronEscrowFactoryABI } from "./abis/TronEscrowFactory";
+
+// TronWeb v6.x uses .TronWeb for the constructor in ES modules
+const TronWeb = (TronWebModule as any).TronWeb;
 
 /**
  * Advanced Cross-Chain Resolver for Ethereum ↔ Tron swaps
@@ -18,10 +21,11 @@ import { TronEscrowFactoryABI } from "./abis/TronEscrowFactory";
  * - Multi-swap handling capability
  * - MEV protection coordination
  */
+
 export class AdvancedCrossChainResolver extends EventEmitter {
   private ethProvider: ethers.Provider;
   private ethWsProvider: ethers.WebSocketProvider;
-  private tronWeb: TronWeb;
+  private tronWeb: any;
   private logger: Logger;
   private metrics: PerformanceMetrics;
   private activeSwaps: Map<string, SwapContext>;
@@ -41,10 +45,14 @@ export class AdvancedCrossChainResolver extends EventEmitter {
     this.ethProvider = new ethers.JsonRpcProvider(config.ethRpcUrl);
     this.ethWsProvider = new ethers.WebSocketProvider(config.ethWsUrl);
 
-    // Initialize Tron connection
+    // Initialize Tron connection (strip 0x prefix from private key for Tron)
+    const tronPrivateKey = config.resolverPrivateKey.startsWith("0x")
+      ? config.resolverPrivateKey.slice(2)
+      : config.resolverPrivateKey;
+
     this.tronWeb = new TronWeb({
       fullHost: config.tronRpcUrl,
-      privateKey: config.resolverPrivateKey,
+      privateKey: tronPrivateKey,
     });
 
     // Initialize contract instances
@@ -582,7 +590,7 @@ export class AdvancedCrossChainResolver extends EventEmitter {
       } catch (retryError) {
         this.logger.info(
           `❌ Recovery attempt ${swapContext.retryCount} failed for ${escrowId}:`,
-          retryError.message
+          retryError instanceof Error ? retryError.message : String(retryError)
         );
       }
     }
