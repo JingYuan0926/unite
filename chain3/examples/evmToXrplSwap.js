@@ -9,9 +9,6 @@ if (!privateKey) {
 const { ethers } = require("ethers");
 const xrpl = require("xrpl");
 const { XRPLEscrowClient, XRPLEscrowUtils } = require("../xrpl-tee/client.js");
-const {
-  CrossChainOrchestrator,
-} = require("../orchestrator/crossChainOrchestrator.js");
 
 /**
  * Example: EVM to XRPL Cross-Chain Swap
@@ -72,9 +69,6 @@ async function evmToXrplSwapExample() {
       "   XRPL side uses real testnet transactions with the TEE server"
     );
     console.log();
-
-    // Initialize orchestrator
-    const orchestrator = new CrossChainOrchestrator(config);
 
     // Validate and set addresses
     const evmTakerAddress = process.env.EVM_TAKER_ADDRESS;
@@ -204,172 +198,6 @@ async function evmToXrplSwapExample() {
     console.log(`📍 Escrow wallet address: ${escrow.walletAddress}`);
     console.log(`💰 Required deposit: ${escrow.requiredDeposit.xrp} drops`);
     console.log();
-
-    // Create swap result object
-    const swapResult = {
-      swapId: crypto.randomUUID(),
-      orderHash: orderHash,
-      hashlock: hashlock,
-      secret: secret,
-      srcEscrow: {
-        address: "0x" + crypto.randomBytes(20).toString("hex"), // Mock EVM address
-        transactionHash: "0x" + crypto.randomBytes(32).toString("hex"),
-      },
-      dstEscrow: {
-        id: escrow.escrowId,
-        walletAddress: escrow.walletAddress,
-        requiredDeposit: escrow.requiredDeposit.xrp,
-      },
-      timelocks: timelocks,
-    };
-
-    // Step 2: Fund source escrow (EVM) - Simulated for now
-    console.log("Step 2: Funding source escrow (EVM)...");
-    console.log(
-      "⚠️  Note: EVM funding is simulated (requires deployed contracts)"
-    );
-    console.log(
-      `   In a real scenario, you would fund: ${swapResult.srcEscrow.address}`
-    );
-    console.log();
-
-    // Step 3: Fund destination escrow (XRPL) - Real testnet transaction
-    console.log("Step 3: Funding destination escrow (XRPL)...");
-
-    // Create a funded wallet for the taker (testnet only)
-    console.log("💰 Creating funded wallet for taker...");
-    const takerWallet = await xrplClient.fundWallet();
-    console.log(`✅ Taker wallet created: ${takerWallet.wallet.address}`);
-    console.log(`💰 Balance: ${takerWallet.balance} XRP`);
-
-    // Fund the escrow wallet with real XRP
-    console.log(
-      `💸 Funding escrow wallet: ${swapResult.dstEscrow.walletAddress}`
-    );
-    const fundingTx = {
-      TransactionType: "Payment",
-      Account: takerWallet.wallet.address,
-      Destination: swapResult.dstEscrow.walletAddress,
-      Amount: swapResult.dstEscrow.requiredDeposit,
-    };
-
-    const prepared = await xrplClient.autofill(fundingTx);
-    const signed = takerWallet.wallet.sign(prepared);
-    const fundingResult = await xrplClient.submitAndWait(signed.tx_blob);
-
-    if (fundingResult.result.meta.TransactionResult === "tesSUCCESS") {
-      console.log(
-        `✅ Funding transaction successful: ${fundingResult.result.hash}`
-      );
-
-      // Confirm funding with TEE
-      await teeClient.fundEscrow(swapResult.dstEscrow.id, {
-        fromAddress: takerWallet.wallet.address,
-        txHash: fundingResult.result.hash,
-      });
-      console.log("✅ Funding confirmed by TEE");
-    } else {
-      throw new Error(
-        `Funding failed: ${fundingResult.result.meta.TransactionResult}`
-      );
-    }
-    console.log();
-
-    // Step 4: Wait for withdrawal window
-    console.log("Step 4: Waiting for withdrawal window...");
-    const withdrawalTime = timelocks[4]; // DstWithdrawal
-    const waitTime = Math.max(
-      0,
-      withdrawalTime - Math.floor(Date.now() / 1000)
-    );
-
-    if (waitTime > 0) {
-      console.log(
-        `⏳ Waiting ${waitTime} seconds for withdrawal window to open...`
-      );
-      console.log(
-        `   Withdrawal window opens at: ${new Date(withdrawalTime * 1000).toLocaleTimeString()}`
-      );
-
-      // Wait for the withdrawal window
-      await new Promise((resolve) => setTimeout(resolve, waitTime * 1000));
-    }
-    console.log("✅ Withdrawal window open");
-    console.log();
-
-    // Step 5: Taker withdraws from destination (XRPL) - reveals secret
-    console.log("Step 5: Taker withdrawing from destination escrow...");
-
-    const withdrawResult = await teeClient.withdraw(
-      swapResult.dstEscrow.id,
-      swapResult.secret,
-      swapParams.xrplTaker // Use the original taker address from swap params
-    );
-
-    console.log(`✅ Withdrawal successful!`);
-    console.log(`📝 Transaction hash: ${withdrawResult.txHash}`);
-    console.log(`💰 Amount withdrawn: ${withdrawResult.amount} drops`);
-    console.log(`🔐 Secret revealed: ${withdrawResult.secret}`);
-    console.log("🔓 Secret has been revealed!");
-    console.log();
-
-    // Step 6: Maker withdraws from source (EVM) using revealed secret
-    console.log("Step 6: Maker withdrawing from source escrow...");
-    console.log(
-      "⚠️  Note: EVM withdrawal is simulated (requires deployed contracts)"
-    );
-    console.log(
-      `   In a real scenario, the maker would use the revealed secret: ${withdrawResult.secret}`
-    );
-    console.log(
-      `   to withdraw from the EVM escrow at: ${swapResult.srcEscrow.address}`
-    );
-    console.log();
-
-    // Verify final escrow state
-    console.log("🔍 Verifying final escrow state...");
-    const finalEscrow = await teeClient.getEscrow(swapResult.dstEscrow.id);
-    console.log(`Final escrow status: ${finalEscrow.status}`);
-
-    // Check taker's balance increased
-    const takerAccount = await xrplClient.request({
-      command: "account_info",
-      account: takerWallet.wallet.address,
-    });
-    console.log(`Taker received funds on XRPL destination chain`);
-    console.log();
-
-    // Final status
-    console.log("🎉 SWAP COMPLETED SUCCESSFULLY!");
-    console.log("=".repeat(60));
-    console.log("Final Status:");
-    console.log(`  Swap ID: ${swapResult.swapId}`);
-    console.log(`  Status: completed`);
-    console.log(`  Completed At: ${new Date()}`);
-    console.log(`  Total Transactions: 3`);
-    console.log();
-
-    console.log("Transaction History:");
-    console.log(`  1. swap_created: ${swapResult.orderHash}`);
-    console.log(`  2. destination_funding: ${fundingResult.result.hash}`);
-    console.log(`  3. destination_withdrawal: ${withdrawResult.txHash}`);
-
-    const finalStatus = {
-      id: swapResult.swapId,
-      status: "completed",
-      completedAt: Date.now(),
-      transactions: [
-        { type: "swap_created", hash: swapResult.orderHash },
-        { type: "destination_funding", hash: fundingResult.result.hash },
-        { type: "destination_withdrawal", hash: withdrawResult.txHash },
-      ],
-    };
-
-    // Cleanup
-    await xrplClient.disconnect();
-    console.log("✅ Disconnected from XRPL testnet");
-
-    return finalStatus;
   } catch (error) {
     console.error("❌ Swap failed:", error.message);
     console.error(error.stack);
@@ -377,40 +205,6 @@ async function evmToXrplSwapExample() {
   }
 }
 
-/**
- * Example of how to handle a failed swap (cancellation)
- */
-async function handleFailedSwap() {
-  console.log("\n🚫 Example: Handling Failed Swap (Cancellation)");
-  console.log("=".repeat(60));
-
-  // This would be called if the swap fails or times out
-  // const orchestrator = new CrossChainOrchestrator(config);
-  // const swapId = "failed-swap-id";
-  // const callerAddress = "caller-address";
-
-  // const cancellation = await orchestrator.cancelSwap(swapId, callerAddress);
-  // console.log(`✅ Swap cancelled successfully`);
-  // console.log(`  Source refund: ${cancellation.srcCancel?.transactionHash}`);
-  // console.log(`  Destination refund: ${cancellation.dstCancel?.transactionHash}`);
-}
-
-/**
- * Run the example
- */
-if (require.main === module) {
-  evmToXrplSwapExample()
-    .then(() => {
-      console.log("\n✅ Example completed successfully!");
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error("\n❌ Example failed:", error.message);
-      process.exit(1);
-    });
-}
-
 module.exports = {
   evmToXrplSwapExample,
-  handleFailedSwap,
 };
