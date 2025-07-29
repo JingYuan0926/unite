@@ -1,12 +1,13 @@
 {
   "network": "nile",
   "chainId": "3",
-  "deployedAt": "2025-07-29T05:12:28.606Z",
+  "deployedAt": "2025-07-29T05:52:28.895Z",
   "deployer": "TPUiCeNRjjEpo1NFJ1ZURfU1ziNNMtn8yu",
   "contracts": {
     "TronEscrowFactory": {
-      "address": "TAEvu7qyZTroFLYbzqLkZXaUNHz7H2MuKb",
-      "txHash": "0x21eda99ca7843ac02e6c0452501b26b94b9cfa32101314789b9ef3e56bb46668"
+      "address": "TByM1nxjJsgZuh9SeEniex2Sa9iKNfu4hD",
+      "txHash": "edfd804355f1ae71a1a02c4a82287076a00da874a82b5f193ab88326f0bd079b",
+      "deploymentBlock": 59122379
     }
   },
   "configuration": {

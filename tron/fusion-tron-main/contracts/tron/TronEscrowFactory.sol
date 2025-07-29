@@ -333,7 +333,8 @@ contract TronEscrowFactory {
     
     /**
      * @notice Get energy and bandwidth estimates for operations
-     * @return estimated energy and bandwidth costs
+     * @return energy estimated energy cost for main operations
+     * @return bandwidth estimated bandwidth cost
      */
     function getResourceEstimates() external pure returns (uint256 energy, uint256 bandwidth) {
         energy = 50000;    // Estimated energy cost for main operations

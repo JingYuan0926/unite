@@ -1,20 +1,24 @@
-const { TronWeb } = require("tronweb");
 const fs = require("fs");
 const path = require("path");
-require("dotenv").config();
+const TronWeb = require("tronweb");
+const { exec } = require("child_process");
+const { promisify } = require("util");
+
+const execAsync = promisify(exec);
 
 async function main() {
   console.log("🚀 Deploying Fusion+ TronEscrowFactory to Tron Nile...");
 
-  // Initialize TronWeb
+  // Verify environment variables
+  if (!process.env.TRON_PRIVATE_KEY) {
+    throw new Error("❌ TRON_PRIVATE_KEY not found in environment variables");
+  }
+
+  // Initialize TronWeb for network interaction
   const tronWeb = new TronWeb({
     fullHost: "https://api.nileex.io",
     privateKey: process.env.TRON_PRIVATE_KEY,
   });
-
-  if (!process.env.TRON_PRIVATE_KEY) {
-    throw new Error("❌ TRON_PRIVATE_KEY not found in environment variables");
-  }
 
   // Get deployer address
   const deployerAddress = tronWeb.address.fromPrivateKey(
@@ -24,115 +28,94 @@ async function main() {
   console.log(`Network: Tron Nile`);
   console.log(`Deployer: ${deployerAddress}`);
 
-  // Get balance
+  // Check balance
   try {
     const balance = await tronWeb.trx.getBalance(deployerAddress);
-    console.log(`Balance: ${tronWeb.fromSun(balance)} TRX`);
+    const balanceTrx = tronWeb.fromSun(balance);
+    console.log(`Balance: ${balanceTrx} TRX`);
+
+    if (balanceTrx < 100) {
+      console.log(
+        "⚠️  Low balance detected. You may need more TRX for deployment."
+      );
+      console.log("💡 Get free TRX from: https://nileex.io/join/getJoinPage");
+    }
   } catch (error) {
     console.log("⚠️ Could not fetch balance:", error.message);
   }
 
-  // Read contract source code
-  const contractPath = path.join(
-    __dirname,
-    "../contracts/tron/TronEscrowFactory.sol"
-  );
-  if (!fs.existsSync(contractPath)) {
-    throw new Error(`❌ Contract file not found: ${contractPath}`);
-  }
+  console.log("\n📦 Deploying with TronBox...");
 
-  const contractSource = fs.readFileSync(contractPath, "utf8");
-
-  console.log("\n📦 Compiling TronEscrowFactory...");
-
-  // Compile contract
-  let compiledContract;
   try {
-    // For this demo, we'll use a simplified compilation approach
-    // In production, you'd use tronbox compile or similar
-    const solc = require("solc");
-
-    const input = {
-      language: "Solidity",
-      sources: {
-        "TronEscrowFactory.sol": {
-          content: contractSource,
-        },
-      },
-      settings: {
-        outputSelection: {
-          "*": {
-            "*": ["*"],
-          },
-        },
-        optimizer: {
-          enabled: true,
-          runs: 200,
-        },
-      },
-    };
-
-    const output = JSON.parse(solc.compile(JSON.stringify(input)));
-
-    if (output.errors) {
-      const errors = output.errors.filter(
-        (error) => error.severity === "error"
-      );
-      if (errors.length > 0) {
-        throw new Error(
-          `Compilation errors: ${errors.map((e) => e.message).join(", ")}`
-        );
+    // Use TronBox to deploy the contract
+    const { stdout, stderr } = await execAsync(
+      "npx tronbox migrate --network nile --reset",
+      {
+        cwd: path.join(__dirname, ".."),
+        env: { ...process.env },
       }
-    }
-
-    compiledContract =
-      output.contracts["TronEscrowFactory.sol"]["TronEscrowFactory"];
-    console.log("✅ Contract compiled successfully");
-  } catch (error) {
-    console.log("⚠️ Using pre-compiled bytecode for demo purposes");
-    // Fallback: Use a simple contract deployment without compilation
-    // This would be replaced with proper TronBox compilation in production
-  }
-
-  console.log("\n📦 Deploying to Tron Nile...");
-
-  try {
-    // Deploy contract using TronWeb
-    // Note: This is a simplified deployment for demo purposes
-    // In production, you'd use the full TronBox migration system
-
-    const deploymentParameters = {
-      abi: [], // Would be populated from compilation
-      bytecode: "", // Would be populated from compilation
-      feeLimit: 1000000000, // 1000 TRX
-      userFeePercentage: 30,
-      originEnergyLimit: 10000000,
-    };
-
-    // For demo purposes, let's simulate a successful deployment
-    const simulatedTxId =
-      "0x" +
-      Array(64)
-        .fill(0)
-        .map(() => Math.floor(Math.random() * 16).toString(16))
-        .join("");
-    const simulatedAddress = tronWeb.address.fromHex(
-      "41" +
-        Array(40)
-          .fill(0)
-          .map(() => Math.floor(Math.random() * 16).toString(16))
-          .join("")
     );
 
-    console.log(`✅ TronEscrowFactory deployed to: ${simulatedAddress}`);
-    console.log(`Transaction ID: ${simulatedTxId}`);
+    if (stderr && !stderr.includes("Warning")) {
+      console.error("❌ Deployment error:", stderr);
+      throw new Error(stderr);
+    }
 
-    // Verify contract constants (simulated)
+    console.log("✅ TronBox deployment output:");
+    console.log(stdout);
+
+    // Parse deployment output to extract contract address
+    const addressMatch = stdout.match(
+      /TronEscrowFactory: ([T][A-Za-z0-9]{33})/
+    );
+    const txHashMatch = stdout.match(/txHash: (0x[a-fA-F0-9]{64})/);
+
+    if (!addressMatch) {
+      throw new Error(
+        "❌ Could not parse contract address from deployment output"
+      );
+    }
+
+    const contractAddress = addressMatch[1];
+    const txHash = txHashMatch ? txHashMatch[1] : null;
+
+    console.log(`\n✅ TronEscrowFactory deployed successfully!`);
+    console.log(`📍 Contract Address: ${contractAddress}`);
+    if (txHash) {
+      console.log(`🔗 Transaction Hash: ${txHash}`);
+      console.log(
+        `🌐 View on TronScan: https://nile.tronscan.org/#/transaction/${txHash}`
+      );
+    }
+
+    // Verify contract constants
     console.log("\n🔍 Verifying contract configuration...");
-    console.log(`Finality Blocks: 12 (≈36 seconds)`);
-    console.log(`Min Cancel Delay: 1800 seconds (30 minutes)`);
-    console.log(`Min Safety Deposit: 1 TRX`);
-    console.log(`Reveal Delay: 60 seconds`);
+    try {
+      const contract = await tronWeb.contract().at(contractAddress);
+
+      const finalityBlocks = await contract.FINALITY_BLOCKS().call();
+      const minCancelDelay = await contract.MIN_CANCEL_DELAY().call();
+      const minSafetyDeposit = await contract.MIN_SAFETY_DEPOSIT().call();
+      const revealDelay = await contract.REVEAL_DELAY().call();
+
+      console.log(
+        `✅ Finality Blocks: ${finalityBlocks} (≈${finalityBlocks * 3} seconds)`
+      );
+      console.log(
+        `✅ Min Cancel Delay: ${minCancelDelay} seconds (${
+          minCancelDelay / 60
+        } minutes)`
+      );
+      console.log(
+        `✅ Min Safety Deposit: ${tronWeb.fromSun(minSafetyDeposit)} TRX`
+      );
+      console.log(`✅ Reveal Delay: ${revealDelay} seconds`);
+    } catch (verifyError) {
+      console.log(
+        "⚠️ Could not verify contract constants:",
+        verifyError.message
+      );
+    }
 
     // Save deployment info
     const deploymentInfo = {
@@ -142,9 +125,9 @@ async function main() {
       deployer: deployerAddress,
       contracts: {
         TronEscrowFactory: {
-          address: simulatedAddress,
-          txHash: simulatedTxId,
-          // Note: Tron uses transaction IDs instead of block numbers
+          address: contractAddress,
+          txHash: txHash,
+          deploymentBlock: null, // Tron doesn't use block numbers the same way
         },
       },
       configuration: {
@@ -161,51 +144,49 @@ async function main() {
       fs.mkdirSync(deploymentsDir, { recursive: true });
     }
 
-    // Write deployment info to file
-    const deploymentFile = path.join(deploymentsDir, "tron-nile.json");
-    fs.writeFileSync(deploymentFile, JSON.stringify(deploymentInfo, null, 2));
-    console.log(`\n💾 Deployment info saved to: ${deploymentFile}`);
+    // Save deployment info to JSON file
+    const deploymentPath = path.join(deploymentsDir, "tron-nile.json");
+    fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
+    console.log(`💾 Deployment info saved to: ${deploymentPath}`);
 
-    console.log("\n🎉 Tron deployment completed successfully!");
-    console.log(`\n📋 Quick Reference:`);
-    console.log(`Contract Address: ${simulatedAddress}`);
-    console.log(
-      `Explorer: https://nile.tronscan.org/#/address/${simulatedAddress}`
-    );
-    console.log(`Network: Tron Nile (Chain ID: 3)`);
+    // Update .env file with new contract address
+    const envPath = path.join(__dirname, "../.env");
+    if (fs.existsSync(envPath)) {
+      let envContent = fs.readFileSync(envPath, "utf8");
+      envContent = envContent.replace(
+        /TRON_ESCROW_FACTORY_ADDRESS=.*/,
+        `TRON_ESCROW_FACTORY_ADDRESS=${contractAddress}`
+      );
+      fs.writeFileSync(envPath, envContent);
+      console.log(`🔄 Updated .env with new contract address`);
+    }
 
-    return deploymentInfo;
+    console.log("\n🎉 Deployment completed successfully!");
+    console.log(`📋 Next steps:`);
+    console.log(`   1. Verify the contract on TronScan`);
+    console.log(`   2. Test the contract functions`);
+    console.log(`   3. Update your frontend/resolver with the new address`);
   } catch (error) {
-    throw new Error(`❌ Deployment failed: ${error.message}`);
+    console.error("❌ Deployment failed:", error.message);
+
+    // Provide helpful debugging information
+    console.log("\n🔧 Troubleshooting tips:");
+    console.log(
+      "   1. Ensure you have enough TRX balance (minimum 100 TRX recommended)"
+    );
+    console.log("   2. Check your TRON_PRIVATE_KEY is valid");
+    console.log("   3. Verify network connectivity to Tron Nile");
+    console.log("   4. Try running 'npx tronbox compile' first");
+
+    throw error;
   }
 }
 
-// Production deployment function using TronBox
-async function deployWithTronBox() {
-  console.log("🔧 For production deployment, use:");
-  console.log("npm run deploy:tron");
-  console.log("or");
-  console.log("tronbox migrate --network nile");
-}
-
-// Allow script to be imported or run directly
 if (require.main === module) {
   main()
-    .then(() => {
-      console.log(
-        "\n💡 Note: This is a simplified deployment script for demo purposes."
-      );
-      console.log(
-        "For production deployment, ensure you have TronBox properly configured."
-      );
-      process.exit(0);
-    })
+    .then(() => process.exit(0))
     .catch((error) => {
-      console.error("❌ Deployment failed:", error.message);
-      console.log("\n🔧 Troubleshooting:");
-      console.log("1. Ensure TRON_PRIVATE_KEY is set in .env");
-      console.log("2. Ensure account has sufficient TRX for deployment");
-      console.log("3. Check network connectivity to Tron Nile");
+      console.error(error);
       process.exit(1);
     });
 }

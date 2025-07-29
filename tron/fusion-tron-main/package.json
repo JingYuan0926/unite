@@ -13,7 +13,7 @@
     "build:ui": "cd frontend && npm run build",
     "deploy:all": "npm run deploy:ethereum && npm run deploy:tron",
     "deploy:ethereum": "npx hardhat run scripts/deploy-ethereum.js --network sepolia",
-    "deploy:tron": "node scripts/deploy-tron.js",
+    "deploy:tron": "node scripts/deploy-tron-real.js",
     "start:resolver": "npx tsx src/resolver/index.ts",
     "start:ui": "cd frontend && npm run dev",
     "demo:resolver": "node scripts/demo-resolver.js",
@@ -44,7 +44,8 @@
     "hardhat": "^2.19.0",
     "concurrently": "^8.0.0",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "@nomicfoundation/hardhat-ethers": "^3.0.0"
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "tronbox": "^3.0.0"
   },
   "dependencies": {
     "ethers": "^6.8.0",
