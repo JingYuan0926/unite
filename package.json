@@ -1,0 +1,71 @@
+{
+  "name": "cross-chain-htlc-orchestrator",
+  "version": "1.0.0",
+  "description": "Complete system for managing atomic swaps between EVM chains and XRPL using Hash Time Locked Contracts (HTLCs)",
+  "main": "chain3/orchestrator/crossChainOrchestrator.js",
+  "scripts": {
+    "start": "node chain3/server/xrplEscServer.js",
+    "start:xrpl": "node chain3/server/xrplEscServer.js",
+    "example:evm-to-xrpl": "node chain3/examples/evmToXrplSwap.js",
+    "example:xrpl-to-evm": "node chain3/examples/xrplToEvmSwap.js",
+    "health-check": "node -e \"const {healthCheck, createOrchestratorConfig} = require('./chain3/config/deployment.js'); healthCheck(createOrchestratorConfig('sepolia', 'testnet', process.env.EVM_PRIVATE_KEY)).then(console.log);\"",
+    "validate-config": "node -e \"const {validateConfiguration, createOrchestratorConfig} = require('./chain3/config/deployment.js'); validateConfiguration(createOrchestratorConfig('sepolia', 'testnet', process.env.EVM_PRIVATE_KEY)); console.log('✅ Configuration valid');\"",
+    "deploy:local": "npm run start:xrpl",
+    "deploy:production": "NODE_ENV=production npm run start:xrpl",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:integration": "echo \"Integration tests not implemented yet\"",
+    "test:e2e": "echo \"E2E tests not implemented yet\"",
+    "lint": "eslint chain3/ --ext .js",
+    "format": "prettier --write chain3/**/*.js"
+  },
+  "keywords": [
+    "cross-chain",
+    "atomic-swaps",
+    "HTLC",
+    "XRPL",
+    "ethereum",
+    "1inch",
+    "escrow",
+    "defi",
+    "blockchain",
+    "interoperability"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.2.1",
+    "ethers": "^6.15.0",
+    "express": "^4.21.2",
+    "xrpl": "^3.1.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "eslint": "^8.50.0",
+    "hardhat": "^2.17.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/cross-chain-htlc-orchestrator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/cross-chain-htlc-orchestrator/issues"
+  },
+  "homepage": "https://github.com/your-username/cross-chain-htlc-orchestrator#readme",
+  "directories": {
+    "example": "chain3/examples",
+    "lib": "chain3"
+  },
+  "files": [
+    "chain3/",
+    "README.md",
+    "package.json"
+  ]
+}
