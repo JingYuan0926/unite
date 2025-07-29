@@ -80,12 +80,14 @@ class FinalWorkingSwap {
       // Phase 4: Execute atomic swap
       await this.executeAtomicSwapFixed(escrowIds);
 
+      // Only show final success if we reach this point (no exceptions thrown)
       console.log("\n🎉 COMPLETE ATOMIC SWAP SUCCESS!");
       console.log("================================");
       console.log("✅ ETH to TRX swap completed successfully");
       console.log("✅ Real cross-chain fund movement completed");
       console.log("✅ All contract interactions successful");
       console.log("✅ Atomic guarantees maintained");
+      console.log("✅ Both transaction hashes printed above");
     } catch (error) {
       console.error("❌ Swap execution failed:", error.message);
       console.error("Stack:", error.stack);
@@ -95,6 +97,11 @@ class FinalWorkingSwap {
       console.log(`Error type: ${error.constructor.name}`);
       if (error.code) console.log(`Error code: ${error.code}`);
       if (error.reason) console.log(`Error reason: ${error.reason}`);
+
+      // Important: Don't claim success if we failed
+      console.log("\n❌ ATOMIC SWAP INCOMPLETE");
+      console.log("=========================");
+      console.log("The swap did not complete successfully on both chains.");
     }
   }
 
@@ -369,8 +376,43 @@ class FinalWorkingSwap {
     console.log("4️⃣ EXECUTING ATOMIC SWAP");
     console.log("=========================");
 
+    // First, let's extract the REAL escrow ID from TRON events
+    console.log("🔍 Extracting real TRON escrow ID from events:");
+    let realTronEscrowId = escrowIds.tronEscrowId;
+
+    try {
+      const txInfo = await this.tronWeb.trx.getTransactionInfo(
+        escrowIds.tronTxId
+      );
+
+      if (txInfo && txInfo.log && txInfo.log.length > 0) {
+        const event = txInfo.log[0];
+        if (event && event.topics && event.topics.length > 1) {
+          realTronEscrowId = "0x" + event.topics[1];
+          console.log(
+            `   🆔 Real TRON Escrow ID from events: ${realTronEscrowId}`
+          );
+
+          // Verify this matches our calculated one
+          if (realTronEscrowId !== escrowIds.tronEscrowId) {
+            console.log(
+              `   ⚠️ Calculated ID differs: ${escrowIds.tronEscrowId}`
+            );
+            console.log(`   ✅ Using real ID from events: ${realTronEscrowId}`);
+          } else {
+            console.log(`   ✅ Calculated ID matches event ID`);
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`   ⚠️ Could not extract from events: ${error.message}`);
+      console.log(`   💡 Using calculated ID: ${realTronEscrowId}`);
+    }
+
     // Execute TRON reveal first (to reveal the secret)
-    console.log("🔓 Step 1: Revealing secret on TRON:");
+    console.log("\n🔓 Step 1: Revealing secret on TRON:");
+    let tronRevealTxId = null;
+
     try {
       const tronRevealData =
         await this.tronWeb.transactionBuilder.triggerSmartContract(
@@ -378,7 +420,7 @@ class FinalWorkingSwap {
           "revealAndWithdraw(bytes32,bytes32,bytes32)",
           { feeLimit: 100_000_000 },
           [
-            { type: "bytes32", value: escrowIds.tronEscrowId },
+            { type: "bytes32", value: realTronEscrowId }, // Use the real escrow ID
             { type: "bytes32", value: "0x" + this.secret.toString("hex") },
             { type: "bytes32", value: "0x" + this.nonce.toString("hex") },
           ]
@@ -392,24 +434,88 @@ class FinalWorkingSwap {
           signedReveal
         );
 
-        console.log(
-          `   🔗 TRON Reveal: ${
-            revealResult.txid || revealResult.transaction?.txID
-          }`
+        tronRevealTxId = revealResult.txid || revealResult.transaction?.txID;
+        console.log(`   🔗 TRON Reveal: ${tronRevealTxId}`);
+
+        // Wait and verify TRON reveal transaction
+        console.log("   ⏳ Waiting for TRON reveal confirmation...");
+        await this.sleep(8000);
+
+        const verifySuccess = await this.verifyTronRevealTransaction(
+          tronRevealTxId
         );
-        console.log(`   ✅ TRON reveal executed`);
+        if (verifySuccess) {
+          console.log(`   ✅ TRON reveal confirmed and successful`);
+        } else {
+          throw new Error("TRON reveal transaction failed or not confirmed");
+        }
       } else {
         throw new Error("TRON reveal transaction failed to build");
       }
     } catch (error) {
-      console.log(`   ⚠️ TRON reveal issue: ${error.message}`);
-      console.log(`   💡 This may be expected if escrow doesn't exist yet`);
+      console.log(`   ❌ TRON reveal failed: ${error.message}`);
+      throw error; // Don't continue if TRON fails
     }
 
-    await this.sleep(5000);
+    // Wait for TRON finality - need to wait longer for the Ethereum contract to recognize it
+    console.log(
+      "\n⏳ Waiting for TRON finality to be recognized by Ethereum contract..."
+    );
+    console.log(
+      "   This may take several minutes as the contract checks finality..."
+    );
 
-    // Execute Ethereum reveal
-    console.log("\n🔓 Step 2: Using revealed secret on Ethereum:");
+    let finalityReached = false;
+    let attempts = 0;
+    const maxAttempts = 20; // Try for up to 20 attempts (about 10 minutes)
+
+    while (!finalityReached && attempts < maxAttempts) {
+      attempts++;
+      console.log(`   🔍 Finality check attempt ${attempts}/${maxAttempts}...`);
+
+      try {
+        // Test if finality has been reached by doing a static call
+        await this.ethEscrowFactory.revealAndWithdraw.staticCall(
+          escrowIds.ethEscrowId,
+          this.secret,
+          this.nonce
+        );
+
+        // If we get here without error, finality has been reached
+        finalityReached = true;
+        console.log(`   ✅ TRON finality reached! Ethereum contract ready.`);
+        break;
+      } catch (error) {
+        if (error.data === "0x8e8f5b9f") {
+          // Still waiting for finality
+          console.log(
+            `   ⏳ Still waiting for finality... (${
+              30 * attempts
+            } seconds elapsed)`
+          );
+          await this.sleep(30000); // Wait 30 seconds between attempts
+        } else {
+          // Different error - this is unexpected
+          console.log(`   ❌ Unexpected error: ${error.message}`);
+          console.log(`   🔍 Error data: ${error.data}`);
+          break;
+        }
+      }
+    }
+
+    if (!finalityReached) {
+      console.log(`   ⚠️ Finality not reached after ${maxAttempts} attempts`);
+      console.log(`   💡 The TRON reveal was successful: ${tronRevealTxId}`);
+      console.log(
+        `   💡 You can manually complete the Ethereum reveal later when finality is reached`
+      );
+      throw new Error("TRON finality not reached within timeout period");
+    }
+
+    // Execute Ethereum reveal now that finality is reached
+    console.log(
+      "\n🔓 Step 2: Using revealed secret on Ethereum (finality reached):"
+    );
     try {
       const ethRevealTx = await this.ethEscrowFactory.revealAndWithdraw(
         escrowIds.ethEscrowId,
@@ -422,9 +528,19 @@ class FinalWorkingSwap {
       console.log(
         `   ✅ ETH reveal completed in block ${ethRevealReceipt.blockNumber}`
       );
+
+      // Print final success with both transaction hashes
+      console.log("\n🎉 ATOMIC SWAP FULLY COMPLETED!");
+      console.log("================================");
+      console.log(`✅ TRON Reveal Hash: ${tronRevealTxId}`);
+      console.log(`✅ ETH Reveal Hash: ${ethRevealTx.hash}`);
+      console.log("✅ Both sides of the atomic swap completed successfully!");
     } catch (error) {
-      console.log(`   ⚠️ ETH reveal issue: ${error.message}`);
-      console.log(`   💡 This may be expected timing or state issue`);
+      console.log(
+        `   ❌ ETH reveal failed even after finality: ${error.message}`
+      );
+      console.log(`   🔍 Error data: ${error.data || "No error data"}`);
+      throw error;
     }
 
     console.log("   🎯 Atomic swap execution completed!");
@@ -463,6 +579,65 @@ class FinalWorkingSwap {
       }
     } catch (error) {
       console.log(`   ⚠️ Verification failed: ${error.message}`);
+    }
+  }
+
+  async verifyTronRevealTransaction(txId) {
+    console.log(`   🔍 Verifying TRON reveal: ${txId}`);
+
+    try {
+      let attempts = 0;
+      while (attempts < 10) {
+        // Increased from 5 to 10 attempts
+        try {
+          const txInfo = await this.tronWeb.trx.getTransactionInfo(txId);
+
+          if (txInfo && Object.keys(txInfo).length > 0) {
+            const status = txInfo.receipt?.result || "UNKNOWN";
+            console.log(`      Status: ${status}`);
+
+            if (status === "SUCCESS") {
+              console.log(
+                `      ✅ TRON reveal transaction confirmed as SUCCESS`
+              );
+              if (txInfo.log?.length > 0) {
+                console.log(`      📋 Events: ${txInfo.log.length} emitted`);
+              }
+              return true;
+            } else if (status === "REVERT") {
+              console.log(`      ❌ TRON reveal transaction REVERTED`);
+              if (txInfo.revert_info) {
+                console.log(
+                  `      🔍 Revert info: ${JSON.stringify(txInfo.revert_info)}`
+                );
+              }
+              return false;
+            } else {
+              console.log(`      ⏳ Status: ${status}, continuing to wait...`);
+            }
+          } else {
+            console.log(
+              `      ⏳ Transaction not found yet, waiting... (attempt ${
+                attempts + 1
+              }/10)`
+            );
+          }
+        } catch (e) {
+          console.log(`      ⏳ Attempt ${attempts + 1}: ${e.message}`);
+        }
+
+        attempts++;
+        if (attempts < 10) await this.sleep(5000); // Increased sleep from 3s to 5s
+      }
+
+      console.log(`      ⚠️ Could not verify transaction after 10 attempts`);
+      console.log(
+        `      💡 Transaction may still be processing. Check manually: https://nile.tronscan.org/#/transaction/${txId}`
+      );
+      return false;
+    } catch (error) {
+      console.log(`      ❌ Verification failed: ${error.message}`);
+      return false;
     }
   }
 
