@@ -156,21 +156,41 @@ export class FusionAPI {
       "ETH"
     );
 
-    // Fill the order
+    // Split signature into r and vs components for LOP v4
+    const signature = signedOrder.signature;
+    const r = signature.slice(0, 66); // First 32 bytes (0x + 64 chars)
+    const s = signature.slice(66, 130); // Next 32 bytes (64 chars)
+    const v = parseInt(signature.slice(130, 132), 16); // Last byte (2 chars)
+
+    // Create vs in correct LOP v4 format: vs = s + ((v - 27) << 255)
+    const sBigInt = BigInt("0x" + s);
+    const vBit = BigInt(v - 27); // Convert 27/28 to 0/1
+    const vs =
+      "0x" + (sBigInt + (vBit << BigInt(255))).toString(16).padStart(64, "0");
+
+    // TakerTraits for LOP v4 - set proper flags
+    // Bit 255: MAKER_AMOUNT_FLAG = 1 (use making amount, exact input)
+    // For using making amount (exact input), set bit 255 to 1
+    const takerTraits = BigInt(1) << BigInt(255); // Use making amount (exact input)
+
+    // Fill the order using correct LOP v4 signature with proper Order struct
+    const orderStruct = {
+      salt: signedOrder.order.salt,
+      maker: signedOrder.order.maker,
+      receiver: signedOrder.order.receiver,
+      makerAsset: signedOrder.order.makerAsset,
+      takerAsset: signedOrder.order.takerAsset,
+      makingAmount: signedOrder.order.makingAmount,
+      takingAmount: signedOrder.order.takingAmount,
+      makerTraits: signedOrder.order.makerTraits || 0n,
+    };
+
     const tx = await this.lopContract.fillOrder(
-      [
-        signedOrder.order.salt,
-        signedOrder.order.maker,
-        signedOrder.order.receiver,
-        signedOrder.order.makerAsset,
-        signedOrder.order.takerAsset,
-        signedOrder.order.makingAmount,
-        signedOrder.order.takingAmount,
-        signedOrder.order.makerTraits,
-      ],
-      signedOrder.signature,
+      orderStruct,
+      r,
+      vs,
       amount,
-      extraData,
+      takerTraits,
       { value: ethValue }
     );
 

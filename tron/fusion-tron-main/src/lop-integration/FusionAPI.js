@@ -251,8 +251,15 @@ class FusionAPI {
       safetyDeposit: signedOrder.fusionData.safetyDeposit,
     });
 
-    // Calculate required ETH value
-    const ethValue = amount + signedOrder.fusionData.safetyDeposit;
+    // Calculate required ETH value (ensure both are BigInt for proper arithmetic)
+    const amountBigInt =
+      typeof amount === "bigint" ? amount : BigInt(amount.toString());
+    const safetyDepositBigInt =
+      typeof signedOrder.fusionData.safetyDeposit === "bigint"
+        ? signedOrder.fusionData.safetyDeposit
+        : BigInt(signedOrder.fusionData.safetyDeposit.toString());
+
+    const ethValue = amountBigInt + safetyDepositBigInt;
 
     console.log("🔄 Filling LOP order...");
     console.log("💰 Fill amount:", ethers.formatEther(amount), "ETH");
@@ -268,16 +275,16 @@ class FusionAPI {
     const s = signature.slice(66, 130); // Next 32 bytes (64 chars)
     const v = parseInt(signature.slice(130, 132), 16); // Last byte (2 chars)
 
-    // Create vs by setting the recovery bit in s
-    const sBytes = ethers.getBytes("0x" + s);
-    const vBit = v >= 27 ? v - 27 : v; // Normalize v to 0 or 1
-    if (vBit === 1) {
-      sBytes[0] |= 0x80; // Set the most significant bit
-    }
-    const vs = ethers.hexlify(sBytes);
+    // Create vs in correct LOP v4 format: vs = s + ((v - 27) << 255)
+    const sBigInt = BigInt("0x" + s);
+    const vBit = BigInt(v - 27); // Convert 27/28 to 0/1
+    const vs =
+      "0x" + (sBigInt + (vBit << BigInt(255))).toString(16).padStart(64, "0");
 
-    // TakerTraits - use default for now (can be enhanced later)
-    const takerTraits = 0;
+    // TakerTraits for LOP v4 - set proper flags
+    // Bit 255: MAKER_AMOUNT_FLAG = 1 (use making amount, exact input)
+    // For using making amount (exact input), set bit 255 to 1
+    const takerTraits = BigInt(1) << BigInt(255); // Use making amount (exact input)
 
     // Fill the order using correct LOP v4 signature with proper Order struct
     const orderStruct = {
@@ -290,6 +297,39 @@ class FusionAPI {
       takingAmount: signedOrder.order.takingAmount,
       makerTraits: signedOrder.order.makerTraits || 0,
     };
+
+    // First, let's try to get more specific error information
+    try {
+      // Try to estimate gas first to get a better error message
+      const gasEstimate = await this.lopContract.fillOrder.estimateGas(
+        orderStruct,
+        r,
+        vs,
+        amount,
+        takerTraits,
+        { value: ethValue }
+      );
+      console.log("⛽ Gas estimate:", gasEstimate.toString());
+    } catch (estimateError) {
+      console.error("❌ Gas estimation failed:", estimateError);
+      // Try to call the method without gas estimation to get the real error
+      try {
+        await this.lopContract.fillOrder.staticCall(
+          orderStruct,
+          r,
+          vs,
+          amount,
+          takerTraits,
+          { value: ethValue }
+        );
+      } catch (staticError) {
+        console.error("❌ Static call failed:", staticError);
+        throw new Error(
+          `LOP fillOrder validation failed: ${staticError.message}`
+        );
+      }
+      throw estimateError;
+    }
 
     const tx = await this.lopContract.fillOrder(
       orderStruct,

@@ -711,10 +711,112 @@ class FinalWorkingSwap {
     }
   }
 
+  async setupWETHForDemo(wethAddress, lopAddress, requiredAmount) {
+    console.log("🔄 Setting up WETH and allowances for working LOP demo...");
+
+    try {
+      // WETH contract ABI
+      const wethABI = [
+        "function deposit() external payable",
+        "function balanceOf(address) external view returns (uint256)",
+        "function approve(address spender, uint256 amount) external returns (bool)",
+        "function allowance(address owner, address spender) external view returns (uint256)",
+      ];
+
+      const wethContract = new ethers.Contract(
+        wethAddress,
+        wethABI,
+        this.ethWallet
+      );
+
+      // Check current WETH balance
+      const wethBalance = await wethContract.balanceOf(this.ethWallet.address);
+      console.log(
+        `💰 Current WETH balance: ${ethers.formatEther(wethBalance)} WETH`
+      );
+
+      // If insufficient WETH, wrap some ETH
+      if (wethBalance < requiredAmount) {
+        const wrapAmount =
+          requiredAmount - wethBalance + BigInt("100000000000000000"); // Extra 0.1 ETH buffer
+        console.log(
+          `🔄 Wrapping ${ethers.formatEther(wrapAmount)} ETH to WETH...`
+        );
+
+        const wrapTx = await wethContract.deposit({ value: wrapAmount });
+        await wrapTx.wait();
+        console.log(`✅ Wrapped ETH to WETH: ${wrapTx.hash}`);
+      }
+
+      // Check and set allowance for LOP contract
+      const currentAllowance = await wethContract.allowance(
+        this.ethWallet.address,
+        lopAddress
+      );
+      if (currentAllowance < requiredAmount) {
+        console.log("🔄 Setting WETH allowance for LOP contract...");
+        const approveTx = await wethContract.approve(
+          lopAddress,
+          ethers.MaxUint256
+        );
+        await approveTx.wait();
+        console.log(`✅ WETH allowance set: ${approveTx.hash}`);
+      } else {
+        console.log("✅ WETH allowance already sufficient");
+      }
+
+      // Final verification
+      const finalBalance = await wethContract.balanceOf(this.ethWallet.address);
+      const finalAllowance = await wethContract.allowance(
+        this.ethWallet.address,
+        lopAddress
+      );
+
+      console.log(`✅ Setup complete:`);
+      console.log(`   WETH Balance: ${ethers.formatEther(finalBalance)} WETH`);
+      console.log(
+        `   LOP Allowance: ${
+          finalAllowance > BigInt("1000000000000000000000")
+            ? "UNLIMITED"
+            : ethers.formatEther(finalAllowance)
+        } WETH`
+      );
+    } catch (error) {
+      console.error("❌ WETH setup failed:", error.message);
+      throw new Error(`WETH setup failed: ${error.message}`);
+    }
+  }
+
   async createLOPOrder(params) {
     console.log("📝 Creating LOP order for Fusion swap...");
 
     try {
+      // Check ETH balance before creating order
+      const ethBalance = await this.ethProvider.getBalance(
+        this.ethWallet.address
+      );
+      const requiredAmount = BigInt(params.ethAmount || "1000000000000000");
+
+      if (ethBalance < requiredAmount) {
+        throw new Error(
+          `Insufficient ETH balance. Have: ${ethers.formatEther(
+            ethBalance
+          )} ETH, Need: ${ethers.formatEther(requiredAmount)} ETH`
+        );
+      }
+
+      console.log(
+        `✅ ETH balance check passed: ${ethers.formatEther(
+          ethBalance
+        )} ETH available`
+      );
+
+      // Setup WETH tokens and allowances for real working demo
+      const WETH_ADDRESS = "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9"; // Sepolia WETH
+      const LOP_ADDRESS = "0x28c1Bc861eE71DDaad1dae86d218890c955b48d2"; // Mock LOP deployed on Sepolia
+
+      await this.setupWETHForDemo(WETH_ADDRESS, LOP_ADDRESS, requiredAmount);
+
       // Create simplified LOP order for demo
       const lopDomain = {
         name: "1inch Limit Order Protocol",
@@ -736,23 +838,36 @@ class FinalWorkingSwap {
         ],
       };
 
+      // Calculate expiration timestamp (1 hour from now)
+      const expiration = Math.floor(Date.now() / 1000) + 3600;
+
+      // Set proper maker traits with expiration
+      // Bit 0-39: expiration timestamp
+      // Other bits: various flags as needed
+      const makerTraits = expiration; // Basic traits with just expiration
+
+      // Use real WETH addresses from deployment for working demo
+      // WETH_ADDRESS already defined above
+
+      // For cross-chain demo, we'll use WETH -> ETH swap as a simplified example on Sepolia
+      // In a real cross-chain swap, this would involve different mechanisms
+      const ETH_ADDRESS = "0x0000000000000000000000000000000000000000"; // ETH represented as zero address
+
       const fusionOrder = {
         salt: ethers.hexlify(ethers.randomBytes(32)),
         maker: params.resolver,
-        receiver: "0x0000000000000000000000000000000000000000",
-        makerAsset: "0x0000000000000000000000000000000000000000", // ETH
-        takerAsset: "0x0000000000000000000000000000000000000001", // TRX representation
+        receiver: "0x0000000000000000000000000000000000000000", // Zero address = maker receives
+        makerAsset: WETH_ADDRESS, // WETH as maker asset (what maker is giving)
+        takerAsset: ETH_ADDRESS, // ETH as taker asset (what taker is giving)
         makingAmount: (
           params.makingAmount ||
           params.ethAmount ||
           "1000000000000000"
-        ).toString(),
-        takingAmount: (
-          params.takingAmount ||
-          params.trxAmount ||
-          "1000000000000000"
-        ).toString(),
-        makerTraits: 0, // Use number instead of string for better compatibility
+        ) // 0.001 ETH
+          .toString(),
+        takingAmount: (params.takingAmount || "1100000000000000") // Slightly more ETH for WETH (valid exchange)
+          .toString(),
+        makerTraits: makerTraits, // Proper maker traits with expiration
       };
 
       // Sign order using EIP-712

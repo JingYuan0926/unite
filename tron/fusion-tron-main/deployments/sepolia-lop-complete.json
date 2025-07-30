@@ -1,21 +1,17 @@
 {
-  "limitOrderProtocol": "0xA6F9c4d4c97437F345937b811bF384cD23070f7A",
+  "limitOrderProtocol": "0x28c1Bc861eE71DDaad1dae86d218890c955b48d2",
   "weth": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
   "network": "sepolia",
   "chainId": 11155111,
-  "deployedAt": "2025-07-30T06:57:44.847Z",
+  "deployedAt": "2025-07-30T08:04:21.574Z",
   "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
-  "txHash": "latest-deployment",
-  "blockNumber": "latest",
-  "gasUsed": "optimal",
-  "gasPrice": "current",
-  "testResults": {
-    "owner": "✅ 0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
-    "domain": "✅ 0x3a04919d...",
-    "hashOrder": "✅ 0xd61df579... - 100% WORKING!",
-    "fillOrder": "✅ Interface complete - 100% WORKING!",
-    "bitInvalidator": "✅ 0",
-    "allFunctions": "✅ PERFECT 100% FUNCTIONALITY"
-  },
-  "status": "100_percent_functional"
+  "txHash": "0xcbabb81f9497d199133f824b411cc593805e6b844ad2205176c9d5ac45a159b5",
+  "blockNumber": 8873933,
+  "gasUsed": "estimated",
+  "contracts": {
+    "mockLimitOrderProtocol": {
+      "address": "0x28c1Bc861eE71DDaad1dae86d218890c955b48d2",
+      "deploymentTx": "0xcbabb81f9497d199133f824b411cc593805e6b844ad2205176c9d5ac45a159b5"
+    }
+  }
 }
