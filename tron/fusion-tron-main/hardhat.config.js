@@ -4,14 +4,28 @@ require("dotenv").config();
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.24",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    compilers: [
+      {
+        version: "0.8.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
       },
-      viaIR: true,
-    },
+      {
+        version: "0.8.23",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+    ],
   },
 
   networks: {
@@ -72,7 +86,7 @@ module.exports = {
   },
 
   paths: {
-    sources: "./contracts/ethereum",
+    sources: "./contracts",
     tests: "./tests/ethereum",
     cache: "./cache/ethereum",
     artifacts: "./artifacts/ethereum",

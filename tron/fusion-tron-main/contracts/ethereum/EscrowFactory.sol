@@ -40,6 +40,9 @@ contract EscrowFactory is ReentrancyGuard, Ownable {
     uint64 public constant MIN_CANCEL_DELAY = 1800; // 30 minutes minimum
     uint256 public constant MIN_SAFETY_DEPOSIT = 0.001 ether; // Minimum resolver deposit
     
+    // Authorized contracts (LOP extensions)
+    mapping(address => bool) public authorizedExtensions;
+    
     // ============ EVENTS ============
     
     event EscrowCreated(
@@ -70,6 +73,9 @@ contract EscrowFactory is ReentrancyGuard, Ownable {
         uint64 timestamp
     );
     
+    event ExtensionAuthorized(address indexed extension);
+    event ExtensionRevoked(address indexed extension);
+    
     // ============ ERRORS ============
     
     error EscrowAlreadyExists();
@@ -89,6 +95,26 @@ contract EscrowFactory is ReentrancyGuard, Ownable {
     // ============ CONSTRUCTOR ============
     
     constructor() Ownable(msg.sender) {}
+    
+    // ============ AUTHORIZATION FUNCTIONS ============
+    
+    /**
+     * @notice Authorize an extension contract to create escrows
+     * @param extension Address of the extension contract
+     */
+    function authorizeExtension(address extension) external onlyOwner {
+        authorizedExtensions[extension] = true;
+        emit ExtensionAuthorized(extension);
+    }
+    
+    /**
+     * @notice Revoke authorization for an extension contract
+     * @param extension Address of the extension contract
+     */
+    function revokeExtension(address extension) external onlyOwner {
+        authorizedExtensions[extension] = false;
+        emit ExtensionRevoked(extension);
+    }
     
     // ============ MAIN FUNCTIONS ============
     
@@ -168,6 +194,94 @@ contract EscrowFactory is ReentrancyGuard, Ownable {
             finalityLock,
             cancelLock
         );
+    }
+    
+    /**
+     * @notice Create escrow from authorized extension (like LOP FusionExtension)
+     * @param initiator Original initiator of the escrow
+     * @param resolver Address of the resolver who will process this swap
+     * @param token Token address (address(0) for ETH)
+     * @param amount Amount of tokens to escrow
+     * @param secretHash Keccak256 hash of the secret
+     * @param cancelDelay Delay in seconds before cancellation is allowed
+     * @return escrowId The ID of the created escrow
+     */
+    function createEscrowFromExtension(
+        address initiator,
+        address resolver,
+        address token,
+        uint256 amount,
+        bytes32 secretHash,
+        uint64 cancelDelay
+    ) external payable nonReentrant returns (bytes32) {
+        // Only authorized extensions can call this function
+        if (!authorizedExtensions[msg.sender]) revert Unauthorized();
+        
+        // Validate inputs
+        if (resolver == address(0)) revert Unauthorized();
+        if (amount == 0) revert();
+        if (cancelDelay < MIN_CANCEL_DELAY) revert InsufficientTimeBuffer();
+        
+        // Calculate timelock values
+        uint64 finalityLock = uint64(block.number + FINALITY_BLOCKS);
+        uint64 cancelLock = uint64(block.timestamp + cancelDelay);
+        
+        // Generate unique escrow ID using initiator instead of msg.sender
+        bytes32 escrowId = keccak256(abi.encodePacked(
+            initiator,
+            resolver,
+            token,
+            amount,
+            secretHash,
+            block.timestamp,
+            block.number
+        ));
+        
+        // Ensure escrow doesn't already exist
+        if (escrows[escrowId].initiator != address(0)) revert EscrowAlreadyExists();
+        
+        uint256 safetyDeposit;
+        
+        if (token == address(0)) {
+            // Handle ETH escrow
+            if (msg.value < amount + MIN_SAFETY_DEPOSIT) revert InsufficientSafetyDeposit();
+            safetyDeposit = msg.value - amount;
+        } else {
+            // Handle ERC20 escrow
+            if (msg.value < MIN_SAFETY_DEPOSIT) revert InsufficientSafetyDeposit();
+            safetyDeposit = msg.value;
+            
+            // Transfer tokens from extension to escrow
+            IERC20(token).transferFrom(msg.sender, address(this), amount);
+        }
+        
+        // Create escrow
+        escrows[escrowId] = Escrow({
+            initiator: initiator,
+            resolver: resolver,
+            token: token,
+            amount: amount,
+            safetyDeposit: safetyDeposit,
+            secretHash: secretHash,
+            finalityLock: finalityLock,
+            cancelLock: cancelLock,
+            createdAt: uint64(block.timestamp),
+            completed: false,
+            cancelled: false
+        });
+        
+        emit EscrowCreated(
+            escrowId,
+            initiator,
+            resolver,
+            token,
+            amount,
+            secretHash,
+            finalityLock,
+            cancelLock
+        );
+        
+        return escrowId;
     }
     
     /**

@@ -1,0 +1,10 @@
+{
+  "escrowFactory": "0x6C256977A061C4780fcCC62f4Ab015f6141F3B53",
+  "network": "sepolia",
+  "deployedAt": "2025-07-30T04:51:32.572Z",
+  "features": [
+    "Authorization system for extensions",
+    "LOP integration ready",
+    "Hashlock/Timelock atomic swaps"
+  ]
+}

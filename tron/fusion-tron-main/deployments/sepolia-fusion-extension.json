@@ -1,0 +1,7 @@
+{
+  "fusionExtension": "0x1cCD475bfe2D69e931d23f454C3CfF1ABf5eA9f0",
+  "limitOrderProtocol": "0x5df8587DFe6AF306499513bdAb8F70919b44037C",
+  "escrowFactory": "0x6C256977A061C4780fcCC62f4Ab015f6141F3B53",
+  "network": "sepolia",
+  "deployedAt": "2025-07-30T04:51:43.983Z"
+}
