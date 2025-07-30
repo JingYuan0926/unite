@@ -177,11 +177,13 @@ class FusionAPI {
       addresses.limitOrderProtocol
     );
 
-    // LOP ABI (correct LOP v4 signature)
+    // LOP ABI (correct LOP v4 signature with proper Order struct)
     this.lopABI = [
-      "function fillOrder((uint256,address,address,address,address,uint256,uint256,uint256) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits) external payable returns (uint256, uint256, bytes32)",
-      "function hashOrder((uint256,address,address,address,address,uint256,uint256,uint256) order) external view returns (bytes32)",
+      "function fillOrder((uint256 salt, address maker, address receiver, address makerAsset, address takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits) external payable returns (uint256, uint256, bytes32)",
+      "function hashOrder((uint256 salt, address maker, address receiver, address makerAsset, address takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits) order) external view returns (bytes32)",
       "function DOMAIN_SEPARATOR() external view returns (bytes32)",
+      "function owner() external view returns (address)",
+      "function bitInvalidatorForOrder(address maker, uint256 slot) external view returns (uint256)",
     ];
 
     // Initialize contract
@@ -277,18 +279,20 @@ class FusionAPI {
     // TakerTraits - use default for now (can be enhanced later)
     const takerTraits = 0;
 
-    // Fill the order using correct LOP v4 signature
+    // Fill the order using correct LOP v4 signature with proper Order struct
+    const orderStruct = {
+      salt: signedOrder.order.salt,
+      maker: signedOrder.order.maker,
+      receiver: signedOrder.order.receiver,
+      makerAsset: signedOrder.order.makerAsset,
+      takerAsset: signedOrder.order.takerAsset,
+      makingAmount: signedOrder.order.makingAmount,
+      takingAmount: signedOrder.order.takingAmount,
+      makerTraits: signedOrder.order.makerTraits || 0,
+    };
+
     const tx = await this.lopContract.fillOrder(
-      [
-        signedOrder.order.salt,
-        signedOrder.order.maker,
-        signedOrder.order.receiver,
-        signedOrder.order.makerAsset,
-        signedOrder.order.takerAsset,
-        signedOrder.order.makingAmount,
-        signedOrder.order.takingAmount,
-        0, // makerTraits as number
-      ],
+      orderStruct,
       r,
       vs,
       amount,
