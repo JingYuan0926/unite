@@ -5,7 +5,7 @@ const crypto = require("crypto");
 require("dotenv").config();
 
 // Load ABIs
-const EscrowFactoryABI = require("./scripts/correct-abi.json");
+const EscrowFactoryABI = require("./deployments/EscrowFactory-sepolia-abi.json");
 
 // Add LOP imports after the existing imports
 const { FusionAPI } = require("./src/lop-integration/FusionAPI.js");

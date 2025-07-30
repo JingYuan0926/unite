@@ -4,438 +4,438 @@
  */
 
 // Load the correct EscrowFactory ABI from the compiled artifact
-const EscrowFactoryABI = require("./correct-abi.json");
+const EscrowFactoryABI = require("../deployments/EscrowFactory-sepolia-abi.json");
 
 const TronEscrowFactoryABI = [
   {
-    "type": "constructor",
-    "stateMutability": "Nonpayable"
+    type: "constructor",
+    stateMutability: "Nonpayable",
   },
   {
-    "type": "error",
-    "name": "CancelLockActive",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "CancelLockActive",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "EscrowAlreadyCancelled",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "EscrowAlreadyCancelled",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "EscrowAlreadyCompleted",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "EscrowAlreadyCompleted",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "EscrowAlreadyExists",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "EscrowAlreadyExists",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "EscrowNotFound",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "EscrowNotFound",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "FinalityNotReached",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "FinalityNotReached",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "InsufficientSafetyDeposit",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "InsufficientSafetyDeposit",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "InsufficientTimeBuffer",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "InsufficientTimeBuffer",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "InvalidSecret",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "InvalidSecret",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "RevealTooEarly",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "RevealTooEarly",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "SecretNotCommitted",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "SecretNotCommitted",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "TransferFailed",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "TransferFailed",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "error",
-    "name": "Unauthorized",
-    "stateMutability": "nonpayable"
+    type: "error",
+    name: "Unauthorized",
+    stateMutability: "nonpayable",
   },
   {
-    "type": "event",
-    "name": "EscrowCancelled",
-    "inputs": [
+    type: "event",
+    name: "EscrowCancelled",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
+        name: "escrowId",
+        type: "bytes32",
       },
       {
-        "name": "initiator",
-        "type": "address"
-      }
+        name: "initiator",
+        type: "address",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "type": "event",
-    "name": "EscrowCompleted",
-    "inputs": [
+    type: "event",
+    name: "EscrowCompleted",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
+        name: "escrowId",
+        type: "bytes32",
       },
       {
-        "name": "secret",
-        "type": "bytes32"
+        name: "secret",
+        type: "bytes32",
       },
       {
-        "name": "resolver",
-        "type": "address"
-      }
+        name: "resolver",
+        type: "address",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "type": "event",
-    "name": "EscrowCreated",
-    "inputs": [
+    type: "event",
+    name: "EscrowCreated",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
+        name: "escrowId",
+        type: "bytes32",
       },
       {
-        "name": "initiator",
-        "type": "address"
+        name: "initiator",
+        type: "address",
       },
       {
-        "name": "resolver",
-        "type": "address"
+        name: "resolver",
+        type: "address",
       },
       {
-        "name": "token",
-        "type": "address"
+        name: "token",
+        type: "address",
       },
       {
-        "name": "amount",
-        "type": "uint256"
+        name: "amount",
+        type: "uint256",
       },
       {
-        "name": "secretHash",
-        "type": "bytes32"
+        name: "secretHash",
+        type: "bytes32",
       },
       {
-        "name": "finalityLock",
-        "type": "uint64"
+        name: "finalityLock",
+        type: "uint64",
       },
       {
-        "name": "cancelLock",
-        "type": "uint64"
-      }
+        name: "cancelLock",
+        type: "uint64",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "type": "event",
-    "name": "SecretCommitted",
-    "inputs": [
+    type: "event",
+    name: "SecretCommitted",
+    inputs: [
       {
-        "name": "commitHash",
-        "type": "bytes32"
+        name: "commitHash",
+        type: "bytes32",
       },
       {
-        "name": "committer",
-        "type": "address"
+        name: "committer",
+        type: "address",
       },
       {
-        "name": "timestamp",
-        "type": "uint64"
-      }
+        name: "timestamp",
+        type: "uint64",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "FINALITY_BLOCKS",
-    "outputs": [
+    type: "function",
+    name: "FINALITY_BLOCKS",
+    outputs: [
       {
-        "name": "",
-        "type": "uint64"
-      }
+        name: "",
+        type: "uint64",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "MIN_CANCEL_DELAY",
-    "outputs": [
+    type: "function",
+    name: "MIN_CANCEL_DELAY",
+    outputs: [
       {
-        "name": "",
-        "type": "uint64"
-      }
+        name: "",
+        type: "uint64",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "MIN_SAFETY_DEPOSIT",
-    "outputs": [
+    type: "function",
+    name: "MIN_SAFETY_DEPOSIT",
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "REVEAL_DELAY",
-    "outputs": [
+    type: "function",
+    name: "REVEAL_DELAY",
+    outputs: [
       {
-        "name": "",
-        "type": "uint64"
-      }
+        name: "",
+        type: "uint64",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "bulkCheckEscrows",
-    "inputs": [
+    type: "function",
+    name: "bulkCheckEscrows",
+    inputs: [
       {
-        "name": "escrowIds",
-        "type": "bytes32[]"
-      }
+        name: "escrowIds",
+        type: "bytes32[]",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "statuses",
-        "type": "uint8[]"
-      }
+        name: "statuses",
+        type: "uint8[]",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "canCancel",
-    "inputs": [
+    type: "function",
+    name: "canCancel",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
-      }
+        name: "escrowId",
+        type: "bytes32",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "cancel",
-    "inputs": [
+    type: "function",
+    name: "cancel",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
-      }
+        name: "escrowId",
+        type: "bytes32",
+      },
     ],
-    "stateMutability": "Nonpayable"
+    stateMutability: "Nonpayable",
   },
   {
-    "type": "function",
-    "name": "commitSecret",
-    "inputs": [
+    type: "function",
+    name: "commitSecret",
+    inputs: [
       {
-        "name": "secretCommit",
-        "type": "bytes32"
-      }
+        name: "secretCommit",
+        type: "bytes32",
+      },
     ],
-    "stateMutability": "Nonpayable"
+    stateMutability: "Nonpayable",
   },
   {
-    "type": "function",
-    "name": "createEscrow",
-    "inputs": [
+    type: "function",
+    name: "createEscrow",
+    inputs: [
       {
-        "name": "resolver",
-        "type": "address"
+        name: "resolver",
+        type: "address",
       },
       {
-        "name": "token",
-        "type": "address"
+        name: "token",
+        type: "address",
       },
       {
-        "name": "amount",
-        "type": "uint256"
+        name: "amount",
+        type: "uint256",
       },
       {
-        "name": "secretHash",
-        "type": "bytes32"
+        name: "secretHash",
+        type: "bytes32",
       },
       {
-        "name": "cancelDelay",
-        "type": "uint64"
-      }
+        name: "cancelDelay",
+        type: "uint64",
+      },
     ],
-    "stateMutability": "Payable"
+    stateMutability: "Payable",
   },
   {
-    "type": "function",
-    "name": "escrowExists",
-    "inputs": [
+    type: "function",
+    name: "escrowExists",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
-      }
+        name: "escrowId",
+        type: "bytes32",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "escrows",
-    "inputs": [
+    type: "function",
+    name: "escrows",
+    inputs: [
       {
-        "type": "bytes32"
-      }
+        type: "bytes32",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "initiator",
-        "type": "address"
+        name: "initiator",
+        type: "address",
       },
       {
-        "name": "resolver",
-        "type": "address"
+        name: "resolver",
+        type: "address",
       },
       {
-        "name": "token",
-        "type": "address"
+        name: "token",
+        type: "address",
       },
       {
-        "name": "amount",
-        "type": "uint256"
+        name: "amount",
+        type: "uint256",
       },
       {
-        "name": "safetyDeposit",
-        "type": "uint256"
+        name: "safetyDeposit",
+        type: "uint256",
       },
       {
-        "name": "secretHash",
-        "type": "bytes32"
+        name: "secretHash",
+        type: "bytes32",
       },
       {
-        "name": "finalityLock",
-        "type": "uint64"
+        name: "finalityLock",
+        type: "uint64",
       },
       {
-        "name": "cancelLock",
-        "type": "uint64"
+        name: "cancelLock",
+        type: "uint64",
       },
       {
-        "name": "createdAt",
-        "type": "uint64"
+        name: "createdAt",
+        type: "uint64",
       },
       {
-        "name": "completed",
-        "type": "bool"
+        name: "completed",
+        type: "bool",
       },
       {
-        "name": "cancelled",
-        "type": "bool"
-      }
+        name: "cancelled",
+        type: "bool",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "getEscrow",
-    "inputs": [
+    type: "function",
+    name: "getEscrow",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
-      }
+        name: "escrowId",
+        type: "bytes32",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "tuple"
-      }
+        name: "",
+        type: "tuple",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "getResourceEstimates",
-    "outputs": [
+    type: "function",
+    name: "getResourceEstimates",
+    outputs: [
       {
-        "name": "energy",
-        "type": "uint256"
+        name: "energy",
+        type: "uint256",
       },
       {
-        "name": "bandwidth",
-        "type": "uint256"
-      }
+        name: "bandwidth",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "Pure"
+    stateMutability: "Pure",
   },
   {
-    "type": "function",
-    "name": "isFinalityReached",
-    "inputs": [
+    type: "function",
+    name: "isFinalityReached",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
-      }
+        name: "escrowId",
+        type: "bytes32",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "View"
+    stateMutability: "View",
   },
   {
-    "type": "function",
-    "name": "revealAndWithdraw",
-    "inputs": [
+    type: "function",
+    name: "revealAndWithdraw",
+    inputs: [
       {
-        "name": "escrowId",
-        "type": "bytes32"
+        name: "escrowId",
+        type: "bytes32",
       },
       {
-        "name": "secret",
-        "type": "bytes32"
+        name: "secret",
+        type: "bytes32",
       },
       {
-        "name": "nonce",
-        "type": "bytes32"
-      }
+        name: "nonce",
+        type: "bytes32",
+      },
     ],
-    "stateMutability": "Nonpayable"
-  }
+    stateMutability: "Nonpayable",
+  },
 ];
 
 module.exports = {
