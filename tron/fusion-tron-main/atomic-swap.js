@@ -653,13 +653,18 @@ class FinalWorkingSwap {
   async setupLOP() {
     console.log("🔗 Setting up LOP integration...");
 
-    // Load LOP deployment addresses
+    // Load the NEW working LOP deployment
+    const lopDeployment = require("./deployments/sepolia-lop-fixed.json");
+
     const deployments = {
-      limitOrderProtocol: "0x5df8587DFe6AF306499513bdAb8F70919b44037C", // Current deployed LOP
+      limitOrderProtocol: lopDeployment.limitOrderProtocol, // NEW working address
       fusionExtension: "0x1cCD475bfe2D69e931d23f454C3CfF1ABf5eA9f0",
       escrowFactory: process.env.ETH_ESCROW_FACTORY_ADDRESS,
       weth: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
     };
+
+    // Test contract before proceeding
+    await this.testLOPContract(deployments.limitOrderProtocol);
 
     // Initialize FusionAPI
     this.fusionAPI = new FusionAPI(
@@ -672,6 +677,34 @@ class FinalWorkingSwap {
     console.log("✅ LOP integration setup complete");
     console.log("📋 LOP Contract:", deployments.limitOrderProtocol);
     console.log("📋 Fusion Extension:", deployments.fusionExtension);
+  }
+
+  async testLOPContract(lopAddress) {
+    console.log("🧪 Testing LOP contract functionality...");
+
+    // Use CORRECT LOP v4 interface
+    const testContract = new ethers.Contract(
+      lopAddress,
+      [
+        "function DOMAIN_SEPARATOR() external view returns (bytes32)",
+        "function bitInvalidatorForOrder(address maker, uint256 slot) external view returns (uint256)",
+      ],
+      this.ethProvider
+    );
+
+    try {
+      const domainSeparator = await testContract.DOMAIN_SEPARATOR();
+      const bitInvalidator = await testContract.bitInvalidatorForOrder(
+        this.ethWallet.address,
+        0
+      );
+
+      console.log("✅ LOP contract test passed");
+      console.log("   Domain:", domainSeparator.substring(0, 10) + "...");
+      console.log("   BitInvalidator:", bitInvalidator.toString());
+    } catch (error) {
+      throw new Error(`LOP contract test failed: ${error.message}`);
+    }
   }
 
   async createLOPOrder(params) {

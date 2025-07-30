@@ -7,7 +7,8 @@ const { ethers } = require("ethers");
 
 // Constants
 const ETH_ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-const TRON_ZERO_ADDRESS_ETH_FORMAT = "0x0000000000000000000000000000000000000001";
+const TRON_ZERO_ADDRESS_ETH_FORMAT =
+  "0x0000000000000000000000000000000000000001";
 const DEFAULT_SAFETY_DEPOSIT = "100000000000000000"; // 0.1 ETH
 const POST_INTERACTION_FLAG = 1n << 251n;
 const DEFAULT_TIMELOCK = 3600;
@@ -19,7 +20,7 @@ class FusionOrderBuilder {
   constructor(chainId, lopAddress) {
     this.chainId = chainId;
     this.lopAddress = lopAddress;
-    
+
     // EIP-712 domain for LOP v4
     this.domain = {
       name: "1inch Limit Order Protocol",
@@ -46,7 +47,7 @@ class FusionOrderBuilder {
   buildFusionOrder(params) {
     // Generate random salt
     const salt = ethers.hexlify(ethers.randomBytes(32));
-    
+
     const order = {
       salt: BigInt(salt),
       maker: params.maker,
@@ -164,13 +165,16 @@ class FusionAPI {
     this.chainId = chainId;
 
     // Initialize order builder
-    this.orderBuilder = new FusionOrderBuilder(chainId, addresses.limitOrderProtocol);
+    this.orderBuilder = new FusionOrderBuilder(
+      chainId,
+      addresses.limitOrderProtocol
+    );
 
-    // LOP ABI (minimal required functions)
+    // LOP ABI (correct LOP v4 signature)
     this.lopABI = [
-      "function fillOrder((uint256,address,address,address,address,uint256,uint256,uint256) order, bytes signature, uint256 amount, bytes extension) external payable",
+      "function fillOrder((uint256,address,address,address,address,uint256,uint256,uint256) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits) external payable returns (uint256, uint256, bytes32)",
       "function hashOrder((uint256,address,address,address,address,uint256,uint256,uint256) order) external view returns (bytes32)",
-      "function nonces(address) external view returns (uint256)",
+      "function DOMAIN_SEPARATOR() external view returns (bytes32)",
     ];
 
     // Initialize contract
@@ -200,10 +204,8 @@ class FusionAPI {
     this.orderBuilder.validateOrderParams(orderParams);
 
     // Build and sign the order
-    const { orderTypeData, signature } = await this.orderBuilder.buildAndSignOrder(
-      orderParams,
-      this.signer
-    );
+    const { orderTypeData, signature } =
+      await this.orderBuilder.buildAndSignOrder(orderParams, this.signer);
 
     // Create fusion data
     const fusionData = {
@@ -245,9 +247,30 @@ class FusionAPI {
 
     console.log("🔄 Filling LOP order...");
     console.log("💰 Fill amount:", ethers.formatEther(amount), "ETH");
-    console.log("🔒 Safety deposit:", ethers.formatEther(signedOrder.fusionData.safetyDeposit), "ETH");
+    console.log(
+      "🔒 Safety deposit:",
+      ethers.formatEther(signedOrder.fusionData.safetyDeposit),
+      "ETH"
+    );
 
-    // Fill the order
+    // Split signature into r and vs components for LOP v4
+    const signature = signedOrder.signature;
+    const r = signature.slice(0, 66); // First 32 bytes (0x + 64 chars)
+    const s = signature.slice(66, 130); // Next 32 bytes (64 chars)
+    const v = parseInt(signature.slice(130, 132), 16); // Last byte (2 chars)
+
+    // Create vs by setting the recovery bit in s
+    const sBytes = ethers.getBytes("0x" + s);
+    const vBit = v >= 27 ? v - 27 : v; // Normalize v to 0 or 1
+    if (vBit === 1) {
+      sBytes[0] |= 0x80; // Set the most significant bit
+    }
+    const vs = ethers.hexlify(sBytes);
+
+    // TakerTraits - use default for now (can be enhanced later)
+    const takerTraits = 0;
+
+    // Fill the order using correct LOP v4 signature
     const tx = await this.lopContract.fillOrder(
       [
         signedOrder.order.salt,
@@ -257,11 +280,12 @@ class FusionAPI {
         signedOrder.order.takerAsset,
         signedOrder.order.makingAmount,
         signedOrder.order.takingAmount,
-        signedOrder.order.makerTraits,
+        0, // makerTraits as number
       ],
-      signedOrder.signature,
+      r,
+      vs,
       amount,
-      extraData,
+      takerTraits,
       { value: ethValue }
     );
 
@@ -283,4 +307,4 @@ module.exports = {
   DEFAULT_SAFETY_DEPOSIT,
   POST_INTERACTION_FLAG,
   DEFAULT_TIMELOCK,
-}; 
+};
