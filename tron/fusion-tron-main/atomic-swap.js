@@ -687,7 +687,7 @@ class FinalWorkingSwap {
 
     const deployments = {
       limitOrderProtocol: lopDeployment.limitOrderProtocol, // NEW working address
-      fusionExtension: "0x1cCD475bfe2D69e931d23f454C3CfF1ABf5eA9f0",
+      fusionExtension: "0x7Ef9A768AA8c3AbDb5ceB3F335c9f38cBb1aE348",
       escrowFactory: process.env.ETH_ESCROW_FACTORY_ADDRESS,
       weth: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
     };

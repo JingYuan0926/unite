@@ -129,8 +129,8 @@ async function testPhase4Integration() {
     );
 
     const deployments = {
-      limitOrderProtocol: "0xA6F9c4d4c97437F345937b811bF384cD23070f7A",
-      fusionExtension: "0x1cCD475bfe2D69e931d23f454C3CfF1ABf5eA9f0",
+      limitOrderProtocol: "0x28c1Bc861eE71DDaad1dae86d218890c955b48d2",
+      fusionExtension: "0x7Ef9A768AA8c3AbDb5ceB3F335c9f38cBb1aE348",
       escrowFactory: process.env.ETH_ESCROW_FACTORY_ADDRESS,
       weth: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
     };
@@ -153,7 +153,7 @@ async function testPhase4Integration() {
       throw new Error("LOP address not found");
     if (
       lopDeployment.limitOrderProtocol !==
-      "0xA6F9c4d4c97437F345937b811bF384cD23070f7A"
+      "0x28c1Bc861eE71DDaad1dae86d218890c955b48d2"
     ) {
       throw new Error("LOP address mismatch");
     }

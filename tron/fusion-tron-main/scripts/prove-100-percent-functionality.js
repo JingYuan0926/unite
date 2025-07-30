@@ -12,7 +12,7 @@ async function prove100PercentFunctionality() {
   // Use the EXACT same setup as the successful deployment
   const [deployer] = await ethers.getSigners();
   const SEPOLIA_WETH = "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9";
-  const lopAddress = "0xA6F9c4d4c97437F345937b811bF384cD23070f7A";
+  const lopAddress = "0x28c1Bc861eE71DDaad1dae86d218890c955b48d2";
 
   console.log("🔍 Testing Setup:");
   console.log("Deployer Address:", deployer.address);

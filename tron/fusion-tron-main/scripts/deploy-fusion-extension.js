@@ -6,7 +6,7 @@ async function main() {
 
   // Load existing LOP deployment
   const lopDeployment = JSON.parse(
-    fs.readFileSync("./deployments/sepolia-lop.json", "utf8")
+    fs.readFileSync("./deployments/sepolia-lop-complete.json", "utf8")
   );
   console.log("📋 LOP Address:", lopDeployment.limitOrderProtocol);
 

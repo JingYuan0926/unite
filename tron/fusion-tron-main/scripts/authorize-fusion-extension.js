@@ -2,56 +2,55 @@ const { ethers } = require("hardhat");
 const fs = require("fs");
 
 async function main() {
-  console.log("🔑 Authorizing FusionExtension in EscrowFactory...");
+  console.log("🔐 Authorizing FusionExtension in EscrowFactory...");
 
-  // Load deployment data
+  // Load FusionExtension deployment
   const fusionDeployment = JSON.parse(
     fs.readFileSync("./deployments/sepolia-fusion-extension.json", "utf8")
   );
   console.log("📋 FusionExtension Address:", fusionDeployment.fusionExtension);
   console.log("📋 EscrowFactory Address:", fusionDeployment.escrowFactory);
 
-  // Get EscrowFactory contract
+  // Get signer
+  const [deployer] = await ethers.getSigners();
+  console.log("📋 Deployer address:", deployer.address);
+
+  // Connect to EscrowFactory
   const EscrowFactory = await ethers.getContractFactory("EscrowFactory");
   const escrowFactory = EscrowFactory.attach(fusionDeployment.escrowFactory);
 
-  // Check if already authorized
-  const isAuthorized = await escrowFactory.authorizedExtensions(
-    fusionDeployment.fusionExtension
-  );
-
-  if (isAuthorized) {
-    console.log("✅ FusionExtension is already authorized!");
-    return;
-  }
-
   console.log("⏳ Authorizing FusionExtension...");
 
-  // Authorize the extension
+  // Authorize the FusionExtension
   const tx = await escrowFactory.authorizeExtension(
     fusionDeployment.fusionExtension
   );
   console.log("📄 Transaction hash:", tx.hash);
 
-  // Wait for confirmation
   await tx.wait();
   console.log("✅ FusionExtension authorized successfully!");
 
   // Verify authorization
-  const isNowAuthorized = await escrowFactory.authorizedExtensions(
+  const isAuthorized = await escrowFactory.authorizedExtensions(
     fusionDeployment.fusionExtension
   );
-  console.log("🔍 Verification - Authorized:", isNowAuthorized);
+  console.log("🔍 Authorization verified:", isAuthorized);
 
-  console.log("\n🎯 Phase 2 Complete!");
-  console.log("✅ FusionExtension deployed and authorized");
-  console.log("✅ EscrowFactory integration ready");
-  console.log("📋 Next: Implement order builder and API (Phase 3)");
+  return {
+    fusionExtension: fusionDeployment.fusionExtension,
+    escrowFactory: fusionDeployment.escrowFactory,
+    authorized: isAuthorized,
+  };
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error("❌ Authorization failed:", error);
-    process.exit(1);
-  });
+// Handle both direct execution and module export
+if (require.main === module) {
+  main()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error("❌ Authorization failed:", error);
+      process.exit(1);
+    });
+}
+
+module.exports = main;

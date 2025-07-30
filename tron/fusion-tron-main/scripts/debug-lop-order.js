@@ -27,7 +27,7 @@ async function debugLOPOrder() {
     console.log("📋 Network: Sepolia");
 
     // LOP contract setup
-    const LOP_ADDRESS = "0xA6F9c4d4c97437F345937b811bF384cD23070f7A";
+    const LOP_ADDRESS = "0x28c1Bc861eE71DDaad1dae86d218890c955b48d2";
     const WETH_ADDRESS = "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9";
 
     const lopABI = [
