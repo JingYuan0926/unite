@@ -1,13 +1,9 @@
 const { ethers } = require("ethers");
 const fs = require("fs");
 
-// Import the TypeScript LOP integration
-// Note: In a real setup, you'd compile TypeScript first or use ts-node
-// For demo purposes, we'll implement the core functionality directly
-
 /**
- * @title LOP + Fusion Demo Script
- * @notice Demonstrates end-to-end Fusion cross-chain swap via LOP
+ * @title LOP v4 + Fusion Demo Script
+ * @notice Demonstrates end-to-end Fusion cross-chain swap via LOP v4
  */
 class LOPFusionDemo {
   constructor() {
@@ -63,9 +59,9 @@ class LOPFusionDemo {
   }
 
   setupContracts() {
-    // LOP contract ABI (minimal)
+    // LOP v4 contract ABI - corrected for v4 structure
     const lopABI = [
-      "function fillOrder((uint256,address,address,address,address,uint256,uint256,uint256) order, bytes signature, uint256 amount, bytes extension) external payable",
+      "function fillOrderArgs((uint256,address,address,address,address,uint256,uint256,uint256) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits, bytes args) external payable returns (uint256, uint256, bytes32)",
       "function hashOrder((uint256,address,address,address,address,uint256,uint256,uint256) order) external view returns (bytes32)",
     ];
 
@@ -105,9 +101,26 @@ class LOPFusionDemo {
     return { secret, secretHash };
   }
 
-  // Build and sign a LOP order
+  // Build and sign a LOP v4 order
   async buildAndSignOrder(params) {
-    // EIP-712 domain for LOP
+    // First, build the extension with postInteraction
+    const fusionData = this.encodeFusionData({
+      srcToken: ethers.ZeroAddress, // ETH
+      dstToken: "0x0000000000000000000000000000000000000001", // TRX
+      secretHash: params.secretHash,
+      timelock: params.timelock,
+      safetyDeposit: params.safetyDeposit,
+      resolver: params.resolver,
+    });
+
+    const extension = this.buildExtension(
+      this.addresses.fusionExtension,
+      fusionData
+    );
+    const salt = this.calculateSaltFromExtension(extension);
+    const makerTraits = this.buildMakerTraitsWithExtension();
+
+    // EIP-712 domain for LOP v4
     const domain = {
       name: "1inch Limit Order Protocol",
       version: "4",
@@ -115,7 +128,7 @@ class LOPFusionDemo {
       verifyingContract: this.addresses.limitOrderProtocol,
     };
 
-    // EIP-712 types
+    // EIP-712 types for LOP v4 simplified Order struct
     const types = {
       Order: [
         { name: "salt", type: "uint256" },
@@ -129,34 +142,34 @@ class LOPFusionDemo {
       ],
     };
 
-    // Build order
+    // Build LOP v4 order with extension-derived salt and traits
     const order = {
-      salt: ethers.hexlify(ethers.randomBytes(32)),
+      salt: salt.toString(),
       maker: this.ethWallet.address,
-      receiver: "0x0000000000000000000000000000000000000000",
-      makerAsset: "0x0000000000000000000000000000000000000000", // ETH
+      receiver: ethers.ZeroAddress, // Zero address means no specific receiver
+      makerAsset: ethers.ZeroAddress, // ETH (zero address)
       takerAsset: "0x0000000000000000000000000000000000000001", // TRX representation
       makingAmount: params.ethAmount,
       takingAmount: params.trxAmount,
-      makerTraits: (1n << 251n).toString(), // POST_INTERACTION_FLAG
+      makerTraits: makerTraits,
     };
 
     // Sign order
     const signature = await this.ethWallet.signTypedData(domain, types, order);
 
-    return { order, signature };
+    return { order, signature, extension };
   }
 
-  // Encode fusion data for extraData parameter
+  // Encode fusion data for extension parameter
   encodeFusionData(params) {
     return ethers.AbiCoder.defaultAbiCoder().encode(
       ["tuple(address,address,uint256,uint256,bytes32,uint64,uint256,address)"],
       [
         [
-          params.srcToken,
-          params.dstToken,
-          11155111, // Ethereum Sepolia
-          3448148188, // Tron Nile
+          params.srcToken, // ETH
+          params.dstToken, // TRX representation
+          11155111, // Ethereum Sepolia chain ID
+          3448148188, // Tron Nile chain ID
           params.secretHash,
           params.timelock,
           params.safetyDeposit,
@@ -166,8 +179,80 @@ class LOPFusionDemo {
     );
   }
 
+  // Build extension with postInteractionTargetAndData
+  buildExtension(fusionExtensionAddress, fusionData) {
+    // Extension format: 32 bytes offsets + concatenated fields
+    // For postInteraction only: [offset to end of postInteraction] + [postInteraction data]
+
+    // PostInteraction data = 20 bytes address + fusion data
+    const postInteractionData = ethers.solidityPacked(
+      ["address", "bytes"],
+      [fusionExtensionAddress, fusionData]
+    );
+
+    // Calculate offset: only postInteraction field, so offset is the length of postInteraction
+    const postInteractionLength = postInteractionData.length / 2 - 1; // Remove 0x prefix
+
+    // We have 8 fields in the extension: makerAssetSuffix, takerAssetSuffix, makingAmountData, takingAmountData, predicate, permit, preInteraction, postInteraction
+    // Offsets are cumulative end positions for each field
+    // Since we only have postInteraction, first 7 offsets are 0, last offset is the length
+
+    const offsets =
+      (0n << 0n) | // makerAssetSuffix end
+      (0n << 32n) | // takerAssetSuffix end
+      (0n << 64n) | // makingAmountData end
+      (0n << 96n) | // takingAmountData end
+      (0n << 128n) | // predicate end
+      (0n << 160n) | // permit end
+      (0n << 192n) | // preInteraction end
+      (BigInt(postInteractionLength) << 224n); // postInteraction end
+
+    // Build complete extension
+    const extension = ethers.solidityPacked(
+      ["uint256", "bytes"],
+      [offsets.toString(), postInteractionData]
+    );
+
+    return extension;
+  }
+
+  // Build MakerTraits with required flags
+  buildMakerTraitsWithExtension() {
+    const HAS_EXTENSION_FLAG = 1n << 249n;
+    const POST_INTERACTION_CALL_FLAG = 1n << 251n;
+
+    return (HAS_EXTENSION_FLAG | POST_INTERACTION_CALL_FLAG).toString();
+  }
+
+  // Calculate salt from extension hash (as per LOP v4 spec)
+  calculateSaltFromExtension(extension) {
+    const extensionHash = ethers.keccak256(extension);
+    // Use lower 160 bits of extension hash as salt
+    return BigInt(extensionHash) & ((1n << 160n) - 1n);
+  }
+
+  // Split signature into r and vs components (LOP v4 format)
+  splitSignature(signature) {
+    const sig = ethers.Signature.from(signature);
+    const r = sig.r;
+    const vs = sig.yParityAndS; // This combines v and s for LOP v4
+    return { r, vs };
+  }
+
+  // Build TakerTraits for fillOrderArgs - simple version for demo
+  buildTakerTraits(extensionLength) {
+    // For this demo, we just set the extension length in TakerTraits
+    const ARGS_EXTENSION_LENGTH_OFFSET = 224;
+    const threshold = 0n; // No threshold for demo
+
+    const takerTraits =
+      threshold |
+      (BigInt(extensionLength / 2 - 1) << BigInt(ARGS_EXTENSION_LENGTH_OFFSET));
+    return takerTraits.toString();
+  }
+
   async runDemo() {
-    console.log("\n🎬 FUSION + TRON LOP DEMO");
+    console.log("\n🎬 FUSION + TRON LOP v4 DEMO");
     console.log("=".repeat(50));
 
     try {
@@ -184,30 +269,46 @@ class LOPFusionDemo {
       console.log("   Secret hash:", secretHash);
 
       // Step 1: Build and sign LOP order
-      console.log("\n1️⃣ Creating LOP order...");
-      const { order, signature } = await this.buildAndSignOrder({
+      console.log("\n1️⃣ Creating LOP v4 order...");
+      const { order, signature, extension } = await this.buildAndSignOrder({
         ethAmount,
         trxAmount,
-      });
-      console.log("✅ Order created and signed");
-      console.log("   Maker:", order.maker);
-      console.log("   ETH Amount:", ethers.formatEther(ethAmount));
-      console.log("   TRX Amount:", ethers.formatUnits(trxAmount, 6));
-
-      // Step 2: Encode fusion data
-      console.log("\n2️⃣ Encoding fusion data...");
-      const extraData = this.encodeFusionData({
-        srcToken: "0x0000000000000000000000000000000000000000", // ETH
-        dstToken: "0x0000000000000000000000000000000000000001", // TRX
         secretHash,
         timelock,
         safetyDeposit,
         resolver,
       });
-      console.log("✅ Fusion data encoded");
+      console.log("✅ Order created and signed");
+      console.log("   Maker:", order.maker);
+      console.log("   ETH Amount:", ethers.formatEther(ethAmount));
+      console.log("   TRX Amount:", ethers.formatUnits(trxAmount, 6));
+      console.log("   Extension length:", extension.length);
 
-      // Step 3: Fill LOP order (creates escrow via postInteraction)
-      console.log("\n3️⃣ Filling LOP order...");
+      // Step 2: Build fillOrderArgs parameters
+      console.log("\n2️⃣ Building fillOrderArgs parameters...");
+      const target = ethers.ZeroAddress; // No specific target, use msg.sender
+      const interaction = "0x"; // No interaction data needed
+
+      // Pack args: target + extension + interaction
+      // Since target is zero address, we don't include it in args
+      const args = ethers.solidityPacked(
+        ["bytes", "bytes"],
+        [extension, interaction]
+      );
+
+      // Build TakerTraits with extension length
+      const takerTraits = this.buildTakerTraits(extension.length);
+
+      console.log("   Target: msg.sender (no specific target)");
+      console.log("   Extension length:", extension.length);
+      console.log("   TakerTraits:", takerTraits);
+
+      // Step 3: Split signature
+      const { r, vs } = this.splitSignature(signature);
+      console.log("   Signature split - r:", r.substring(0, 10) + "...");
+
+      // Step 4: Fill LOP order using fillOrderArgs
+      console.log("\n3️⃣ Filling LOP order via fillOrderArgs...");
       const fillValue = ethAmount + safetyDeposit; // ETH amount + safety deposit
 
       console.log(
@@ -216,7 +317,7 @@ class LOPFusionDemo {
         "ETH"
       );
 
-      const tx = await this.lopContract.fillOrder(
+      const tx = await this.lopContract.fillOrderArgs(
         [
           order.salt,
           order.maker,
@@ -227,9 +328,11 @@ class LOPFusionDemo {
           order.takingAmount,
           order.makerTraits,
         ],
-        signature,
-        ethAmount,
-        extraData,
+        r,
+        vs,
+        ethAmount, // amount to fill
+        takerTraits,
+        args,
         { value: fillValue }
       );
 
@@ -238,8 +341,9 @@ class LOPFusionDemo {
 
       const receipt = await tx.wait();
       console.log("✅ Order filled successfully!");
+      console.log("   Gas used:", receipt.gasUsed.toString());
 
-      // Step 4: Get order hash and escrow ID
+      // Step 5: Get order hash and escrow ID
       console.log("\n4️⃣ Retrieving escrow information...");
       const orderHash = await this.lopContract.hashOrder([
         order.salt,
@@ -260,7 +364,7 @@ class LOPFusionDemo {
       const escrowId = await this.fusionContract.getEscrowForOrder(orderHash);
       console.log("   🔐 Escrow ID:", escrowId);
 
-      // Step 5: Verify escrow was created
+      // Step 6: Verify escrow was created
       console.log("\n5️⃣ Verifying escrow...");
       const escrowData = await this.escrowContract.escrows(escrowId);
       console.log("✅ Escrow verified:");
@@ -277,7 +381,7 @@ class LOPFusionDemo {
       // Demo complete - in real scenario, resolver would continue with Tron side
       console.log("\n🎉 DEMO COMPLETE!");
       console.log("=".repeat(50));
-      console.log("✅ LOP Integration: WORKING");
+      console.log("✅ LOP v4 Integration: WORKING");
       console.log("✅ Escrow Creation: AUTOMATIC");
       console.log("✅ PostInteraction Hook: TRIGGERED");
       console.log("✅ Hashlock/Timelock: PRESERVED");
@@ -292,6 +396,18 @@ class LOPFusionDemo {
       };
     } catch (error) {
       console.error("❌ Demo failed:", error);
+
+      // Enhanced error reporting
+      if (error.reason) {
+        console.error("   Reason:", error.reason);
+      }
+      if (error.code) {
+        console.error("   Code:", error.code);
+      }
+      if (error.data) {
+        console.error("   Data:", error.data);
+      }
+
       throw error;
     }
   }
