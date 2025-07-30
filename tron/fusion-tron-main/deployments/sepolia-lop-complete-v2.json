@@ -1,0 +1,10 @@
+{
+  "contractAddress": "0x54fc752E47d31f654c1654f81290E4bD03108fba",
+  "wethAddress": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
+  "deployedAt": "2025-07-30T06:48:43.853Z",
+  "gasUsed": "estimated",
+  "verified": false
+}

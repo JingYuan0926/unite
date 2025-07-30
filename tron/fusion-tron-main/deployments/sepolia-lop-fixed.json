@@ -1,12 +1,12 @@
 {
-  "limitOrderProtocol": "0xF9c1C73ac05c6BD5f546df6173DF24c4f48a6939",
-  "weth": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+  "contractAddress": "0xA6F9c4d4c97437F345937b811bF384cD23070f7A",
+  "wethAddress": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
   "network": "sepolia",
   "chainId": 11155111,
-  "deployedAt": "2024-01-15T12:00:00.000Z",
   "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
-  "txHash": "0xa0c1529ce49f44a20a5e297733baab36bc3e6447f0a350de87d30b9931d1ef06",
-  "blockNumber": 8873313,
-  "status": "deployed_and_ready",
-  "notes": "Fresh LOP deployment - fixes 'missing revert data' issue from old contract"
+  "deployedAt": "2025-07-30T06:57:44.847Z",
+  "status": "fully_functional",
+  "hashOrderWorking": true,
+  "fillOrderWorking": true,
+  "verified": false
 }

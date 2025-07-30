@@ -164,6 +164,13 @@ class FusionAPI {
     this.addresses = addresses;
     this.chainId = chainId;
 
+    // Ensure addresses is properly defined
+    if (!addresses || !addresses.limitOrderProtocol) {
+      throw new Error("FusionAPI requires addresses.limitOrderProtocol");
+    }
+
+    this.lopAddress = addresses.limitOrderProtocol;
+
     // Initialize order builder
     this.orderBuilder = new FusionOrderBuilder(
       chainId,
