@@ -307,8 +307,8 @@ class EthXrpCrossChainOrder {
           maker: "rXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Will be replaced by TEE server
           taker: this.ethWallet.address, // ETH wallet will receive XRP
           token: "0x0000000000000000000000000000000000000000", // XRP native
-          amount: config.swap.dstAmount, // 1 XRP in drops
-          safetyDeposit: config.swap.safetyDeposit, // 0.1 XRP safety deposit
+          amount: BigInt(config.swap.dstAmount), // 1 XRP in drops as BigInt
+          safetyDeposit: BigInt(config.swap.safetyDeposit), // 0.1 XRP safety deposit as BigInt
           timelocks: xrplPackedTimelocks,
         },
 
@@ -471,9 +471,10 @@ class EthXrpCrossChainOrder {
         maker: order.xrpl.maker,
         taker: order.xrpl.taker,
         token: order.xrpl.token,
-        amount: order.xrpl.amount,
-        safetyDeposit: order.xrpl.safetyDeposit,
-        timelocks: order.xrpl.timelocks,
+        amount: order.xrpl.amount.toString(), // Convert to string for JSON serialization
+        safetyDeposit: order.xrpl.safetyDeposit.toString(), // Convert to string for JSON serialization
+        timelocks: order.xrpl.timelocks.toString(), // Convert BigInt to string for JSON serialization
+        type: "dst", // Required by TEE server
         srcCancellationTimestamp: order.timelocks[2],
       };
 
