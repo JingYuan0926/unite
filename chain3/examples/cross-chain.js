@@ -412,14 +412,15 @@ class EthXrpCrossChainOrder {
         to: config.ethereum.escrowFactory,
         data: fullCallData,
         value: requiredEth,
-        gasLimit: 300000,
+        gasLimit: 500000, // Increased gas limit for complex contract interaction
       });
 
       console.log(`⏳ Transaction submitted: ${tx.hash}`);
       const receipt = await tx.wait();
       console.log(
-        `✅ Destination escrow created! Block: ${receipt.blockNumber}`
+        `✅ Destination escrow created and funded! Block: ${receipt.blockNumber}`
       );
+      console.log(`💰 Funded with: ${ethers.formatEther(requiredEth)} ETH`);
 
       // Find the DstEscrowCreated event
       const escrowEvent = receipt.logs.find((log) => {
@@ -440,12 +441,15 @@ class EthXrpCrossChainOrder {
       }
 
       order.ethereum.creationTx = tx.hash;
-      order.status = "ethereum_escrow_created";
+      order.ethereum.fundingTx = tx.hash; // Same transaction for creation and funding
+      order.ethereum.fundedAmount = ethers.formatEther(requiredEth);
+      order.status = "ethereum_escrow_created_and_funded";
 
       return {
         transactionHash: tx.hash,
         blockNumber: receipt.blockNumber,
         escrowAddress: escrowAddress,
+        fundedAmount: ethers.formatEther(requiredEth),
         gasUsed: receipt.gasUsed.toString(),
       };
     } catch (error) {
@@ -530,6 +534,96 @@ class EthXrpCrossChainOrder {
     );
   }
 
+  // Function to automatically fund the Ethereum escrow
+  async fundEthereumEscrow(orderId, customAmount = null) {
+    const order = this.activeOrders.get(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    if (!order.ethereum.escrowAddress) {
+      throw new Error(`Ethereum escrow address not found for order ${orderId}`);
+    }
+
+    console.log(`\n💰 Funding Ethereum Escrow for order ${orderId}...`);
+    console.log(`📍 Escrow Address: ${order.ethereum.escrowAddress}`);
+
+    try {
+      // Calculate required funding amount
+      // For ETH swaps: amount + safety deposit
+      // For ERC20 swaps: only safety deposit (tokens sent separately)
+      let fundingAmount;
+      if (customAmount) {
+        fundingAmount = ethers.parseEther(customAmount);
+        console.log(`💡 Using custom funding amount: ${customAmount} ETH`);
+      } else {
+        // Calculate based on order parameters
+        if (
+          order.ethereum.token === "0x0000000000000000000000000000000000000000"
+        ) {
+          // ETH swap: need amount + safety deposit
+          fundingAmount = order.ethereum.amount + order.ethereum.safetyDeposit;
+          console.log(`💡 ETH swap detected: funding amount + safety deposit`);
+        } else {
+          // ERC20 swap: only need safety deposit
+          fundingAmount = order.ethereum.safetyDeposit;
+          console.log(`💡 ERC20 swap detected: funding only safety deposit`);
+        }
+      }
+
+      console.log(
+        `💰 Funding Amount: ${ethers.formatEther(fundingAmount)} ETH`
+      );
+
+      // Check wallet balance
+      const balance = await this.ethProvider.getBalance(this.ethWallet.address);
+      console.log(`💳 Wallet Balance: ${ethers.formatEther(balance)} ETH`);
+
+      if (balance < fundingAmount) {
+        throw new Error(
+          `Insufficient balance. Required: ${ethers.formatEther(fundingAmount)} ETH, Available: ${ethers.formatEther(balance)} ETH`
+        );
+      }
+
+      // Send ETH to the escrow address
+      const tx = await this.ethWallet.sendTransaction({
+        to: order.ethereum.escrowAddress,
+        value: fundingAmount,
+        gasLimit: 21000, // Standard ETH transfer gas limit
+      });
+
+      console.log(`⏳ Funding transaction submitted: ${tx.hash}`);
+      const receipt = await tx.wait();
+      console.log(
+        `✅ Ethereum escrow funded successfully! Block: ${receipt.blockNumber}`
+      );
+
+      // Update order status
+      order.ethereum.fundingTx = tx.hash;
+      order.ethereum.fundedAmount = ethers.formatEther(fundingAmount);
+      order.status = "ethereum_escrow_funded";
+
+      // Verify the escrow balance
+      const escrowBalance = await this.ethProvider.getBalance(
+        order.ethereum.escrowAddress
+      );
+      console.log(
+        `📊 Escrow Balance: ${ethers.formatEther(escrowBalance)} ETH`
+      );
+
+      return {
+        transactionHash: tx.hash,
+        blockNumber: receipt.blockNumber,
+        fundedAmount: ethers.formatEther(fundingAmount),
+        escrowBalance: ethers.formatEther(escrowBalance),
+        gasUsed: receipt.gasUsed.toString(),
+      };
+    } catch (error) {
+      console.error("❌ Failed to fund Ethereum escrow:", error.message);
+      throw error;
+    }
+  }
+
   async getOrderStatus(orderId) {
     const order = this.activeOrders.get(orderId);
     if (!order) {
@@ -550,6 +644,8 @@ class EthXrpCrossChainOrder {
         safetyDeposit: ethers.formatEther(order.ethereum.safetyDeposit),
         escrowAddress: order.ethereum.escrowAddress,
         creationTx: order.ethereum.creationTx,
+        fundingTx: order.ethereum.fundingTx || null,
+        fundedAmount: order.ethereum.fundedAmount || null,
       },
 
       // XRPL escrow details
@@ -604,13 +700,14 @@ async function main() {
     // Step 4: Create XRPL source escrow
     const xrplEscrow = await orderSystem.createXrplEscrow(order.id);
 
-    // Step 5: Get final status
+    // Step 5: Get final status (Ethereum escrow already funded during creation)
     const finalStatus = await orderSystem.getOrderStatus(order.id);
 
     console.log("\n🎉 ETH-XRP CROSS-CHAIN ORDER SETUP COMPLETED!");
     console.log("=".repeat(70));
     console.log("✅ Both escrows created successfully");
-    console.log("✅ Ready for funding and execution");
+    console.log("✅ Ethereum escrow funded automatically during creation");
+    console.log("✅ Ready for XRPL funding and execution");
     console.log("");
     console.log("📊 Final Order Status:");
     console.log(JSON.stringify(finalStatus, null, 2));
@@ -619,7 +716,10 @@ async function main() {
     console.log(`  Order ID: ${finalStatus.id}`);
     console.log(`  Status: ${finalStatus.status}`);
     console.log(
-      `  Ethereum Creation: ${finalStatus.ethereum.creationTx || "N/A"}`
+      `  Ethereum Creation & Funding: ${finalStatus.ethereum.creationTx || "N/A"}`
+    );
+    console.log(
+      `  Funded Amount: ${finalStatus.ethereum.fundedAmount || "N/A"} ETH`
     );
     console.log(`  XRPL Escrow ID: ${finalStatus.xrpl.escrowId || "N/A"}`);
 
@@ -629,9 +729,17 @@ async function main() {
     ) {
       console.log("\n🔍 Verify on Etherscan:");
       console.log(
-        `  https://sepolia.etherscan.io/tx/${finalStatus.ethereum.creationTx}`
+        `  Creation & Funding: https://sepolia.etherscan.io/tx/${finalStatus.ethereum.creationTx}`
       );
     }
+
+    console.log("\n💡 Next Steps:");
+    console.log("  1. Fund the XRPL escrow wallet (manual step)");
+    console.log("  2. Execute the atomic swap by revealing the secret");
+    console.log("  3. Verify transactions on both chains");
+    console.log(
+      `  4. XRPL Wallet Address: ${finalStatus.xrpl.walletAddress || "N/A"}`
+    );
   } catch (error) {
     console.error("❌ ETH-XRP cross-chain order failed:", error.message);
     console.error("Stack trace:", error.stack);
