@@ -26,7 +26,7 @@ const config = {
   // XRP Ledger configuration - matches serve-escrow.js
   xrpl: {
     network: process.env.XRPL_URL, // XRPL Testnet
-    teeServerUrl: "http://localhost:3000", // Local TEE server from serve-escrow.js
+    xrplServerUrl: "http://localhost:3000", // Local server from serve-escrow.js
   },
 
   // Swap parameters
@@ -78,8 +78,8 @@ function addressToUint256(address) {
   return paddedHex;
 }
 
-// XRPL TEE Client (simplified version)
-class XRPLTEEClient {
+// XRPL Client (simplified version)
+class XRPLClient {
   constructor(baseUrl) {
     this.baseUrl = baseUrl;
   }
@@ -93,7 +93,7 @@ class XRPLTEEClient {
       return response.data;
     } catch (error) {
       throw new Error(
-        `TEE Server Error: ${error.response?.data?.error || error.message}`
+        `local xrpl server Error: ${error.response?.data?.error || error.message}`
       );
     }
   }
@@ -107,7 +107,7 @@ class XRPLTEEClient {
       return response.data;
     } catch (error) {
       throw new Error(
-        `TEE Server Error: ${error.response?.data?.error || error.message}`
+        `local xrpl server Error: ${error.response?.data?.error || error.message}`
       );
     }
   }
@@ -125,7 +125,7 @@ class XRPLTEEClient {
       return response.data;
     } catch (error) {
       throw new Error(
-        `TEE Server Error: ${error.response?.data?.error || error.message}`
+        `local xrpl Server Error: ${error.response?.data?.error || error.message}`
       );
     }
   }
@@ -166,8 +166,8 @@ class EthXrpCrossChainOrder {
       this.ethWallet
     );
 
-    // Initialize XRPL TEE client
-    this.teeClient = new XRPLTEEClient(config.xrpl.teeServerUrl);
+    // Initialize XRPL  client
+    this.xrplClient = new XRPLClient(config.xrpl.xrplServerUrl);
 
     // Active orders storage
     this.activeOrders = new Map();
@@ -214,13 +214,13 @@ class EthXrpCrossChainOrder {
         console.log("💡 Make sure the contract is properly deployed");
       }
 
-      // Check TEE server
+      // Check xrpl server
       try {
-        const response = await axios.get(`${config.xrpl.teeServerUrl}/health`);
-        console.log(`✅ XRPL TEE Server connected: ${response.data.status}`);
+        const response = await axios.get(`${config.xrpl.xrplServerUrl}/health`);
+        console.log(`✅ XRPL Server connected: ${response.data.status}`);
       } catch (error) {
         console.log(
-          "⚠️  XRPL TEE Server not available. Please start serve-escrow.js"
+          "⚠️  XRPL Server not available. Please start serve-escrow.js"
         );
         console.log("💡 Run: node serve-escrow.js");
       }
@@ -237,8 +237,8 @@ class EthXrpCrossChainOrder {
 
     try {
       // Generate order identifiers using the pattern from evmToXrplSwapWithRealEVM.js
-      const secret = XRPLTEEClient.generateSecret();
-      const hashlock = XRPLTEEClient.hashSecret(secret);
+      const secret = XRPLClient.generateSecret();
+      const hashlock = XRPLClient.hashSecret(secret);
       const orderHash =
         "0x" +
         crypto
@@ -304,7 +304,7 @@ class EthXrpCrossChainOrder {
 
         // XRP escrow data
         xrpl: {
-          maker: "rXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Will be replaced by TEE server
+          maker: "rXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Will be replaced by xrpl local server
           taker: this.ethWallet.address, // ETH wallet will receive XRP
           token: "0x0000000000000000000000000000000000000000", // XRP native
           amount: BigInt(config.swap.dstAmount), // 1 XRP in drops as BigInt
@@ -461,10 +461,10 @@ class EthXrpCrossChainOrder {
     }
 
     console.log(`\n🌊 Creating XRPL Source Escrow for order ${orderId}...`);
-    console.log("📋 Using local XRPL TEE server");
+    console.log("📋 Using local XRPL server");
 
     try {
-      // Create XRPL escrow via TEE server
+      // Create XRPL escrow via local server
       const xrplEscrowParams = {
         orderHash: order.orderHash,
         hashlock: order.hashlock,
@@ -474,7 +474,7 @@ class EthXrpCrossChainOrder {
         amount: order.xrpl.amount.toString(), // Convert to string for JSON serialization
         safetyDeposit: order.xrpl.safetyDeposit.toString(), // Convert to string for JSON serialization
         timelocks: order.xrpl.timelocks.toString(), // Convert BigInt to string for JSON serialization
-        type: "dst", // Required by TEE server
+        type: "dst", // Required by local xrpl server
         srcCancellationTimestamp: order.timelocks[2],
       };
 
@@ -489,7 +489,7 @@ class EthXrpCrossChainOrder {
       );
 
       const xrplEscrow =
-        await this.teeClient.createDestinationEscrow(xrplEscrowParams);
+        await this.xrplClient.createDestinationEscrow(xrplEscrowParams);
 
       console.log(`✅ XRPL Escrow created with ID: ${xrplEscrow.escrowId}`);
       console.log(`📍 Escrow wallet address: ${xrplEscrow.walletAddress}`);
@@ -585,7 +585,7 @@ async function main() {
   console.log("🔧 Using:");
   console.log("  • 1inch Limit Order Protocol for Ethereum");
   console.log("  • EscrowFactory contract for atomic swaps");
-  console.log("  • Local XRPL TEE server for XRP integration");
+  console.log("  • Local XRPL server for XRP integration");
   console.log("  • SHA256 hashlocks for atomicity");
   console.log("=".repeat(70));
 
@@ -632,11 +632,6 @@ async function main() {
         `  https://sepolia.etherscan.io/tx/${finalStatus.ethereum.creationTx}`
       );
     }
-
-    console.log("\n💡 Next Steps:");
-    console.log("  1. Fund the XRPL escrow wallet");
-    console.log("  2. Execute the atomic swap");
-    console.log("  3. Verify transactions on both chains");
   } catch (error) {
     console.error("❌ ETH-XRP cross-chain order failed:", error.message);
     console.error("Stack trace:", error.stack);
@@ -645,7 +640,7 @@ async function main() {
 }
 
 // Export for use in other files
-module.exports = { EthXrpCrossChainOrder, config, XRPLTEEClient };
+module.exports = { EthXrpCrossChainOrder, config, XRPLClient };
 
 // Run if this file is executed directly
 if (require.main === module) {
