@@ -6,7 +6,9 @@ This plan builds a **brand new 1inch Fusion+ extension** that adds Tron network 
 
 **Repository:** `@fusionplustron/`  
 **Timeline:** 15 days  
-**Goal:** Official 1inch Fusion+ extension for Tron network
+**Goal:** Official 1inch Fusion+ extension for Tron network  
+**Networks:** **ETH Sepolia** and **TRON Nile** testnets  
+**Configuration:** All RPC endpoints and network settings are configured in the `.env` file
 
 ---
 
@@ -141,16 +143,20 @@ fusionplustron/
    }
    ```
 
-3. **Environment Configuration:**
+3. **Environment Configuration (ETH Sepolia + TRON Nile):**
 
    ```bash
    # .env.example
-   # Ethereum Configuration
+   # ⚠️ NETWORKS: ETH Sepolia and TRON Nile testnets
+
+   # Ethereum Sepolia Configuration
+   ETH_NETWORK=sepolia
    ETH_RPC_URL=https://sepolia.infura.io/v3/YOUR_KEY
    ETH_PRIVATE_KEY=0x...
    ETHERSCAN_API_KEY=...
 
-   # Tron Configuration
+   # Tron Nile Configuration
+   TRON_NETWORK=nile
    TRON_RPC_URL=https://api.nileex.io
    TRON_PRIVATE_KEY=0x...
 
@@ -188,6 +194,7 @@ fusionplustron/
      },
      networks: {
        sepolia: {
+         // ETH Sepolia testnet
          url: process.env.ETH_RPC_URL!,
          accounts: [process.env.ETH_PRIVATE_KEY!],
        },
@@ -246,7 +253,7 @@ fusionplustron/
 
 ---
 
-## **📜 PHASE 2: OFFICIAL CONTRACT DEPLOYMENT (Days 3-4)**
+## **📜 PHASE 2: OFFICIAL CONTRACT DEPLOYMENT ON ETH SEPOLIA (Days 3-4)**
 
 ### **Phase 2.1: Deploy Official LOP**
 
@@ -425,7 +432,7 @@ main().catch(console.error);
 
 ---
 
-## **🌉 PHASE 3: TRON EXTENSION DEVELOPMENT (Days 5-7)**
+## **🌉 PHASE 3: TRON NILE EXTENSION DEVELOPMENT (Days 5-7)**
 
 ### **Phase 3.1: Create Tron-Compatible Contracts**
 
@@ -727,7 +734,7 @@ contract TronEscrowFactory is BaseEscrowFactory {
 - [ ] Deterministic address calculation preserved
 - [ ] Timelock/hashlock mechanisms identical
 
-### **Phase 3.2: Deploy Tron Contracts**
+### **Phase 3.2: Deploy Tron Contracts on TRON Nile**
 
 #### **File: `scripts/deploy/05-deploy-tron-contracts.ts`**
 
@@ -736,10 +743,10 @@ const TronWeb = require("tronweb");
 import { writeFileSync } from "fs";
 
 async function main() {
-  console.log("🚀 Deploying Tron Contracts");
+  console.log("🚀 Deploying Tron Contracts on TRON Nile");
 
   const tronWeb = new TronWeb({
-    fullHost: process.env.TRON_RPC_URL!,
+    fullHost: process.env.TRON_RPC_URL!, // TRON Nile RPC
     privateKey: process.env.TRON_PRIVATE_KEY!,
   });
 
@@ -2116,19 +2123,26 @@ export class ConfigManager {
 ````markdown
 # 🚀 Deployment Guide
 
+## Networks
+
+- **Ethereum**: Sepolia testnet
+- **Tron**: Nile testnet
+- **RPC Configuration**: All endpoints configured in `.env` file
+
 ## Prerequisites
 
 1. **Environment Setup**
+
    ```bash
    cp .env.example .env
-   # Fill in your credentials
+   # Fill in your ETH Sepolia and TRON Nile credentials
    ```
-````
 
 2. **Required Accounts**
    - Ethereum Sepolia testnet account with ETH
    - Tron Nile testnet account with TRX
    - 1inch API key
+````
 
 ## Deployment Steps
 
