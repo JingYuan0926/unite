@@ -25,9 +25,11 @@
   "dependencies": {
     "@1inch/cross-chain-sdk": "^0.1.15",
     "axios": "^1.6.0",
+    "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^16.6.1",
     "ethers": "^6.15.0",
+    "express": "^5.1.0",
     "xrpl": "^2.14.3"
   },
   "devDependencies": {
