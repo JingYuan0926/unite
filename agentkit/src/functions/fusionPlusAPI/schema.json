@@ -1,0 +1,65 @@
+{
+  "name": "fusionPlusAPI",
+  "description": "Access 1inch Fusion+ API for cross-chain swaps. This API provides advanced gasless swaps with MEV protection. EXAMPLES: For active orders: {\"endpoint\": \"getActiveOrders\", \"srcChain\": 1, \"dstChain\": 137}. For escrow factory: {\"endpoint\": \"getEscrowFactory\", \"chainId\": 1}. For quote: {\"endpoint\": \"getQuote\", \"srcChain\": 1, \"dstChain\": 137, \"srcTokenAddress\": \"0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2\", \"dstTokenAddress\": \"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174\", \"amount\": 1000000000000000000, \"walletAddress\": \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\", \"enableEstimate\": false}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["getActiveOrders", "getEscrowFactory", "getQuote"],
+      "description": "REQUIRED: The Fusion+ API endpoint to call. Use 'getActiveOrders' to get cross-chain swap active orders, 'getEscrowFactory' to get escrow factory contract address, 'getQuote' to get quote details for cross-chain swaps."
+    },
+    "page": {
+      "type": "number",
+      "description": "Pagination step, default: 1 (page = offset / limit)"
+    },
+    "limit": {
+      "type": "number",
+      "description": "Number of active orders to receive (default: 100, max: 500)"
+    },
+    "srcChain": {
+      "type": "number",
+      "description": "Source chain ID (required for getActiveOrders and getQuote). Use 1 for Ethereum, 137 for Polygon, etc."
+    },
+    "dstChain": {
+      "type": "number",
+      "description": "Destination chain ID (required for getActiveOrders and getQuote). Use 1 for Ethereum, 137 for Polygon, etc."
+    },
+    "chainId": {
+      "type": "number",
+      "description": "Chain ID (required for getEscrowFactory). Use 1 for Ethereum, 137 for Polygon, etc."
+    },
+    "srcTokenAddress": {
+      "type": "string",
+      "description": "Address of source token (required for getQuote). Example: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 for WETH"
+    },
+    "dstTokenAddress": {
+      "type": "string",
+      "description": "Address of destination token (required for getQuote). Example: 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174 for USDC"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount to swap (required for getQuote). Amount in wei format"
+    },
+    "walletAddress": {
+      "type": "string",
+      "description": "Wallet address (required for getQuote). Address of the wallet or contract who will create Fusion order"
+    },
+    "enableEstimate": {
+      "type": "boolean",
+      "description": "Enable estimation (required for getQuote). If enabled then get estimation from 1inch swap builder and generates quoteId"
+    },
+    "fee": {
+      "type": "number",
+      "description": "Fee in bps format, 1% is equal to 100bps (optional for getQuote)"
+    },
+    "isPermit2": {
+      "type": "string",
+      "description": "Permit2 allowance transfer encoded call (optional for getQuote)"
+    },
+    "permit": {
+      "type": "string",
+      "description": "Permit, user approval sign (optional for getQuote)"
+    }
+  },
+  "required": ["endpoint"]
+} 

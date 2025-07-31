@@ -1,0 +1,258 @@
+{
+  "name": "fusionAPI",
+  "description": "Access 1inch Fusion API for gasless swaps, intent-based trading, and order management. Fusion mode allows users to execute swaps without spending gas or risking front-running through a Dutch auction system filled by resolvers.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "getActiveOrders",
+          "getSettlementAddress", 
+          "getOrderByHash",
+          "getOrdersByHashes",
+          "getOrdersByMaker",
+          "getQuote",
+          "getQuoteWithCustomPreset",
+          "submitOrder",
+          "submitMultipleOrders"
+        ],
+        "description": "The Fusion API action to perform"
+      },
+      "chain": {
+        "type": "number",
+        "description": "Chain ID (1 for Ethereum, 56 for BSC, 137 for Polygon, etc.)"
+      },
+      "page": {
+        "type": "number",
+        "description": "Pagination step, default: 1 (page = offset / limit)"
+      },
+      "limit": {
+        "type": "number",
+        "description": "Number of items to receive (default: 100, max: 500 for orders, max: 250 for other endpoints)"
+      },
+      "version": {
+        "type": "string",
+        "enum": ["2.0", "2.1"],
+        "description": "Settlement extension version: 2.0 or 2.1. By default: all"
+      },
+      "orderHash": {
+        "type": "string",
+        "description": "Order hash for getting specific order status"
+      },
+      "orderHashes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Array of order hashes for batch status lookup"
+      },
+      "address": {
+        "type": "string",
+        "description": "Maker's wallet address for getting orders by maker"
+      },
+      "timestampFrom": {
+        "type": "number",
+        "description": "Start timestamp in milliseconds for interval filtering"
+      },
+      "timestampTo": {
+        "type": "number", 
+        "description": "End timestamp in milliseconds for interval filtering"
+      },
+      "makerToken": {
+        "type": "string",
+        "description": "Token address to filter orders by maker token"
+      },
+      "takerToken": {
+        "type": "string",
+        "description": "Token address to filter orders by taker token"
+      },
+      "withToken": {
+        "type": "string",
+        "description": "Token address to filter orders by source or destination token"
+      },
+      "fromTokenAddress": {
+        "type": "string",
+        "description": "Address of the source token for quotes"
+      },
+      "toTokenAddress": {
+        "type": "string",
+        "description": "Address of the destination token for quotes"
+      },
+      "amount": {
+        "type": "string",
+        "description": "Amount to swap from source token (in wei/smallest unit)"
+      },
+      "walletAddress": {
+        "type": "string",
+        "description": "Address of the wallet that will create the Fusion order"
+      },
+      "enableEstimate": {
+        "type": "boolean",
+        "description": "If enabled, get estimation from 1inch swap builder and generate quoteId"
+      },
+      "fee": {
+        "type": "number",
+        "description": "Fee in basis points format (1% = 100 bps)"
+      },
+      "showDestAmountMinusFee": {
+        "type": "object",
+        "description": "Configuration for showing destination amount minus fees"
+      },
+      "isPermit2": {
+        "type": "string",
+        "description": "Permit2 allowance transfer encoded call data"
+      },
+      "surplus": {
+        "type": "boolean",
+        "description": "Enable surplus handling"
+      },
+      "permit": {
+        "type": "string",
+        "description": "Permit (EIP-2612) user approval signature"
+      },
+      "slippage": {
+        "type": "object",
+        "description": "Slippage configuration"
+      },
+      "source": {
+        "type": "object",
+        "description": "Source configuration for tracking"
+      },
+      "customPreset": {
+        "type": "object",
+        "properties": {
+          "auctionDuration": {
+            "type": "number",
+            "description": "Duration of the auction in seconds"
+          },
+          "auctionStartAmount": {
+            "type": "number",
+            "description": "Starting amount for the auction"
+          },
+          "auctionEndAmount": {
+            "type": "number",
+            "description": "Ending amount for the auction"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Custom auction points"
+          }
+        },
+        "required": ["auctionDuration", "auctionStartAmount", "auctionEndAmount"],
+        "description": "Custom preset configuration for quotes"
+      },
+      "order": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "object",
+            "properties": {
+              "salt": {
+                "type": "string",
+                "description": "Random salt for order uniqueness"
+              },
+              "makerAsset": {
+                "type": "string",
+                "description": "Address of the token being sold"
+              },
+              "takerAsset": {
+                "type": "string",
+                "description": "Address of the token being bought"
+              },
+              "maker": {
+                "type": "string",
+                "description": "Address of the order maker"
+              },
+              "receiver": {
+                "type": "string",
+                "description": "Address to receive the bought tokens"
+              },
+              "makingAmount": {
+                "type": "string",
+                "description": "Amount of maker token to sell"
+              },
+              "takingAmount": {
+                "type": "string",
+                "description": "Amount of taker token to buy"
+              },
+              "makerTraits": {
+                "type": "string",
+                "description": "Maker traits configuration"
+              }
+            },
+            "required": ["salt", "makerAsset", "takerAsset", "maker", "makingAmount", "takingAmount"],
+            "description": "Order details"
+          },
+          "signature": {
+            "type": "string",
+            "description": "Order signature"
+          },
+          "extension": {
+            "type": "string",
+            "description": "Order extension data"
+          },
+          "quoteId": {
+            "type": "string",
+            "description": "Quote ID from the quoter API"
+          }
+        },
+        "required": ["order", "signature", "quoteId"],
+        "description": "Signed order for submission"
+      },
+      "orders": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "order": {
+              "type": "object",
+              "properties": {
+                "salt": {
+                  "type": "string"
+                },
+                "makerAsset": {
+                  "type": "string"
+                },
+                "takerAsset": {
+                  "type": "string"
+                },
+                "maker": {
+                  "type": "string"
+                },
+                "receiver": {
+                  "type": "string"
+                },
+                "makingAmount": {
+                  "type": "string"
+                },
+                "takingAmount": {
+                  "type": "string"
+                },
+                "makerTraits": {
+                  "type": "string"
+                }
+              },
+              "required": ["salt", "makerAsset", "takerAsset", "maker", "makingAmount", "takingAmount"]
+            },
+            "signature": {
+              "type": "string"
+            },
+            "extension": {
+              "type": "string"
+            },
+            "quoteId": {
+              "type": "string"
+            }
+          },
+          "required": ["order", "signature", "quoteId"]
+        },
+        "description": "Array of signed orders for batch submission"
+      }
+    },
+    "required": ["action", "chain"]
+  }
+}
