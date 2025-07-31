@@ -20,6 +20,7 @@ export { tracesAPI } from "./functions/tracesAPI";
 export { spotPriceAPI } from "./functions/spotPriceAPI";
 export { balanceAPI } from "./functions/balanceAPI";
 export { fusionAPI } from "./functions/fusionAPI";
+export { fusionPlusAPI } from "./functions/fusionPlusAPI";
 
 // Type exports
 export type {
@@ -160,6 +161,13 @@ export type {
   SubmitMultipleOrdersParams,
   FusionAPIParams
 } from "./functions/fusionAPI";
+
+export type {
+  GetActiveOrdersOutput as FusionPlusGetActiveOrdersOutput,
+  EscrowFactory,
+  GetQuoteOutput as FusionPlusGetQuoteOutput,
+  BuildOrderOutput
+} from "./functions/fusionPlusAPI";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
