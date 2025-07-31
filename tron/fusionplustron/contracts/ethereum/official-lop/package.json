@@ -1,0 +1,6 @@
+{
+  "name": "limit-order-protocol",
+  "version": "4.0.0",
+  "description": "Official 1inch Limit Order Protocol v4 contracts",
+  "main": "contracts/LimitOrderProtocol.sol"
+}
