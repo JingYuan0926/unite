@@ -1,5 +1,6 @@
 // @ts-ignore - TronWeb types are defined in src/types/tronweb.d.ts
 import TronWeb from "tronweb";
+import { ethers } from "ethers";
 import { ConfigManager } from "../utils/ConfigManager";
 import { ScopedLogger } from "../utils/Logger";
 
@@ -244,12 +245,8 @@ export class TronExtension {
       const secretBytes = crypto.randomBytes(32);
       const secret = "0x" + secretBytes.toString("hex");
 
-      // Hash the secret using keccak256 (simplified - in production use proper keccak256)
-      const secretHashBytes = crypto
-        .createHash("sha256")
-        .update(secretBytes)
-        .digest();
-      const secretHash = "0x" + secretHashBytes.toString("hex");
+      // Hash the secret using keccak256 (EVM-compatible)
+      const secretHash = ethers.keccak256(secret);
 
       this.logger.debug("Generated secret hash", {
         secretLength: secret.length,
@@ -267,12 +264,59 @@ export class TronExtension {
   }
 
   /**
-   * Create timelocks structure for escrow
+   * Create packed timelocks for EVM contract compatibility
+   * Replicates the Solidity _createTimelocks function bit-shifting logic
+   *
+   * @param timelock - User-defined timelock duration in seconds
+   * @returns Packed uint256 value as bigint
+   */
+  createPackedTimelocks(timelock: number): bigint {
+    // TimelocksLib.Stage enum values:
+    // SrcWithdrawal = 0, SrcPublicWithdrawal = 1, SrcCancellation = 2,
+    // SrcPublicCancellation = 3, DstWithdrawal = 4, DstPublicWithdrawal = 5,
+    // DstCancellation = 6
+
+    const srcWithdrawal = BigInt(600); // 10 minutes
+    const srcPublicWithdrawal = BigInt(1800); // 30 minutes
+    const srcCancellation = BigInt(timelock); // user-defined
+    const srcPublicCancellation = BigInt(timelock + 3600); // +1 hour
+    const dstWithdrawal = BigInt(300); // 5 minutes
+    const dstPublicWithdrawal = BigInt(900); // 15 minutes
+    const dstCancellation = BigInt(timelock - 300); // 5 min earlier than src
+
+    // Pack into single uint256 using bit shifting
+    // Each stage occupies 32 bits (4 bytes) in the packed value
+    const packed =
+      (srcWithdrawal << (BigInt(0) * BigInt(32))) | // Stage 0: bits 0-31
+      (srcPublicWithdrawal << (BigInt(1) * BigInt(32))) | // Stage 1: bits 32-63
+      (srcCancellation << (BigInt(2) * BigInt(32))) | // Stage 2: bits 64-95
+      (srcPublicCancellation << (BigInt(3) * BigInt(32))) | // Stage 3: bits 96-127
+      (dstWithdrawal << (BigInt(4) * BigInt(32))) | // Stage 4: bits 128-159
+      (dstPublicWithdrawal << (BigInt(5) * BigInt(32))) | // Stage 5: bits 160-191
+      (dstCancellation << (BigInt(6) * BigInt(32))); // Stage 6: bits 192-223
+
+    this.logger.debug("Created packed timelocks", {
+      timelock,
+      packedValue: packed.toString(),
+      packedHex: "0x" + packed.toString(16),
+    });
+
+    return packed;
+  }
+
+  /**
+   * Create timelocks structure for escrow (legacy - now uses packed timelocks)
+   * @deprecated Use createPackedTimelocks() for EVM contract compatibility
    */
   createTimelocks(timelock: number): any {
+    // Use the new packed timelocks implementation
+    const packedTimelocks = this.createPackedTimelocks(timelock);
+
+    // Return both packed value and individual components for backwards compatibility
     const now = Math.floor(Date.now() / 1000);
 
     return {
+      packed: packedTimelocks,
       srcWithdrawal: now + timelock,
       srcCancellation: now + timelock + 300, // 5 minutes after withdrawal
       dstWithdrawal: now + timelock - 600, // 10 minutes before src
@@ -304,7 +348,7 @@ export class TronExtension {
   async getTrxBalance(address: string): Promise<string> {
     try {
       const balance = await this.tronWeb.trx.getBalance(address);
-      return this.tronWeb.fromSun(balance);
+      return this.tronWeb.fromSun(balance.toString());
     } catch (error) {
       this.logger.error("Failed to get TRX balance", error);
       throw error;

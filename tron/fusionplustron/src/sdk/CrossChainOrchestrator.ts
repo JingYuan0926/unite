@@ -92,7 +92,7 @@ export class CrossChainOrchestrator {
 
     // Step 3: Create cross-chain order
     const preparedOrder = await this.official1inch.createCrossChainOrder({
-      fromTokenAddress: ethers.ZeroAddress, // ETH
+      fromTokenAddress: this.config.getWethAddress(), // WETH (required by 1inch API)
       toTokenAddress: this.config.getTrxRepresentationAddress(), // TRX representation
       amount: params.ethAmount.toString(),
       fromAddress: ethSigner.address,
@@ -118,7 +118,7 @@ export class CrossChainOrchestrator {
       dstBeneficiary: ethSigner.address, // Will receive ETH back if needed
       srcCancellationBeneficiary: ethSigner.address,
       dstCancellationBeneficiary: params.tronRecipient,
-      timelocks: this.createTimelocks(timelock),
+      timelocks: this.tronExtension.createPackedTimelocks(timelock),
       safetyDeposit: safetyDeposit,
     };
 
@@ -381,20 +381,6 @@ export class CrossChainOrchestrator {
   }
 
   // Private helper methods
-
-  private createTimelocks(timelock: number): number {
-    const now = Math.floor(Date.now() / 1000);
-
-    // Create packed timelocks using bit shifting (simplified)
-    // In production, this should use TimelocksLib.create() from the contract
-    const srcWithdrawal = now + timelock;
-    const srcCancellation = now + timelock + 300;
-    const dstWithdrawal = now + timelock - 600;
-    const dstCancellation = now + timelock - 300;
-
-    // Pack into single uint256 (simplified - actual implementation uses TimelocksLib)
-    return srcWithdrawal; // Simplified for demo
-  }
 
   private async calculateEscrowAddress(immutables: any): Promise<string> {
     // This would use the EscrowFactory to calculate deterministic address

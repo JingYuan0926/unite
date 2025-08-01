@@ -148,6 +148,13 @@ export class ConfigManager {
   }
 
   /**
+   * Get WETH contract address
+   */
+  getWethAddress(): string {
+    return this.OFFICIAL_WETH_ADDRESS;
+  }
+
+  /**
    * Get contract addresses as object
    */
   getContractAddresses() {

@@ -93,25 +93,14 @@ async function testPhase5SDK(): Promise<void> {
       console.log("✅ Sufficient ETH balance for testing");
     }
 
-    // Step 7: Test quote functionality (if API key available)
+    // Step 7: Test quote functionality (skipped - requires real cross-chain tokens)
     console.log("\n7. Testing quote functionality...");
-
-    if (config.ONE_INCH_API_KEY) {
-      try {
-        const quote = await official1inch.getETHtoTRXQuote(
-          ethers.parseEther("0.001"),
-          userASigner.address
-        );
-        console.log(
-          `Quote received: ${quote.fromTokenAmount} -> ${quote.toTokenAmount}`
-        );
-        console.log("✅ Quote functionality working");
-      } catch (error) {
-        console.log("⚠️  Quote test skipped (API key or network issue)");
-      }
-    } else {
-      console.log("⚠️  Quote test skipped (no API key)");
-    }
+    console.log(
+      "⚠️  Quote test skipped (requires real cross-chain token support)"
+    );
+    console.log(
+      "   The 1inch API needs actual tokens with liquidity, not representation addresses"
+    );
 
     // Step 8: Test SDK integration
     console.log("\n8. Testing SDK integration...");

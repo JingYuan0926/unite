@@ -102,7 +102,7 @@ export class Official1inchSDK {
     });
 
     const params: QuoteParams = {
-      fromTokenAddress: ethers.ZeroAddress, // ETH
+      fromTokenAddress: this.config.getWethAddress(), // WETH (required by 1inch API)
       toTokenAddress: this.config.getTrxRepresentationAddress(), // TRX representation
       amount: ethAmount.toString(),
       fromAddress: fromAddress,
@@ -137,7 +137,7 @@ export class Official1inchSDK {
 
     const params: QuoteParams = {
       fromTokenAddress: this.config.getTrxRepresentationAddress(), // TRX representation
-      toTokenAddress: ethers.ZeroAddress, // ETH
+      toTokenAddress: this.config.getWethAddress(), // WETH (required by 1inch API)
       amount: trxAmount.toString(),
       fromAddress: fromAddress,
       dstChainId: this.config.getEthChainId(),
