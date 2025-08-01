@@ -14,7 +14,7 @@ export default function LogoHeader() {
       <div className="relative">
         <LineShadowText 
           as="h1" 
-          className="text-6xl font-bold text-gray-900 italic whitespace-nowrap"
+          className="text-6xl font-bold text-gray-900 italic whitespace-nowrap mb-5"
         >
           Agent Kit
         </LineShadowText>
