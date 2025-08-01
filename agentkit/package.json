@@ -46,6 +46,7 @@
     "example:nft": "ts-node -r dotenv/config examples/nftAPI.ts",
     "example:domain": "ts-node -r dotenv/config examples/domainAPI.ts",
     "example:portfolio": "ts-node -r dotenv/config examples/portfolioAPI.ts",
+    "example:transaction": "ts-node -r dotenv/config examples/transactionAPI.ts",
     "gen-docs": "ts-node scripts/gen-docs.ts",
     "docs": "node scripts/generate-docs.js"
   },

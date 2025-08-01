@@ -25,6 +25,7 @@ export { orderbookAPI } from "./functions/orderbookAPI";
 export { nftAPI } from "./functions/nftAPI";
 export { domainAPI } from "./functions/domainAPI";
 export { portfolioAPI } from "./functions/portfolioAPI";
+export { transactionAPI } from "./functions/transactionAPI";
 
 // Type exports
 export type {
@@ -230,6 +231,11 @@ export type {
   AdapterResult,
   HistoryMetrics
 } from "./functions/portfolioAPI";
+
+export type {
+  BroadcastRequest,
+  BroadcastResponse
+} from "./functions/transactionAPI";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
