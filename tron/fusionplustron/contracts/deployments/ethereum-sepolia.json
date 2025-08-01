@@ -1,0 +1,13 @@
+{
+  "network": "sepolia",
+  "timestamp": "2025-08-01T03:46:18.121Z",
+  "contracts": {
+    "WETH": "0x376f9Ce9C7125eF1AA5D83861163265176473131",
+    "LimitOrderProtocol": "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0",
+    "domainSeparator": "0x35e3bbd04ee98f672043d6daf45fb1b3f437643373ecb9481e5c3d6b55d81ca0",
+    "EscrowFactory": "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA",
+    "EscrowSrcImplementation": "0x890D63E67e7537e94855D3634f8D6A62f95eF928",
+    "EscrowDstImplementation": "0xe5De9De3B8fB5AD8C75C441327f50Cd6e19D46D8",
+    "Resolver": "0xEdC45bD18674BdD4A22D4904e6252A8DA9e29946"
+  }
+}

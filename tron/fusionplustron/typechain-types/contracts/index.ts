@@ -3,3 +3,5 @@
 /* eslint-disable */
 import type * as ethereum from "./ethereum";
 export type { ethereum };
+import type * as tron from "./tron";
+export type { tron };

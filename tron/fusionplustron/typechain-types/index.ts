@@ -222,3 +222,11 @@ export type { BaseExtension } from "./contracts/ethereum/temporary-extensions/co
 export { BaseExtension__factory } from "./factories/contracts/ethereum/temporary-extensions/contracts/extensions/BaseExtension__factory";
 export type { ResolverValidationExtension } from "./contracts/ethereum/temporary-extensions/contracts/extensions/ResolverValidationExtension";
 export { ResolverValidationExtension__factory } from "./factories/contracts/ethereum/temporary-extensions/contracts/extensions/ResolverValidationExtension__factory";
+export type { ITronEscrow } from "./contracts/tron/interfaces/ITronEscrow";
+export { ITronEscrow__factory } from "./factories/contracts/tron/interfaces/ITronEscrow__factory";
+export type { TronEscrowDst } from "./contracts/tron/TronEscrowDst";
+export { TronEscrowDst__factory } from "./factories/contracts/tron/TronEscrowDst__factory";
+export type { TronEscrowFactory } from "./contracts/tron/TronEscrowFactory";
+export { TronEscrowFactory__factory } from "./factories/contracts/tron/TronEscrowFactory__factory";
+export type { TronEscrowSrc } from "./contracts/tron/TronEscrowSrc";
+export { TronEscrowSrc__factory } from "./factories/contracts/tron/TronEscrowSrc__factory";

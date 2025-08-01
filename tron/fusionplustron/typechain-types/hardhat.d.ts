@@ -445,6 +445,22 @@ declare module "hardhat/types/runtime" {
       name: "ResolverValidationExtension",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ResolverValidationExtension__factory>;
+    getContractFactory(
+      name: "ITronEscrow",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ITronEscrow__factory>;
+    getContractFactory(
+      name: "TronEscrowDst",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TronEscrowDst__factory>;
+    getContractFactory(
+      name: "TronEscrowFactory",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TronEscrowFactory__factory>;
+    getContractFactory(
+      name: "TronEscrowSrc",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TronEscrowSrc__factory>;
 
     getContractAt(
       name: "IDaiLikePermit",
@@ -986,6 +1002,26 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.ResolverValidationExtension>;
+    getContractAt(
+      name: "ITronEscrow",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ITronEscrow>;
+    getContractAt(
+      name: "TronEscrowDst",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.TronEscrowDst>;
+    getContractAt(
+      name: "TronEscrowFactory",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.TronEscrowFactory>;
+    getContractAt(
+      name: "TronEscrowSrc",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.TronEscrowSrc>;
 
     deployContract(
       name: "IDaiLikePermit",
@@ -1419,6 +1455,22 @@ declare module "hardhat/types/runtime" {
       name: "ResolverValidationExtension",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ResolverValidationExtension>;
+    deployContract(
+      name: "ITronEscrow",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ITronEscrow>;
+    deployContract(
+      name: "TronEscrowDst",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronEscrowDst>;
+    deployContract(
+      name: "TronEscrowFactory",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronEscrowFactory>;
+    deployContract(
+      name: "TronEscrowSrc",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronEscrowSrc>;
 
     deployContract(
       name: "IDaiLikePermit",
@@ -1960,6 +2012,26 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ResolverValidationExtension>;
+    deployContract(
+      name: "ITronEscrow",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ITronEscrow>;
+    deployContract(
+      name: "TronEscrowDst",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronEscrowDst>;
+    deployContract(
+      name: "TronEscrowFactory",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronEscrowFactory>;
+    deployContract(
+      name: "TronEscrowSrc",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronEscrowSrc>;
 
     // default types
     getContractFactory(
