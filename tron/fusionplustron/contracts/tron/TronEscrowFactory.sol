@@ -213,7 +213,7 @@ contract TronEscrowFactory is IEscrowFactory {
             // Rescue TRC20
             IERC20(token).safeTransfer(to, amount);
         }
-    }
+    }   
 
     /**
      * @dev Allow factory to receive TRX for escrow deployments

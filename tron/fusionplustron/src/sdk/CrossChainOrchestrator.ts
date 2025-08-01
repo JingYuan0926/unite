@@ -5,13 +5,45 @@ import { ConfigManager } from "../utils/ConfigManager";
 import { ScopedLogger } from "../utils/Logger";
 import { OrderStatus } from "@1inch/fusion-sdk";
 
-// Official Resolver ABI (simplified for atomic execution)
+// Official Resolver ABI with CORRECTED immutables format
+// Address = uint256, Timelocks = uint256 (not complex structs)
 const RESOLVER_ABI = [
-  "function deploySrc(tuple(bytes32 secretHash, uint256 srcChain, uint256 dstChain, address srcAsset, address dstAsset, uint256 srcAmount, uint256 dstAmount, uint256 nonce, address srcBeneficiary, address dstBeneficiary, address srcCancellationBeneficiary, address dstCancellationBeneficiary, uint256 timelocks, uint256 safetyDeposit) immutables, tuple(uint256 salt, address maker, address receiver, address makerAsset, address takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits, bytes args) payable",
-  "function deployDst(tuple(bytes32 secretHash, uint256 srcChain, uint256 dstChain, address srcAsset, address dstAsset, uint256 srcAmount, uint256 dstAmount, uint256 nonce, address srcBeneficiary, address dstBeneficiary, address srcCancellationBeneficiary, address dstCancellationBeneficiary, uint256 timelocks, uint256 safetyDeposit) dstImmutables, uint256 srcCancellationTimestamp) payable",
-  "function withdraw(address escrow, bytes32 secret, tuple(bytes32 secretHash, uint256 srcChain, uint256 dstChain, address srcAsset, address dstAsset, uint256 srcAmount, uint256 dstAmount, uint256 nonce, address srcBeneficiary, address dstBeneficiary, address srcCancellationBeneficiary, address dstCancellationBeneficiary, uint256 timelocks, uint256 safetyDeposit) immutables)",
-  "function cancel(address escrow, tuple(bytes32 secretHash, uint256 srcChain, uint256 dstChain, address srcAsset, address dstAsset, uint256 srcAmount, uint256 dstAmount, uint256 nonce, address srcBeneficiary, address dstBeneficiary, address srcCancellationBeneficiary, address dstCancellationBeneficiary, uint256 timelocks, uint256 safetyDeposit) immutables)",
+  // function deploySrc(IBaseEscrow.Immutables calldata immutables, IOrderMixin.Order calldata order, bytes32 r, bytes32 vs, uint256 amount, TakerTraits takerTraits, bytes calldata args)
+  "function deploySrc((bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) immutables, (uint256,address,address,address,address,uint256,uint256,uint256) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits, bytes args) payable",
+  "function deployDst((bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) dstImmutables, uint256 srcCancellationTimestamp) payable",
+  "function withdraw(address escrow, bytes32 secret, (bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) immutables)",
+  "function cancel(address escrow, (bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) immutables)",
+  "event EscrowCreated(address indexed escrow, bytes32 indexed orderHash)",
 ];
+
+// EscrowFactory ABI with correct format for direct testing
+const ESCROW_FACTORY_ABI = [
+  "function addressOfEscrowSrc((bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256)) view returns (address)",
+  "function createSrcEscrow((bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256)) payable returns (address)",
+];
+
+// Helper functions for encoding Address and Timelocks as uint256
+function encodeAddress(addr: string): bigint {
+  return BigInt(addr);
+}
+
+function encodeTimelocks(timelocks: {
+  deployedAt: number;
+  srcWithdrawal: number;
+  srcCancellation: number;
+  dstWithdrawal: number;
+  dstCancellation: number;
+}): bigint {
+  // Pack all timelock values into a single uint256
+  // Based on TimelocksLib.sol implementation
+  let packed = BigInt(0);
+  packed |= BigInt(timelocks.deployedAt) << BigInt(0); // bits 0-63
+  packed |= BigInt(timelocks.srcWithdrawal) << BigInt(64); // bits 64-127
+  packed |= BigInt(timelocks.srcCancellation) << BigInt(128); // bits 128-191
+  packed |= BigInt(timelocks.dstWithdrawal) << BigInt(192); // bits 192-255
+  // Note: dstCancellation is computed from other values in the library
+  return packed;
+}
 
 export interface SwapParams {
   ethAmount: bigint;
@@ -83,70 +115,229 @@ export class CrossChainOrchestrator {
     const { secret, secretHash } = this.tronExtension.generateSecretHash();
     this.logger.debug("Generated atomic swap secret", { secretHash });
 
-    // Step 2: Get quote from official 1inch API
+    // Step 2: Create mock quote for cross-chain swap (API doesn't support custom tokens)
     const ethSigner = this.config.getEthSigner(params.ethPrivateKey);
-    const quote = await this.official1inch.getETHtoTRXQuote(
-      params.ethAmount,
-      ethSigner.address
+    this.logger.warn(
+      "Creating mock quote for cross-chain swap - 1inch API doesn't support custom tokens"
     );
 
-    // Step 3: Create cross-chain order
-    const preparedOrder = await this.official1inch.createCrossChainOrder({
-      fromTokenAddress: this.config.getWethAddress(), // WETH (required by 1inch API)
-      toTokenAddress: this.config.getTrxRepresentationAddress(), // TRX representation
-      amount: params.ethAmount.toString(),
-      fromAddress: ethSigner.address,
-      dstChainId: this.config.getTronChainId(),
-      enableEstimate: true,
-    });
+    const mockRate = 2000n; // 1 ETH = 2000 TRX (example rate)
+    const trxAmount = params.ethAmount * mockRate;
 
-    // Step 4: Prepare immutables for escrow creation
+    const quote = {
+      fromTokenAmount: params.ethAmount.toString(),
+      toTokenAmount: trxAmount.toString(),
+      quoteId: `cross-chain-${Date.now()}`,
+    };
+
+    // Step 3: Create cross-chain order manually (bypassing 1inch API)
+    this.logger.info("Creating cross-chain order structure manually");
+
+    const preparedOrder = {
+      order: {
+        salt: BigInt(Date.now()),
+        maker: ethSigner.address,
+        receiver: ethSigner.address, // Receiver of the ETH (for cancellation)
+        makerAsset: ethers.ZeroAddress, // ETH
+        takerAsset: this.config.getTrxRepresentationAddress(), // TRX representation
+        makingAmount: params.ethAmount,
+        takingAmount: trxAmount,
+        makerTraits: 0n, // Default traits
+      },
+      quoteId: quote.quoteId,
+    };
+
+    // Step 4: Prepare immutables for escrow creation (matching IBaseEscrow.Immutables)
     const timelock = params.timelock || this.config.getDefaultTimelock();
     const nonce = ethers.hexlify(ethers.randomBytes(32));
     const safetyDeposit = ethers.parseEther("0.01"); // 0.01 ETH safety deposit
 
-    const immutables = {
-      secretHash: secretHash,
-      srcChain: this.config.getEthChainId(),
-      dstChain: this.config.getTronChainId(),
-      srcAsset: ethers.ZeroAddress, // ETH
-      dstAsset: this.config.getTrxRepresentationAddress(), // TRX representation
-      srcAmount: params.ethAmount,
-      dstAmount: ethers.parseUnits(quote.toTokenAmount, 6), // TRX has 6 decimals
-      nonce: nonce,
-      srcBeneficiary: params.tronRecipient, // Will receive TRX
-      dstBeneficiary: ethSigner.address, // Will receive ETH back if needed
-      srcCancellationBeneficiary: ethSigner.address,
-      dstCancellationBeneficiary: params.tronRecipient,
-      timelocks: this.tronExtension.createPackedTimelocks(timelock),
-      safetyDeposit: safetyDeposit,
+    // Create order hash first (needed for immutables)
+    const orderHash = ethers.solidityPackedKeccak256(
+      [
+        "uint256",
+        "address",
+        "address",
+        "address",
+        "address",
+        "uint256",
+        "uint256",
+        "uint256",
+      ],
+      [
+        preparedOrder.order.salt,
+        preparedOrder.order.maker,
+        preparedOrder.order.receiver,
+        preparedOrder.order.makerAsset,
+        preparedOrder.order.takerAsset,
+        preparedOrder.order.makingAmount,
+        preparedOrder.order.takingAmount,
+        preparedOrder.order.makerTraits || 0,
+      ]
+    );
+
+    // Create properly encoded immutables for the corrected ABI
+    const immutables = [
+      orderHash, // bytes32 orderHash
+      secretHash, // bytes32 hashlock
+      encodeAddress(ethSigner.address), // uint256 maker (encoded Address)
+      encodeAddress(ethSigner.address), // uint256 taker (encoded Address)
+      encodeAddress(ethers.ZeroAddress), // uint256 token (encoded Address for ETH)
+      params.ethAmount, // uint256 amount
+      safetyDeposit, // uint256 safetyDeposit
+      encodeTimelocks({
+        // uint256 timelocks (packed)
+        deployedAt: Math.floor(Date.now() / 1000),
+        srcWithdrawal: Math.floor(Date.now() / 1000) + 600, // 10 min
+        srcCancellation: Math.floor(Date.now() / 1000) + timelock,
+        dstWithdrawal: Math.floor(Date.now() / 1000) + 300, // 5 min
+        dstCancellation: Math.floor(Date.now() / 1000) + timelock - 300,
+      }),
+    ];
+
+    // Step 5: Create EIP-712 signature for the order
+    this.logger.logSwapProgress("Creating EIP-712 signature for order");
+
+    const domain = {
+      name: "1inch Limit Order Protocol",
+      version: "4",
+      chainId: this.config.ETH_CHAIN_ID,
+      verifyingContract: this.config.OFFICIAL_LOP_ADDRESS,
     };
 
-    // Step 5: Execute atomic order fill + escrow creation via Resolver
+    const types = {
+      Order: [
+        { name: "salt", type: "uint256" },
+        { name: "maker", type: "address" },
+        { name: "receiver", type: "address" },
+        { name: "makerAsset", type: "address" },
+        { name: "takerAsset", type: "address" },
+        { name: "makingAmount", type: "uint256" },
+        { name: "takingAmount", type: "uint256" },
+        { name: "makerTraits", type: "uint256" },
+      ],
+    };
+
+    const signature = await ethSigner.signTypedData(
+      domain,
+      types,
+      preparedOrder.order
+    );
+    const sig = ethers.Signature.from(signature);
+    const r = sig.r;
+    const vs = sig.yParityAndS;
+
+    // Step 6: Execute atomic order fill + escrow creation via Resolver
     this.logger.logSwapProgress(
-      "Executing atomic order fill + escrow creation"
+      "Executing atomic order fill + escrow creation via Resolver.deploySrc"
     );
 
     const resolverWithSigner = this.resolverContract.connect(ethSigner);
 
-    // Note: This is a simplified implementation for demo purposes
-    // In production, you would need to properly interface with the actual contracts
+    // Send the total value: swap amount + safety deposit in ONE atomic transaction
+    const totalValue = params.ethAmount + safetyDeposit;
 
-    // For now, we'll simulate the atomic execution
-    this.logger.warn("Atomic execution simulation - not yet fully implemented");
+    this.logger.debug("Calling deploySrc with detailed parameters", {
+      immutables: {
+        orderHash: immutables[0],
+        hashlock: immutables[1],
+        maker: immutables[2].toString(),
+        taker: immutables[3].toString(),
+        token: immutables[4].toString(),
+        amount: immutables[5].toString(),
+        safetyDeposit: immutables[6].toString(),
+        timelocks: immutables[7].toString(),
+      },
+      order: {
+        salt: preparedOrder.order.salt.toString(),
+        maker: preparedOrder.order.maker,
+        receiver: preparedOrder.order.receiver,
+        makerAsset: preparedOrder.order.makerAsset,
+        takerAsset: preparedOrder.order.takerAsset,
+        makingAmount: preparedOrder.order.makingAmount.toString(),
+        takingAmount: preparedOrder.order.takingAmount.toString(),
+        makerTraits: (preparedOrder.order.makerTraits || 0).toString(),
+      },
+      signature: {
+        r,
+        vs,
+      },
+      amount: params.ethAmount.toString(),
+      takerTraits: "0", // Default takerTraits
+      args: "0x", // Empty args
+      totalValue: totalValue.toString(),
+      note: "Total value includes both swap amount and safety deposit in ONE atomic transaction",
+    });
 
-    // This would be the actual contract call in production:
-    // const deployTx = await resolverWithSigner.deploySrc(...)
+    // Convert order to array format for corrected ABI
+    const orderArray = [
+      preparedOrder.order.salt,
+      preparedOrder.order.maker,
+      preparedOrder.order.receiver,
+      preparedOrder.order.makerAsset,
+      preparedOrder.order.takerAsset,
+      preparedOrder.order.makingAmount,
+      preparedOrder.order.takingAmount,
+      preparedOrder.order.makerTraits || 0,
+    ];
 
-    // Simulate transaction for demo purposes
-    const mockTxHash = "0x" + ethers.hexlify(ethers.randomBytes(32)).slice(2);
-    const deployTx = {
-      hash: mockTxHash,
-      wait: async () => ({
-        transactionHash: mockTxHash,
-        blockNumber: 123456,
-      }),
-    };
+    // First try a static call to see if we can get better error details
+    try {
+      this.logger.info("Testing deploySrc with callStatic first...");
+      await (resolverWithSigner as any).deploySrc.staticCall(
+        immutables,
+        orderArray,
+        r,
+        vs,
+        params.ethAmount,
+        0,
+        "0x",
+        { value: totalValue }
+      );
+      this.logger.info(
+        "Static call succeeded, proceeding with real transaction"
+      );
+    } catch (staticError: any) {
+      this.logger.error("Static call failed - this reveals the revert reason", {
+        error: staticError.message,
+        code: staticError.code,
+        data: staticError.data,
+        reason: staticError.reason,
+      });
+      throw new Error(`Static call failed: ${staticError.message}`);
+    }
+
+    // Execute the real contract call with detailed error handling
+    let deployTx;
+    try {
+      deployTx = await (resolverWithSigner as any).deploySrc(
+        immutables,
+        orderArray,
+        r,
+        vs,
+        params.ethAmount, // amount to fill
+        0, // takerTraits (default)
+        "0x", // args (empty for basic swap)
+        {
+          value: totalValue, // ETH amount + safety deposit
+          gasLimit: 300000, // High gas limit for complex transaction
+        }
+      );
+    } catch (error: any) {
+      this.logger.error("deploySrc transaction failed", {
+        error: error.message,
+        code: error.code,
+        data: error.data,
+        reason: error.reason,
+      });
+      throw error;
+    }
+
+    this.logger.logTransaction(
+      "ethereum",
+      deployTx.hash,
+      "Atomic deploySrc execution"
+    );
 
     const deployReceipt = await deployTx.wait();
     this.logger.logTransaction(
@@ -155,19 +346,52 @@ export class CrossChainOrchestrator {
       "Atomic Order Fill + Escrow Creation"
     );
 
-    // Step 6: Calculate escrow address (deterministic)
-    const ethEscrowAddress = await this.calculateEscrowAddress(immutables);
+    // Step 7: Parse event logs to get the real escrow address
+    let ethEscrowAddress: string | null = null;
+
+    if (deployReceipt && deployReceipt.logs) {
+      for (const log of deployReceipt.logs) {
+        try {
+          const parsedLog = resolverWithSigner.interface.parseLog(log);
+          if (parsedLog && parsedLog.name === "EscrowCreated") {
+            ethEscrowAddress = parsedLog.args.escrow;
+            this.logger.success("Escrow created event found", {
+              escrowAddress: ethEscrowAddress,
+              orderHash: parsedLog.args.orderHash,
+            });
+            break;
+          }
+        } catch (e) {
+          // Not our event, continue
+        }
+      }
+    }
+
+    // Fallback to deterministic calculation if event not found
+    if (!ethEscrowAddress) {
+      this.logger.warn(
+        "EscrowCreated event not found, calculating deterministically"
+      );
+      ethEscrowAddress = await this.calculateEscrowAddress(immutables);
+    }
+
     this.logger.success("Ethereum escrow created", {
       address: ethEscrowAddress,
+      txHash: deployTx.hash,
+      blockNumber: deployReceipt?.blockNumber,
+      gasUsed: deployReceipt?.gasUsed?.toString(),
     });
 
-    // Step 7: Submit order to 1inch network for tracking
-    const orderInfo = await this.official1inch.submitOrder(
-      preparedOrder.order,
-      preparedOrder.quoteId
+    // Step 8: Create order info for tracking (not submitted to 1inch network for cross-chain)
+    this.logger.info(
+      "Cross-chain order created locally - not submitted to 1inch network"
     );
+    const orderInfo = {
+      orderHash: orderHash,
+      signature: signature,
+    };
 
-    // Step 8: Deploy Tron destination escrow
+    // Step 9: Deploy Tron destination escrow
     this.logger.logSwapProgress("Deploying Tron destination escrow");
 
     const tronParams: TronEscrowParams = {

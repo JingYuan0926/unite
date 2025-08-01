@@ -16,5 +16,16 @@
     "status": "COMPLETED",
     "gasUsed": "54536",
     "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F"
+  },
+  "DemoResolver": {
+    "address": "0xA7fa9C3a4BDBa7A2d29F8A2bC62Cf75c69C4bf3F",
+    "constructorArgs": [
+      "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0",
+      "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA"
+    ],
+    "deployedAt": "2025-08-01T16:12:18.689Z",
+    "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
+    "network": "sepolia",
+    "purpose": "Permissionless solver for atomic swap demonstration"
   }
 }

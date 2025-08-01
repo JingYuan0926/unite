@@ -85,41 +85,192 @@ export class TronExtension {
         .contract()
         .at(this.config.TRON_ESCROW_FACTORY_ADDRESS);
 
-      // Prepare the immutables struct
-      const immutables = {
-        secretHash: params.secretHash,
-        srcChain: params.srcChain,
-        dstChain: params.dstChain,
-        srcAsset: params.srcAsset,
-        dstAsset: params.dstAsset,
-        srcAmount: params.srcAmount,
-        dstAmount: params.dstAmount,
-        nonce: params.nonce,
-        srcBeneficiary: params.srcBeneficiary,
-        dstBeneficiary: params.dstBeneficiary,
-        srcCancellationBeneficiary: params.srcCancellationBeneficiary,
-        dstCancellationBeneficiary: params.dstCancellationBeneficiary,
-        timelocks: this.createTimelocks(params.timelock),
-        safetyDeposit: params.safetyDeposit,
+      // Create proper IBaseEscrow.Immutables struct matching the Solidity contract
+      // Generate orderHash from TronEscrowParams (missing from our interface)
+      const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+      const orderHash = ethers.keccak256(
+        abiCoder.encode(
+          [
+            "bytes32",
+            "uint256",
+            "uint256",
+            "string",
+            "string",
+            "string",
+            "string",
+          ],
+          [
+            params.secretHash,
+            params.srcChain,
+            params.dstChain,
+            params.srcAsset,
+            params.dstAsset,
+            params.srcAmount,
+            params.dstAmount,
+          ]
+        )
+      );
+
+      // Helper function to convert address to uint256 (Address type)
+      const addressToUint256 = (address: string): string => {
+        if (address.startsWith("0x")) {
+          // Ethereum address - convert to uint256
+          return BigInt(address).toString();
+        } else {
+          // TRON address - convert base58 to approximate uint256
+          // For demo purposes, using hash-based conversion
+          return BigInt(
+            "0x" + ethers.keccak256(ethers.toUtf8Bytes(address)).slice(2, 42)
+          ).toString();
+        }
       };
+
+      // Create packed timelocks (NOT the complex object)
+      const packedTimelocks = this.createPackedTimelocks(params.timelock);
+
+      // Map TronEscrowParams to IBaseEscrow.Immutables (8 fields exactly)
+      const immutables = {
+        orderHash: orderHash, // bytes32
+        hashlock: params.secretHash, // bytes32 (secretHash)
+        maker: addressToUint256(params.srcBeneficiary), // Address as uint256
+        taker: addressToUint256(params.dstBeneficiary), // Address as uint256
+        token: addressToUint256(
+          params.dstAsset === "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR"
+            ? "0x0000000000000000000000000000000000000000"
+            : params.dstAsset
+        ), // Address as uint256 (0x0 for native TRX)
+        amount: params.dstAmount, // uint256
+        safetyDeposit: params.safetyDeposit, // uint256
+        timelocks: packedTimelocks.toString(), // Timelocks as uint256 string
+      };
+
+      this.logger.debug("Created IBaseEscrow.Immutables", {
+        orderHash,
+        immutablesFields: Object.keys(immutables).length,
+        packedTimelocks: packedTimelocks.toString(),
+      });
 
       // Calculate source cancellation timestamp
       const srcCancellationTimestamp =
         Math.floor(Date.now() / 1000) + params.timelock;
 
-      // Deploy destination escrow
-      const result = await factoryContract
-        .createDstEscrow(immutables, srcCancellationTimestamp)
+      // Calculate total value needed for native TRX
+      // For native TRX: callValue = amount + safetyDeposit
+      // For TRC20 tokens: callValue = safetyDeposit only
+      const isNativeTRX =
+        params.dstAsset === "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR";
+      const totalCallValue = isNativeTRX
+        ? (
+            parseInt(params.dstAmount) + parseInt(params.safetyDeposit)
+          ).toString()
+        : params.safetyDeposit;
+
+      this.logger.debug("Calculated call value", {
+        isNativeTRX,
+        dstAmount: params.dstAmount,
+        safetyDeposit: params.safetyDeposit,
+        totalCallValue,
+      });
+
+      // Use TronWeb contract wrapper for proper struct encoding
+      // Based on web search research, this is the recommended approach for struct parameters
+
+      // Define the correct ABI for createDstEscrow
+      const ESCROW_FACTORY_ABI = [
+        {
+          inputs: [
+            {
+              components: [
+                { type: "bytes32", name: "orderHash" },
+                { type: "bytes32", name: "hashlock" },
+                { type: "uint256", name: "maker" }, // Address -> uint256
+                { type: "uint256", name: "taker" }, // Address -> uint256
+                { type: "uint256", name: "token" }, // Address -> uint256
+                { type: "uint256", name: "amount" },
+                { type: "uint256", name: "safetyDeposit" },
+                { type: "uint256", name: "timelocks" }, // Timelocks -> uint256
+              ],
+              internalType: "struct IBaseEscrow.Immutables",
+              name: "dstImmutables",
+              type: "tuple",
+            },
+            { type: "uint256", name: "srcCancellationTimestamp" },
+          ],
+          name: "createDstEscrow",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+      ];
+
+      // Create contract instance with ABI
+      const contract = await tronWeb.contract(
+        ESCROW_FACTORY_ABI,
+        this.config.TRON_ESCROW_FACTORY_ADDRESS
+      );
+
+      // Convert immutables to array format (TronWeb expects arrays for structs)
+      const immutablesArray = [
+        immutables.orderHash,
+        immutables.hashlock,
+        immutables.maker,
+        immutables.taker,
+        immutables.token,
+        immutables.amount,
+        immutables.safetyDeposit,
+        immutables.timelocks,
+      ];
+
+      this.logger.debug("Using contract wrapper approach", {
+        immutablesArrayLength: immutablesArray.length,
+        srcCancellationTimestamp,
+        totalCallValue,
+      });
+
+      // Call the contract method using the wrapper
+      const result = await contract
+        .createDstEscrow(immutablesArray, srcCancellationTimestamp)
         .send({
-          feeLimit: 100000000, // 100 TRX fee limit
-          callValue: params.safetyDeposit, // Send safety deposit
+          feeLimit: 100000000,
+          callValue: totalCallValue,
         });
 
-      const txHash = result.txid || result.transaction?.txID;
+      // TronWeb .send() returns the transaction hash directly as a string
+      const txHash =
+        typeof result === "string"
+          ? result
+          : result.txid || result.transaction?.txID;
+
+      console.log("✅ TRON Transaction Hash:", txHash);
+
+      // For contract creation, we need to compute the contract address
+      // This is a deterministic calculation based on the factory and the transaction
+      let contractAddress: string | undefined;
+
+      if (txHash) {
+        // Wait a moment for the transaction to be processed
+        console.log("⏳ Waiting for transaction confirmation...");
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Try to get transaction info to find the created contract address
+        try {
+          const txInfo = await this.tronWeb.trx.getTransactionInfo(txHash);
+          console.log("🔍 Transaction Info:", JSON.stringify(txInfo, null, 2));
+
+          // Look for contract address in various possible locations
+          contractAddress =
+            txInfo.contract_address ||
+            txInfo.contractAddress ||
+            txInfo.internal_transactions?.[0]?.contract_address;
+        } catch (infoError) {
+          console.log("⚠️ Could not fetch transaction info:", infoError);
+          // We'll proceed without the contract address for now
+        }
+      }
 
       this.logger.success("Tron escrow destination deployed", {
         txHash,
-        contractAddress: result.contract_address,
+        contractAddress,
       });
 
       this.logger.logTransaction("tron", txHash, "Escrow Dst Deployment");
@@ -127,7 +278,7 @@ export class TronExtension {
       return {
         txHash,
         success: true,
-        contractAddress: result.contract_address,
+        contractAddress,
       };
     } catch (error) {
       this.logger.failure("Failed to deploy Tron escrow destination", error);
@@ -158,7 +309,13 @@ export class TronExtension {
         feeLimit: 50000000, // 50 TRX fee limit
       });
 
-      const txHash = result.txid || result.transaction?.txID;
+      // TronWeb .send() returns the transaction hash directly as a string
+      const txHash =
+        typeof result === "string"
+          ? result
+          : result.txid || result.transaction?.txID;
+
+      console.log("✅ TRON Withdrawal Transaction Hash:", txHash);
 
       this.logger.success("Withdrawn from Tron escrow", { txHash });
       this.logger.logTransaction("tron", txHash, "Escrow Withdrawal");

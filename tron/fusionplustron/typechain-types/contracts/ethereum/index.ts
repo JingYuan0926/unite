@@ -7,5 +7,6 @@ import type * as officialLop from "./official-lop";
 export type { officialLop };
 import type * as temporaryExtensions from "./temporary-extensions";
 export type { temporaryExtensions };
+export type { DemoResolver } from "./DemoResolver";
 export type { Resolver } from "./Resolver";
 export type { TronFusionExtension } from "./TronFusionExtension";

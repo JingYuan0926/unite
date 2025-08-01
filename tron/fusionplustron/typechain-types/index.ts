@@ -88,6 +88,8 @@ export type { ShortStrings } from "./@openzeppelin/contracts/utils/ShortStrings"
 export { ShortStrings__factory } from "./factories/@openzeppelin/contracts/utils/ShortStrings__factory";
 export type { Strings } from "./@openzeppelin/contracts/utils/Strings";
 export { Strings__factory } from "./factories/@openzeppelin/contracts/utils/Strings__factory";
+export type { DemoResolver } from "./contracts/ethereum/DemoResolver";
+export { DemoResolver__factory } from "./factories/contracts/ethereum/DemoResolver__factory";
 export type { BaseEscrow } from "./contracts/ethereum/official-escrow/BaseEscrow";
 export { BaseEscrow__factory } from "./factories/contracts/ethereum/official-escrow/BaseEscrow__factory";
 export type { BaseEscrowFactory } from "./contracts/ethereum/official-escrow/BaseEscrowFactory";
