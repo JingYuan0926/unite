@@ -303,7 +303,7 @@ class EthXrpCrossChainOrder {
 
         // XRP escrow data
         xrpl: {
-          maker: "rXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Will be replaced by xrpl local server
+          maker: "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW", // Funded XRPL testnet address for receiving XRP
           taker: this.ethWallet.address, // ETH wallet will receive XRP
           token: "0x0000000000000000000000000000000000000000", // XRP native
           amount: BigInt(config.swap.dstAmount), // 1 XRP in drops as BigInt
@@ -555,27 +555,7 @@ class EthXrpCrossChainOrder {
 
       console.log(`✅ XRPL Escrow created with ID: ${xrplEscrow.escrowId}`);
       console.log(`📍 Escrow wallet address: ${xrplEscrow.walletAddress}`);
-
-      // The XRPL server automatically funds the wallet with testnet faucet,
-      // but we need to mark the escrow as "funded" by calling the fund endpoint
-      // Since the wallet is auto-funded, we'll use a dummy transaction hash
-      console.log(`💰 Auto-funding XRPL escrow...`);
-
-      try {
-        const fundingResult = await this.xrplClient.fundEscrow(
-          xrplEscrow.escrowId,
-          {
-            fromAddress: xrplEscrow.walletAddress,
-            txHash: "auto-funded-by-testnet-faucet", // Dummy hash since auto-funded
-          }
-        );
-        console.log(`✅ XRPL Escrow auto-funded successfully`);
-        order.xrpl.fundingResult = fundingResult;
-      } catch (fundingError) {
-        console.log(`⚠️  XRPL Escrow funding failed: ${fundingError.message}`);
-        console.log(`💡 The escrow was created but may need manual funding`);
-        // Don't throw error, continue with the process
-      }
+      console.log(`💰 XRPL Escrow auto-funded by testnet faucet`);
 
       order.xrpl.escrowId = xrplEscrow.escrowId;
       order.xrpl.walletAddress = xrplEscrow.walletAddress;
@@ -772,9 +752,22 @@ class EthXrpCrossChainOrder {
       );
       console.log("🔧 Debug: Nonce:", nonce);
 
+      // Add extra validation before sending
+      console.log("🔧 Debug: Final validation before sending:");
+      console.log("  Transaction object keys:", Object.keys(transactionObject));
+      console.log("  Data field type:", typeof transactionObject.data);
+      console.log(
+        "  Data field content (first 50 chars):",
+        transactionObject.data.substring(0, 50)
+      );
+
       const tx = await this.ethWallet.sendTransaction(transactionObject);
 
       console.log(`⏳ Withdrawal transaction submitted: ${tx.hash}`);
+      console.log("🔧 Debug: Submitted transaction details:");
+      console.log("  TX data field:", tx.data || "EMPTY");
+      console.log("  TX data length:", (tx.data || "").length);
+
       const receipt = await tx.wait();
       console.log(
         `✅ Ethereum withdrawal successful! Block: ${receipt.blockNumber}`
@@ -1044,9 +1037,9 @@ async function startCrossChainSwapWithExecution() {
     const currentTime = Math.floor(Date.now() / 1000);
     const dstWithdrawalTime = order.timelocks[4];
     const waitTime = Math.max(
-      0,
-      (dstWithdrawalTime - currentTime) * 1000 + 5000
-    ); // Wait for window + 5 seconds buffer
+      10000, // Always wait at least 10 seconds
+      (dstWithdrawalTime - currentTime) * 1000 + 10000
+    ); // Wait for window + 10 seconds buffer
     console.log(
       `⏰ Waiting ${waitTime / 1000} seconds for withdrawal window...`
     );
