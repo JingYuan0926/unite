@@ -22,6 +22,8 @@ export { balanceAPI } from "./functions/balanceAPI";
 export { fusionAPI } from "./functions/fusionAPI";
 export { fusionPlusAPI } from "./functions/fusionPlusAPI";
 export { orderbookAPI } from "./functions/orderbookAPI";
+export { nftAPI } from "./functions/nftAPI";
+export { domainAPI } from "./functions/domainAPI";
 
 // Type exports
 export type {
@@ -185,6 +187,27 @@ export type {
   AccountAddress,
   FeeInfoResponse
 } from "./functions/orderbookAPI";
+
+export type {
+  AssetContract,
+  NftV2Model,
+  AssetsResponse as NftAssetsResponse,
+  Creator,
+  User,
+  Collection,
+  Traits,
+  SingleNft
+} from "./functions/nftAPI";
+
+export type {
+  ProviderResponse,
+  ResponseV2Dto,
+  ProviderReverseResponse,
+  ResponseReverseV2Dto,
+  ResponseBatchV2ReturnTypeDto,
+  ProviderResponseWithAvatar,
+  AvatarsResponse
+} from "./functions/domainAPI";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";

@@ -1,0 +1,32 @@
+{
+  "name": "domainAPI",
+  "description": "Access 1inch Domains API for blockchain domain services. This API enables seamless interaction with blockchain-based domain services, providing tools to resolve and retrieve domain information for addresses, as well as access provider data. EXAMPLES: For looking up a domain: {\"endpoint\": \"lookupDomain\", \"name\": \"vitalik.eth\"}. For reverse lookup: {\"endpoint\": \"reverseLookup\", \"address\": \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\"}. For batch reverse lookup: {\"endpoint\": \"reverseLookupBatch\", \"addresses\": [\"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\", \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\"]}. For getting provider data with avatar: {\"endpoint\": \"getProvidersDataWithAvatar\", \"addressOrDomain\": \"vitalik.eth\"}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["lookupDomain", "reverseLookup", "reverseLookupBatch", "getProvidersDataWithAvatar"],
+      "description": "REQUIRED: The Domains API endpoint to call. Use 'lookupDomain' to get domain information for a given domain name, 'reverseLookup' to get domain information for a given address, 'reverseLookupBatch' to get domain information for multiple addresses, 'getProvidersDataWithAvatar' to get provider data with avatar for a given address or domain."
+    },
+    "name": {
+      "type": "string",
+      "description": "Domain name (required for lookupDomain). Example: 'vitalik.eth'"
+    },
+    "address": {
+      "type": "string",
+      "description": "Blockchain address (required for reverseLookup). Address in hexadecimal format. Example: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'"
+    },
+    "addresses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of blockchain addresses (required for reverseLookupBatch). Array of addresses in hexadecimal format."
+    },
+    "addressOrDomain": {
+      "type": "string",
+      "description": "Address or domain name (required for getProvidersDataWithAvatar). Can be either a blockchain address or a domain name. Example: 'vitalik.eth' or '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'"
+    }
+  },
+  "required": ["endpoint"]
+} 
