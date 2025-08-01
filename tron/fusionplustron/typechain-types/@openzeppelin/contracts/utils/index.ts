@@ -11,5 +11,6 @@ export type { Create2 } from "./Create2";
 export type { Errors } from "./Errors";
 export type { Nonces } from "./Nonces";
 export type { Pausable } from "./Pausable";
+export type { ReentrancyGuard } from "./ReentrancyGuard";
 export type { ShortStrings } from "./ShortStrings";
 export type { Strings } from "./Strings";

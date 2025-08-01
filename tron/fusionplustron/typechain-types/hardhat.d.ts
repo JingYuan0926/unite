@@ -158,6 +158,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Pausable__factory>;
     getContractFactory(
+      name: "ReentrancyGuard",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ReentrancyGuard__factory>;
+    getContractFactory(
       name: "ShortStrings",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ShortStrings__factory>;
@@ -446,6 +450,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ResolverValidationExtension__factory>;
     getContractFactory(
+      name: "TronFusionExtension",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TronFusionExtension__factory>;
+    getContractFactory(
       name: "ITronEscrow",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ITronEscrow__factory>;
@@ -643,6 +651,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.Pausable>;
     getContractAt(
+      name: "ReentrancyGuard",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ReentrancyGuard>;
+    getContractAt(
       name: "ShortStrings",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -1002,6 +1015,11 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.ResolverValidationExtension>;
+    getContractAt(
+      name: "TronFusionExtension",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.TronFusionExtension>;
     getContractAt(
       name: "ITronEscrow",
       address: string | ethers.Addressable,
@@ -1168,6 +1186,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.Pausable>;
     deployContract(
+      name: "ReentrancyGuard",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ReentrancyGuard>;
+    deployContract(
       name: "ShortStrings",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ShortStrings>;
@@ -1455,6 +1477,10 @@ declare module "hardhat/types/runtime" {
       name: "ResolverValidationExtension",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ResolverValidationExtension>;
+    deployContract(
+      name: "TronFusionExtension",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronFusionExtension>;
     deployContract(
       name: "ITronEscrow",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -1653,6 +1679,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.Pausable>;
     deployContract(
+      name: "ReentrancyGuard",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ReentrancyGuard>;
+    deployContract(
       name: "ShortStrings",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -2012,6 +2043,11 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ResolverValidationExtension>;
+    deployContract(
+      name: "TronFusionExtension",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.TronFusionExtension>;
     deployContract(
       name: "ITronEscrow",
       args: any[],

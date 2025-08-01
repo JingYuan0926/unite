@@ -8,6 +8,13 @@
     "EscrowFactory": "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA",
     "EscrowSrcImplementation": "0x890D63E67e7537e94855D3634f8D6A62f95eF928",
     "EscrowDstImplementation": "0xe5De9De3B8fB5AD8C75C441327f50Cd6e19D46D8",
-    "Resolver": "0xEdC45bD18674BdD4A22D4904e6252A8DA9e29946"
+    "Resolver": "0xEdC45bD18674BdD4A22D4904e6252A8DA9e29946",
+    "TronFusionExtension": "0x6997AC00dB9159A9331863d73a5CdA9fc3b47df1"
+  },
+  "phase4": {
+    "timestamp": "2025-08-01T13:17:29.790Z",
+    "status": "COMPLETED",
+    "gasUsed": "54536",
+    "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F"
   }
 }

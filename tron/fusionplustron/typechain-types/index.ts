@@ -82,6 +82,8 @@ export type { Nonces } from "./@openzeppelin/contracts/utils/Nonces";
 export { Nonces__factory } from "./factories/@openzeppelin/contracts/utils/Nonces__factory";
 export type { Pausable } from "./@openzeppelin/contracts/utils/Pausable";
 export { Pausable__factory } from "./factories/@openzeppelin/contracts/utils/Pausable__factory";
+export type { ReentrancyGuard } from "./@openzeppelin/contracts/utils/ReentrancyGuard";
+export { ReentrancyGuard__factory } from "./factories/@openzeppelin/contracts/utils/ReentrancyGuard__factory";
 export type { ShortStrings } from "./@openzeppelin/contracts/utils/ShortStrings";
 export { ShortStrings__factory } from "./factories/@openzeppelin/contracts/utils/ShortStrings__factory";
 export type { Strings } from "./@openzeppelin/contracts/utils/Strings";
@@ -222,6 +224,8 @@ export type { BaseExtension } from "./contracts/ethereum/temporary-extensions/co
 export { BaseExtension__factory } from "./factories/contracts/ethereum/temporary-extensions/contracts/extensions/BaseExtension__factory";
 export type { ResolverValidationExtension } from "./contracts/ethereum/temporary-extensions/contracts/extensions/ResolverValidationExtension";
 export { ResolverValidationExtension__factory } from "./factories/contracts/ethereum/temporary-extensions/contracts/extensions/ResolverValidationExtension__factory";
+export type { TronFusionExtension } from "./contracts/ethereum/TronFusionExtension";
+export { TronFusionExtension__factory } from "./factories/contracts/ethereum/TronFusionExtension__factory";
 export type { ITronEscrow } from "./contracts/tron/interfaces/ITronEscrow";
 export { ITronEscrow__factory } from "./factories/contracts/tron/interfaces/ITronEscrow__factory";
 export type { TronEscrowDst } from "./contracts/tron/TronEscrowDst";

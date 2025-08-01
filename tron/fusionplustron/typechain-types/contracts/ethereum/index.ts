@@ -8,3 +8,4 @@ export type { officialLop };
 import type * as temporaryExtensions from "./temporary-extensions";
 export type { temporaryExtensions };
 export type { Resolver } from "./Resolver";
+export type { TronFusionExtension } from "./TronFusionExtension";

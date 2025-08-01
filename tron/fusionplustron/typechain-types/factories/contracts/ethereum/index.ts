@@ -5,3 +5,4 @@ export * as officialEscrow from "./official-escrow";
 export * as officialLop from "./official-lop";
 export * as temporaryExtensions from "./temporary-extensions";
 export { Resolver__factory } from "./Resolver__factory";
+export { TronFusionExtension__factory } from "./TronFusionExtension__factory";

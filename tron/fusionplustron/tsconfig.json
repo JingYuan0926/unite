@@ -24,5 +24,6 @@
     "./tests/**/*",
     "./hardhat.config.ts"
   ],
+  "typeRoots": ["./node_modules/@types", "./src/types"],
   "exclude": ["node_modules", "dist", "artifacts", "cache"]
 }
