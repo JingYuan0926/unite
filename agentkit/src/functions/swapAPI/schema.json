@@ -1,0 +1,129 @@
+{
+  "name": "swapAPI",
+  "description": "Access 1inch Classic Swap API (Pathfinder v6.1) for token swaps with wallet integration. This API provides cutting-edge discovery and routing algorithm that offers asset exchanges at the best rates on the market. EXAMPLES: For getting a quote: {\"endpoint\": \"getQuote\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\"}. For executing a swap with wallet: {\"endpoint\": \"executeSwap\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\", \"slippage\": 1, \"walletAddress\": \"0x...\", \"privateKey\": \"0x...\"}. For checking allowance: {\"endpoint\": \"getAllowance\", \"chain\": 1, \"tokenAddress\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"walletAddress\": \"0x...\"}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["getQuote", "getSwap", "getSpender", "getApproveTransaction", "getAllowance", "getLiquiditySources", "getTokens", "executeSwap", "executeApprove"],
+      "description": "REQUIRED: The Swap API endpoint to call. Use 'getQuote' to find the best quote for a swap, 'getSwap' to generate swap calldata, 'getSpender' to get the 1inch router address, 'getApproveTransaction' to generate approve calldata, 'getAllowance' to check token allowance, 'getLiquiditySources' to get available protocols, 'getTokens' to get available tokens, 'executeSwap' to execute a swap with wallet, 'executeApprove' to execute an approval with wallet."
+    },
+    "chain": {
+      "type": "integer",
+      "description": "REQUIRED: Chain ID for the network. Example: 1 for Ethereum mainnet, 137 for Polygon, 42161 for Arbitrum, etc."
+    },
+    "src": {
+      "type": "string",
+      "description": "Source token address (required for getQuote, getSwap, executeSwap). Example: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' for ETH"
+    },
+    "dst": {
+      "type": "string",
+      "description": "Destination token address (required for getQuote, getSwap, executeSwap). Example: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' for USDC"
+    },
+    "amount": {
+      "type": "string",
+      "description": "Amount to swap in wei/smallest unit (required for getQuote, getSwap, executeSwap, executeApprove). Example: '1000000000000000000' for 1 ETH"
+    },
+    "from": {
+      "type": "string",
+      "description": "Address that calls the 1inch contract (required for getSwap). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+    },
+    "origin": {
+      "type": "string",
+      "description": "EOA address that initiates the transaction (required for getSwap). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+    },
+    "slippage": {
+      "type": "number",
+      "description": "Slippage tolerance in percentage (required for getSwap, executeSwap). Example: 1 for 1% slippage"
+    },
+    "walletAddress": {
+      "type": "string",
+      "description": "Wallet address (required for getAllowance, executeSwap, executeApprove). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+    },
+    "privateKey": {
+      "type": "string",
+      "description": "Private key for wallet operations (required for executeSwap, executeApprove). Example: '0x...'"
+    },
+    "tokenAddress": {
+      "type": "string",
+      "description": "Token address for approval operations (required for getApproveTransaction, getAllowance, executeApprove). Example: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'"
+    },
+    "protocols": {
+      "type": "string",
+      "description": "Specify liquidity protocols to use (optional). Example: 'WETH,CURVE,BALANCER'"
+    },
+    "fee": {
+      "type": "number",
+      "description": "Partner fee percentage (optional). Example: 1.5 for 1.5% fee"
+    },
+    "gasPrice": {
+      "type": "string",
+      "description": "Gas price in wei (optional). Example: '12500000000' for 12.5 GWEI"
+    },
+    "complexityLevel": {
+      "type": "number",
+      "description": "Maximum number of token-connectors (optional). Example: 2"
+    },
+    "parts": {
+      "type": "number",
+      "description": "Maximum number of parts each main route part can be split into (optional). Example: 20"
+    },
+    "mainRouteParts": {
+      "type": "number",
+      "description": "Maximum number of main route parts (optional). Example: 20"
+    },
+    "gasLimit": {
+      "type": "number",
+      "description": "Maximum amount of gas for a swap (optional). Example: 11500000"
+    },
+    "includeTokensInfo": {
+      "type": "boolean",
+      "description": "Include token info in response (optional). Example: true"
+    },
+    "includeProtocols": {
+      "type": "boolean",
+      "description": "Include protocols used in response (optional). Example: true"
+    },
+    "includeGas": {
+      "type": "boolean",
+      "description": "Include gas estimation in response (optional). Example: true"
+    },
+    "connectorTokens": {
+      "type": "string",
+      "description": "Token-connectors to use (optional). Example: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,0x6b175474e89094c44da98b954eedeac495271d0f'"
+    },
+    "excludedProtocols": {
+      "type": "string",
+      "description": "Protocols to exclude (optional). Example: 'UNISWAP_V2'"
+    },
+    "permit": {
+      "type": "string",
+      "description": "EIP-2612 permit signature (optional). Example: '0x...'"
+    },
+    "receiver": {
+      "type": "string",
+      "description": "Recipient address for purchased tokens (optional). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+    },
+    "referrer": {
+      "type": "string",
+      "description": "Referrer address (optional). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+    },
+    "allowPartialFill": {
+      "type": "boolean",
+      "description": "Allow partial fill of the route (optional). Example: true"
+    },
+    "disableEstimate": {
+      "type": "boolean",
+      "description": "Disable onchain simulation (optional). Example: false"
+    },
+    "compatibility": {
+      "type": "boolean",
+      "description": "Enable compatibility mode for FoT tokens (optional). Example: false"
+    },
+    "usePermit2": {
+      "type": "boolean",
+      "description": "Use Permit2 for approval (optional). Example: false"
+    }
+  },
+  "required": ["endpoint", "chain"]
+} 

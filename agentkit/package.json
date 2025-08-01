@@ -1,6 +1,6 @@
 {
   "name": "1inch-agent-kit",
-  "version": "1.0.22",
+  "version": "1.0.24",
   "description": "AI Agent Kit for 1inch - Connect any LLM to 1inch DeFi protocols",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,7 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
     "example:quote": "ts-node -r dotenv/config examples/quote.ts",
-    "example:swap": "ts-node -r dotenv/config examples/swap.ts",
+    "example:swap": "ts-node -r dotenv/config examples/swapAPI.ts",
     "example:health": "ts-node -r dotenv/config examples/healthCheck.ts",
     "example:gas": "ts-node -r dotenv/config examples/gasAPI.ts",
     "example:rpc": "ts-node -r dotenv/config examples/rpcAPI.ts",
@@ -46,6 +46,7 @@
     "example:nft": "ts-node -r dotenv/config examples/nftAPI.ts",
     "example:domain": "ts-node -r dotenv/config examples/domainAPI.ts",
     "example:portfolio": "ts-node -r dotenv/config examples/portfolioAPI.ts",
+    "example:transaction": "ts-node -r dotenv/config examples/transactionAPI.ts",
     "gen-docs": "ts-node scripts/gen-docs.ts",
     "docs": "node scripts/generate-docs.js"
   },
@@ -89,6 +90,7 @@
   "dependencies": {
     "axios": "^1.6.0",
     "dotenv": "^16.0.0",
+    "ethers": "^6.15.0",
     "openai": "^4.0.0"
   },
   "peerDependencies": {

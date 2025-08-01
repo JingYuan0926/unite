@@ -1,0 +1,21 @@
+{
+  "name": "transactionAPI",
+  "description": "Access 1inch Transaction Gateway API for reliable on-chain transaction broadcasting. This API provides both public and private transaction broadcasting modes, supporting multiple networks including Ethereum, Arbitrum, Avalanche, BNB Chain, Gnosis, Solana, Sonic, Optimism, Polygon, zkSync Era, Base, and Unichain. EXAMPLES: For broadcasting a public transaction: {\"endpoint\": \"broadcastPublicTransaction\", \"chain\": 1, \"rawTransaction\": \"0xf86c8085174876e800830186a094d8da6bf26964af9d7eed9e03e53415d37aa96045880de0b6b3a7640000801ca0f39fd6e51aad88f6f4ce6ab8827279cfffb92266a0a0c1c3a10a47d0c2b0f6b4a0c0\"}. For broadcasting a private transaction (Flashbots): {\"endpoint\": \"broadcastPrivateTransaction\", \"chain\": 1, \"rawTransaction\": \"0xf86c8085174876e800830186a094d8da6bf26964af9d7eed9e03e53415d37aa96045880de0b6b3a7640000801ca0f39fd6e51aad88f6f4ce6ab8827279cfffb92266a0a0c1c3a10a47d0c2b0f6b4a0c0\"}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["broadcastPublicTransaction", "broadcastPrivateTransaction"],
+      "description": "REQUIRED: The Transaction Gateway API endpoint to call. Use 'broadcastPublicTransaction' to broadcast a transaction publicly to the mempool, 'broadcastPrivateTransaction' to broadcast a transaction privately via Flashbots (Ethereum only)."
+    },
+    "chain": {
+      "type": "integer",
+      "description": "REQUIRED: Chain ID for the network. Example: 1 for Ethereum mainnet, 137 for Polygon, 42161 for Arbitrum, etc."
+    },
+    "rawTransaction": {
+      "type": "string",
+      "description": "REQUIRED: Raw transaction data in hexadecimal format. This should be a signed transaction ready for broadcasting. Example: \"0xf86c8085174876e800830186a094d8da6bf26964af9d7eed9e03e53415d37aa96045880de0b6b3a7640000801ca0f39fd6e51aad88f6f4ce6ab8827279cfffb92266a0a0c1c3a10a47d0c2b0f6b4a0c0\""
+    }
+  },
+  "required": ["endpoint", "chain", "rawTransaction"]
+} 
