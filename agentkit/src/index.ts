@@ -24,6 +24,7 @@ export { fusionPlusAPI } from "./functions/fusionPlusAPI";
 export { orderbookAPI } from "./functions/orderbookAPI";
 export { nftAPI } from "./functions/nftAPI";
 export { domainAPI } from "./functions/domainAPI";
+export { portfolioAPI } from "./functions/portfolioAPI";
 
 // Type exports
 export type {
@@ -208,6 +209,27 @@ export type {
   ProviderResponseWithAvatar,
   AvatarsResponse
 } from "./functions/domainAPI";
+
+export type {
+  ApiStatusResponse,
+  ResponseEnvelope,
+  ResponseMeta,
+  ProcessingInfo,
+  Token,
+  SupportedChainResponse,
+  SupportedProtocolGroupResponse,
+  AddressValue,
+  CategoryValue,
+  ProtocolGroupValue,
+  ChainValue,
+  CurrentValueResponse,
+  AssetChartResponseItem,
+  ValueChartResponseMeta,
+  ValueChartDataIssues,
+  TokenBalance as PortfolioTokenBalance,
+  AdapterResult,
+  HistoryMetrics
+} from "./functions/portfolioAPI";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
