@@ -1,0 +1,13 @@
+{
+  "network": "tron-nile-real",
+  "timestamp": "2025-08-01T04:14:57.560Z",
+  "chainId": 3448148188,
+  "contracts": {
+    "TronEscrowFactory": "TYMiH5nxemXdmRTLKVbZyBBdHuYrvB1yrj",
+    "TronEscrowSrcImplementation": "TBD",
+    "TronEscrowDstImplementation": "TBD"
+  },
+  "deployer": "TPUiCeNRjjEpo1NFJ1ZURfU1ziNNMtn8yu",
+  "verified": true,
+  "explorer": "https://nile.tronscan.org/#/contract/TYMiH5nxemXdmRTLKVbZyBBdHuYrvB1yrj"
+}

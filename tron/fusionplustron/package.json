@@ -6,6 +6,10 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy": "hardhat run scripts/deploy.ts",
+    "deploy:eth": "hardhat run scripts/deploy/02-deploy-official-escrow.ts --network sepolia",
+    "deploy:tron": "node scripts/deploy/07-simple-tron-deploy.js",
+    "test:tron": "node scripts/utils/test-real-tron-contracts.js",
+    "validate": "hardhat run scripts/utils/deploy-and-validate.ts --network hardhat",
     "lint": "eslint . --ext .ts,.js",
     "format": "prettier --write ."
   },
