@@ -28,7 +28,7 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
     "example:quote": "ts-node -r dotenv/config examples/quote.ts",
-    "example:swap": "ts-node -r dotenv/config examples/swap.ts",
+    "example:swap": "ts-node -r dotenv/config examples/swapAPI.ts",
     "example:health": "ts-node -r dotenv/config examples/healthCheck.ts",
     "example:gas": "ts-node -r dotenv/config examples/gasAPI.ts",
     "example:rpc": "ts-node -r dotenv/config examples/rpcAPI.ts",
@@ -90,6 +90,7 @@
   "dependencies": {
     "axios": "^1.6.0",
     "dotenv": "^16.0.0",
+    "ethers": "^6.15.0",
     "openai": "^4.0.0"
   },
   "peerDependencies": {

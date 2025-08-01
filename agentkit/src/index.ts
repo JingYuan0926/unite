@@ -26,6 +26,7 @@ export { nftAPI } from "./functions/nftAPI";
 export { domainAPI } from "./functions/domainAPI";
 export { portfolioAPI } from "./functions/portfolioAPI";
 export { transactionAPI } from "./functions/transactionAPI";
+export { swapAPI } from "./functions/swapAPI";
 
 // Type exports
 export type {
@@ -237,8 +238,24 @@ export type {
   BroadcastResponse
 } from "./functions/transactionAPI";
 
+export type {
+  TokenInfo,
+  SelectedLiquiditySource,
+  TokenHop,
+  TokenSwaps,
+  QuoteResponse,
+  TransactionData,
+  SwapResponse,
+  SpenderResponse,
+  ApproveCallDataResponse,
+  AllowanceResponse,
+  ProtocolImage,
+  ProtocolsResponse,
+  TokensResponse
+} from "./functions/swapAPI";
+
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
 export { logger } from "./utils/logger";
 export { walletManager, WalletUtils } from "./utils/wallet";
-export type { Wallet, WalletContext } from "./utils/wallet";
+export type { Wallet, WalletContext, TransactionParams, TransactionResult } from "./utils/wallet";
