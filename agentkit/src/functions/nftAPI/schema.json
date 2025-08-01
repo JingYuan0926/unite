@@ -1,0 +1,52 @@
+{
+  "name": "nftAPI",
+  "description": "Access 1inch NFT API for NFT data. This API allows you to retrieve comprehensive information about NFTs including metadata, collections, and ownership details. EXAMPLES: For getting supported chains: {\"endpoint\": \"getSupportedChains\"}. For getting NFTs by address: {\"endpoint\": \"getNftsByAddress\", \"chainIds\": [1, 137], \"address\": \"0xd8da6bf26964af9d7eed9e03e53415d37aa96045\", \"limit\": 10, \"offset\": 0}. For getting a specific NFT: {\"endpoint\": \"getNftById\", \"chainId\": 1, \"contract\": \"0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d\", \"id\": \"1\", \"provider\": \"opensea\"}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["getSupportedChains", "getNftsByAddress", "getNftById"],
+      "description": "REQUIRED: The NFT API endpoint to call. Use 'getSupportedChains' to get list of supported chains, 'getNftsByAddress' to get NFTs owned by a specific address, 'getNftById' to get detailed information about a specific NFT."
+    },
+    "chainIds": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "description": "List of supported chains (required for getNftsByAddress). Use 1 for Ethereum, 137 for Polygon, 42161 for Arbitrum, 43114 for Avalanche, 100 for Gnosis, 10 for Optimism, 8217 for Klaytn, 8453 for Base."
+    },
+    "address": {
+      "type": "string",
+      "description": "Web3 address of NFT owner (required for getNftsByAddress). Address in hexadecimal format."
+    },
+    "limit": {
+      "type": "number",
+      "description": "The maximum number of assets to return (optional for getNftsByAddress)"
+    },
+    "offset": {
+      "type": "number",
+      "description": "The offset number of assets to return (optional for getNftsByAddress)"
+    },
+    "openseaNextToken": {
+      "type": "string",
+      "description": "The cursor for the next page of results (optional for getNftsByAddress). This is returned from a previous request."
+    },
+    "chainId": {
+      "type": "number",
+      "description": "Network chain ID (required for getNftById). Use 1 for Ethereum, 137 for Polygon, etc."
+    },
+    "contract": {
+      "type": "string",
+      "description": "NFT contract address (required for getNftById). The contract address of the NFT collection."
+    },
+    "id": {
+      "type": "string",
+      "description": "NFT token ID (required for getNftById). The unique identifier of the specific NFT within the collection."
+    },
+    "provider": {
+      "type": "string",
+      "description": "Provider of NFT (required for getNftById). Use 'opensea', 'rarible', or 'poap'."
+    }
+  },
+  "required": ["endpoint"]
+} 

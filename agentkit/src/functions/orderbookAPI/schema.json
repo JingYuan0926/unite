@@ -1,0 +1,77 @@
+{
+  "name": "orderbookAPI",
+  "description": "Access 1inch Orderbook API for limit orders. This API allows you to submit, query, and manage limit orders on the 1inch platform. EXAMPLES: For submitting an order: {\"endpoint\": \"submitOrder\", \"chain\": 1, \"orderHash\": \"0x...\", \"signature\": \"0x...\", \"data\": {\"makerAsset\": \"0x...\", \"takerAsset\": \"0x...\", \"maker\": \"0x...\", \"receiver\": \"0x0000000000000000000000000000000000000000\", \"makingAmount\": \"1000000000000000000\", \"takingAmount\": \"1000000000000000000\", \"salt\": \"123456789\", \"extension\": \"0x\", \"makerTraits\": \"0\"}}. For getting orders by address: {\"endpoint\": \"getOrdersByAddress\", \"chain\": 1, \"address\": \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\"}. For getting all orders: {\"endpoint\": \"getAllOrders\", \"chain\": 1, \"page\": 1, \"limit\": 10}. For getting fee info: {\"endpoint\": \"getFeeInfo\", \"chain\": 1, \"makerAsset\": \"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"takerAsset\": \"0xdAC17F958D2ee523a2206206994597C13D831ec7\"}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["submitOrder", "getOrdersByAddress", "getOrderByHash", "getAllOrders", "getOrdersCount", "getOrderEvents", "getAllEvents", "hasActiveOrdersWithPermit", "getUniqueActivePairs", "getFeeInfo"],
+      "description": "REQUIRED: The Orderbook API endpoint to call. Use 'submitOrder' to submit a new limit order, 'getOrdersByAddress' to get orders for a specific address, 'getOrderByHash' to get a specific order, 'getAllOrders' to get all orders, 'getOrdersCount' to get order count, 'getOrderEvents' to get events for a specific order, 'getAllEvents' to get all events, 'hasActiveOrdersWithPermit' to check if wallet has active orders with permit, 'getUniqueActivePairs' to get unique active token pairs, 'getFeeInfo' to get fee information."
+    },
+    "chain": {
+      "type": "number",
+      "description": "REQUIRED: Chain ID. Use 1 for Ethereum, 137 for Polygon, etc."
+    },
+    "orderHash": {
+      "type": "string",
+      "description": "Order hash (required for submitOrder). The unique identifier for the order."
+    },
+    "signature": {
+      "type": "string",
+      "description": "Order signature (required for submitOrder). The EIP-712 signature of the order."
+    },
+    "data": {
+      "type": "object",
+      "description": "Order data (required for submitOrder). Contains the order details including makerAsset, takerAsset, makingAmount, takingAmount, etc."
+    },
+    "address": {
+      "type": "string",
+      "description": "Wallet address (required for getOrdersByAddress). Address in hexadecimal format."
+    },
+    "orderHashParam": {
+      "type": "string",
+      "description": "Order hash parameter (required for getOrderByHash and getOrderEvents). The order hash to query."
+    },
+    "walletAddress": {
+      "type": "string",
+      "description": "Wallet address (required for hasActiveOrdersWithPermit). Address in hexadecimal format."
+    },
+    "token": {
+      "type": "string",
+      "description": "Token address (required for hasActiveOrdersWithPermit). Token address in hexadecimal format."
+    },
+    "makerAsset": {
+      "type": "string",
+      "description": "Maker asset address (required for getFeeInfo, optional for filtering). The token being offered by the maker."
+    },
+    "takerAsset": {
+      "type": "string",
+      "description": "Taker asset address (required for getFeeInfo, optional for filtering). The token being requested by the maker."
+    },
+    "page": {
+      "type": "number",
+      "description": "Pagination step, default: 1 (page = offset / limit)"
+    },
+    "limit": {
+      "type": "number",
+      "description": "Number of items to receive (default: 100, max: 500 for orders, max: 1000 for events)"
+    },
+    "statuses": {
+      "type": "string",
+      "description": "A comma-separated list of statuses by which limit orders will be filtered. Valid statuses include: 1 - Valid orders, 2 - Temporarily invalid orders, 3 - Invalid orders."
+    },
+    "sortBy": {
+      "type": "string",
+      "description": "Sort parameter for ordering results"
+    },
+    "makerAmount": {
+      "type": "string",
+      "description": "Amount to calculate fee on trading pair (optional for getFeeInfo)"
+    },
+    "takerAmount": {
+      "type": "string",
+      "description": "Amount to calculate fee on trading pair (optional for getFeeInfo)"
+    }
+  },
+  "required": ["endpoint", "chain"]
+} 

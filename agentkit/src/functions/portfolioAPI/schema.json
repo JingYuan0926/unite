@@ -1,0 +1,48 @@
+{
+  "name": "portfolioAPI",
+  "description": "Access 1inch Portfolio API v5.0 for comprehensive portfolio analytics and tracking. This API aggregates and presents detailed information for web3 assets across multiple wallets and chains, providing holistic portfolio views, performance metrics, and investment insights. EXAMPLES: For checking portfolio status: {\"endpoint\": \"checkPortfolioStatus\"}. For getting current portfolio value: {\"endpoint\": \"getCurrentPortfolioValue\", \"addresses\": [\"0xd470055c6189b921c4d44b3d277ad868f79c0f75\"], \"chain_id\": 1}. For getting supported chains: {\"endpoint\": \"getSupportedChains\"}. For getting protocols snapshot: {\"endpoint\": \"getProtocolsSnapshot\", \"addresses\": [\"0xd470055c6189b921c4d44b3d277ad868f79c0f75\"], \"chain_id\": 1}. For getting tokens metrics: {\"endpoint\": \"getTokensMetrics\", \"addresses\": [\"0xd470055c6189b921c4d44b3d277ad868f79c0f75\"], \"chain_id\": 1, \"timerange\": \"1year\"}.",
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "enum": ["checkPortfolioStatus", "checkAddressesCompliance", "getSupportedChains", "getSupportedProtocols", "getCurrentPortfolioValue", "getGeneralValueChart", "getOverviewReport", "getProtocolsSnapshot", "getProtocolsMetrics", "getTokensSnapshot", "getTokensMetrics"],
+      "description": "REQUIRED: The Portfolio API endpoint to call. Use 'checkPortfolioStatus' to check if portfolio service is available, 'checkAddressesCompliance' to check addresses for compliance, 'getSupportedChains' to get supported chains, 'getSupportedProtocols' to get supported protocols, 'getCurrentPortfolioValue' to get current portfolio value breakdown, 'getGeneralValueChart' to get general value chart, 'getOverviewReport' to get overview report, 'getProtocolsSnapshot' to get protocols snapshot, 'getProtocolsMetrics' to get protocols metrics, 'getTokensSnapshot' to get tokens snapshot, 'getTokensMetrics' to get tokens metrics."
+    },
+    "addresses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of wallet addresses (required for most endpoints). Example: [\"0xd470055c6189b921c4d44b3d277ad868f79c0f75\"]"
+    },
+    "chain_id": {
+      "type": "integer",
+      "description": "Chain ID (optional for most endpoints). Example: 1 for Ethereum mainnet"
+    },
+    "use_cache": {
+      "type": "boolean",
+      "description": "Get response from cache (optional). Example: true"
+    },
+    "timerange": {
+      "type": "string",
+      "description": "Time range for charts and metrics (optional). Example: \"1year\""
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Timestamp for snapshot endpoints (optional). Unix timestamp in seconds."
+    },
+    "protocol_group_id": {
+      "type": "string",
+      "description": "Protocol group ID for filtering (optional). Example: \"uniswap_v3\""
+    },
+    "contract_address": {
+      "type": "string",
+      "description": "Contract address for filtering (optional). Example: \"0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984\""
+    },
+    "token_id": {
+      "type": "integer",
+      "description": "Token ID for filtering (optional). Example: 123"
+    }
+  },
+  "required": ["endpoint"]
+} 

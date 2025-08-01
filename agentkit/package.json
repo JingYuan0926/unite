@@ -1,6 +1,6 @@
 {
   "name": "1inch-agent-kit",
-  "version": "1.0.18",
+  "version": "1.0.22",
   "description": "AI Agent Kit for 1inch - Connect any LLM to 1inch DeFi protocols",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -42,6 +42,10 @@
     "example:fusion": "ts-node -r dotenv/config examples/fusionAPI.ts",
     "example:fusion-plus": "ts-node -r dotenv/config examples/fusionPlusAPI.ts",
     "example:wallet": "ts-node -r dotenv/config examples/walletIntegration.ts",
+    "example:orderbook": "ts-node -r dotenv/config examples/orderbookAPI.ts",
+    "example:nft": "ts-node -r dotenv/config examples/nftAPI.ts",
+    "example:domain": "ts-node -r dotenv/config examples/domainAPI.ts",
+    "example:portfolio": "ts-node -r dotenv/config examples/portfolioAPI.ts",
     "gen-docs": "ts-node scripts/gen-docs.ts",
     "docs": "node scripts/generate-docs.js"
   },
