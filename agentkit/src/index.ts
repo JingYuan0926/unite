@@ -21,6 +21,7 @@ export { spotPriceAPI } from "./functions/spotPriceAPI";
 export { balanceAPI } from "./functions/balanceAPI";
 export { fusionAPI } from "./functions/fusionAPI";
 export { fusionPlusAPI } from "./functions/fusionPlusAPI";
+export { orderbookAPI } from "./functions/orderbookAPI";
 
 // Type exports
 export type {
@@ -168,6 +169,22 @@ export type {
   GetQuoteOutput as FusionPlusGetQuoteOutput,
   BuildOrderOutput
 } from "./functions/fusionPlusAPI";
+
+export type {
+  LimitOrderV4Data,
+  LimitOrderV4Request,
+  LimitOrderV4Response,
+  GetLimitOrdersV4Response,
+  GetLimitOrdersCountV4Response,
+  GetEventsV4Response,
+  GetHasActiveOrdersWithPermitV4Response,
+  UniquePairs,
+  Meta as OrderbookMeta,
+  GetActiveUniquePairsResponse,
+  WhitelistedResolvers,
+  AccountAddress,
+  FeeInfoResponse
+} from "./functions/orderbookAPI";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";
