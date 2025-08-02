@@ -5,15 +5,13 @@ import { ConfigManager } from "../utils/ConfigManager";
 import { ScopedLogger } from "../utils/Logger";
 import { OrderStatus } from "@1inch/fusion-sdk";
 
-// Official Resolver ABI with CORRECTED immutables format
-// Address = uint256, Timelocks = uint256 (not complex structs)
-const RESOLVER_ABI = [
-  // function deploySrc(IBaseEscrow.Immutables calldata immutables, IOrderMixin.Order calldata order, bytes32 r, bytes32 vs, uint256 amount, TakerTraits takerTraits, bytes calldata args)
-  "function deploySrc((bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) immutables, (uint256,address,address,address,address,uint256,uint256,uint256) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits, bytes args) payable",
-  "function deployDst((bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) dstImmutables, uint256 srcCancellationTimestamp) payable",
-  "function withdraw(address escrow, bytes32 secret, (bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) immutables)",
-  "function cancel(address escrow, (bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) immutables)",
-  "event EscrowCreated(address indexed escrow, bytes32 indexed orderHash)",
+// DemoResolver ABI for permissionless atomic swaps
+const DEMO_RESOLVER_ABI = [
+  "function executeSwap(bytes32 orderHash, uint256 amount, uint256 safetyDeposit, address maker) payable",
+  "function withdrawETH(uint256 amount, address payable recipient)",
+  "function getLockedBalance() view returns (uint256)",
+  "function recoverETH()",
+  "event SwapExecuted(address indexed maker, address indexed escrow, bytes32 indexed orderHash, uint256 amount, uint256 safetyDeposit)",
 ];
 
 // EscrowFactory ABI with correct format for direct testing
@@ -34,14 +32,29 @@ function encodeTimelocks(timelocks: {
   dstWithdrawal: number;
   dstCancellation: number;
 }): bigint {
-  // Pack all timelock values into a single uint256
-  // Based on TimelocksLib.sol implementation
-  let packed = BigInt(0);
-  packed |= BigInt(timelocks.deployedAt) << BigInt(0); // bits 0-63
-  packed |= BigInt(timelocks.srcWithdrawal) << BigInt(64); // bits 64-127
-  packed |= BigInt(timelocks.srcCancellation) << BigInt(128); // bits 128-191
-  packed |= BigInt(timelocks.dstWithdrawal) << BigInt(192); // bits 192-255
-  // Note: dstCancellation is computed from other values in the library
+  // Pack timelocks using TimelocksLib.Stage enum values (32 bits each)
+  // SrcWithdrawal = 0, SrcPublicWithdrawal = 1, SrcCancellation = 2,
+  // SrcPublicCancellation = 3, DstWithdrawal = 4, DstPublicWithdrawal = 5,
+  // DstCancellation = 6
+
+  const srcWithdrawal = BigInt(timelocks.srcWithdrawal);
+  const srcPublicWithdrawal = BigInt(timelocks.srcWithdrawal + 1800); // +30 min
+  const srcCancellation = BigInt(timelocks.srcCancellation);
+  const srcPublicCancellation = BigInt(timelocks.srcCancellation + 3600); // +1 hour
+  const dstWithdrawal = BigInt(timelocks.dstWithdrawal);
+  const dstPublicWithdrawal = BigInt(timelocks.dstWithdrawal + 600); // +10 min
+  const dstCancellation = BigInt(timelocks.dstCancellation);
+
+  // Pack into single uint256 using bit shifting (32 bits per stage)
+  const packed =
+    (srcWithdrawal << (BigInt(0) * BigInt(32))) | // Stage 0: bits 0-31
+    (srcPublicWithdrawal << (BigInt(1) * BigInt(32))) | // Stage 1: bits 32-63
+    (srcCancellation << (BigInt(2) * BigInt(32))) | // Stage 2: bits 64-95
+    (srcPublicCancellation << (BigInt(3) * BigInt(32))) | // Stage 3: bits 96-127
+    (dstWithdrawal << (BigInt(4) * BigInt(32))) | // Stage 4: bits 128-159
+    (dstPublicWithdrawal << (BigInt(5) * BigInt(32))) | // Stage 5: bits 160-191
+    (dstCancellation << (BigInt(6) * BigInt(32))); // Stage 6: bits 192-223
+
   return packed;
 }
 
@@ -61,6 +74,7 @@ export interface SwapResult {
   secretHash: string;
   ethTxHash: string;
   tronTxHash: string;
+  tronImmutables?: any; // Store the immutables used for Tron escrow
 }
 
 export interface SwapStatus {
@@ -88,16 +102,16 @@ export class CrossChainOrchestrator {
     this.official1inch = new Official1inchSDK(config, logger);
     this.tronExtension = new TronExtension(config, logger);
 
-    // Initialize Resolver contract
+    // Initialize DemoResolver contract for permissionless swaps
     const provider = config.getEthProvider();
     this.resolverContract = new ethers.Contract(
-      config.OFFICIAL_RESOLVER_ADDRESS,
-      RESOLVER_ABI,
+      config.DEMO_RESOLVER_ADDRESS,
+      DEMO_RESOLVER_ABI,
       provider
     );
 
     this.logger.info("CrossChainOrchestrator initialized", {
-      resolverAddress: config.OFFICIAL_RESOLVER_ADDRESS,
+      demoResolverAddress: config.DEMO_RESOLVER_ADDRESS,
     });
   }
 
@@ -122,13 +136,23 @@ export class CrossChainOrchestrator {
     );
 
     const mockRate = 2000n; // 1 ETH = 2000 TRX (example rate)
-    const trxAmount = params.ethAmount * mockRate;
+    // Calculate TRX amount directly from wei to avoid integer division issues
+    // 1 ETH (1e18 wei) = 2000 TRX (2000e6 sun)
+    // So: wei * 2000e6 / 1e18 = wei * 2000 / 1e12
+    const trxAmount =
+      (params.ethAmount * mockRate * BigInt(1e6)) / BigInt(1e18);
 
     const quote = {
       fromTokenAmount: params.ethAmount.toString(),
       toTokenAmount: trxAmount.toString(),
       quoteId: `cross-chain-${Date.now()}`,
     };
+
+    this.logger.debug("Quote calculation", {
+      ethAmountWei: params.ethAmount.toString(),
+      trxAmountInSun: trxAmount.toString(),
+      mockRate: mockRate.toString(),
+    });
 
     // Step 3: Create cross-chain order manually (bypassing 1inch API)
     this.logger.info("Creating cross-chain order structure manually");
@@ -152,28 +176,32 @@ export class CrossChainOrchestrator {
     const nonce = ethers.hexlify(ethers.randomBytes(32));
     const safetyDeposit = ethers.parseEther("0.01"); // 0.01 ETH safety deposit
 
-    // Create order hash first (needed for immutables)
-    const orderHash = ethers.solidityPackedKeccak256(
-      [
-        "uint256",
-        "address",
-        "address",
-        "address",
-        "address",
-        "uint256",
-        "uint256",
-        "uint256",
+    // Create EIP-712 domain for order hash calculation (needed for immutables)
+    const domain = {
+      name: "1inch Limit Order Protocol",
+      version: "4",
+      chainId: this.config.ETH_CHAIN_ID,
+      verifyingContract: this.config.OFFICIAL_LOP_ADDRESS,
+    };
+
+    const types = {
+      Order: [
+        { name: "salt", type: "uint256" },
+        { name: "maker", type: "address" },
+        { name: "receiver", type: "address" },
+        { name: "makerAsset", type: "address" },
+        { name: "takerAsset", type: "address" },
+        { name: "makingAmount", type: "uint256" },
+        { name: "takingAmount", type: "uint256" },
+        { name: "makerTraits", type: "uint256" },
       ],
-      [
-        preparedOrder.order.salt,
-        preparedOrder.order.maker,
-        preparedOrder.order.receiver,
-        preparedOrder.order.makerAsset,
-        preparedOrder.order.takerAsset,
-        preparedOrder.order.makingAmount,
-        preparedOrder.order.takingAmount,
-        preparedOrder.order.makerTraits || 0,
-      ]
+    };
+
+    // Calculate proper EIP-712 order hash (this is what 1inch expects)
+    const orderHash = ethers.TypedDataEncoder.hash(
+      domain,
+      types,
+      preparedOrder.order
     );
 
     // Create properly encoded immutables for the corrected ABI
@@ -195,28 +223,8 @@ export class CrossChainOrchestrator {
       }),
     ];
 
-    // Step 5: Create EIP-712 signature for the order
+    // Step 5: Create EIP-712 signature for the order (using domain/types from above)
     this.logger.logSwapProgress("Creating EIP-712 signature for order");
-
-    const domain = {
-      name: "1inch Limit Order Protocol",
-      version: "4",
-      chainId: this.config.ETH_CHAIN_ID,
-      verifyingContract: this.config.OFFICIAL_LOP_ADDRESS,
-    };
-
-    const types = {
-      Order: [
-        { name: "salt", type: "uint256" },
-        { name: "maker", type: "address" },
-        { name: "receiver", type: "address" },
-        { name: "makerAsset", type: "address" },
-        { name: "takerAsset", type: "address" },
-        { name: "makingAmount", type: "uint256" },
-        { name: "takingAmount", type: "uint256" },
-        { name: "makerTraits", type: "uint256" },
-      ],
-    };
 
     const signature = await ethSigner.signTypedData(
       domain,
@@ -281,50 +289,23 @@ export class CrossChainOrchestrator {
       preparedOrder.order.makerTraits || 0,
     ];
 
-    // First try a static call to see if we can get better error details
-    try {
-      this.logger.info("Testing deploySrc with callStatic first...");
-      await (resolverWithSigner as any).deploySrc.staticCall(
-        immutables,
-        orderArray,
-        r,
-        vs,
-        params.ethAmount,
-        0,
-        "0x",
-        { value: totalValue }
-      );
-      this.logger.info(
-        "Static call succeeded, proceeding with real transaction"
-      );
-    } catch (staticError: any) {
-      this.logger.error("Static call failed - this reveals the revert reason", {
-        error: staticError.message,
-        code: staticError.code,
-        data: staticError.data,
-        reason: staticError.reason,
-      });
-      throw new Error(`Static call failed: ${staticError.message}`);
-    }
+    // Execute atomic swap via DemoResolver (simplified approach)
+    this.logger.info("Executing simplified atomic swap via DemoResolver...");
 
-    // Execute the real contract call with detailed error handling
     let deployTx;
     try {
-      deployTx = await (resolverWithSigner as any).deploySrc(
-        immutables,
-        orderArray,
-        r,
-        vs,
-        params.ethAmount, // amount to fill
-        0, // takerTraits (default)
-        "0x", // args (empty for basic swap)
+      deployTx = await (resolverWithSigner as any).executeSwap(
+        orderHash, // Order hash
+        params.ethAmount, // Amount being swapped
+        safetyDeposit, // Safety deposit
+        ethSigner.address, // Maker address
         {
           value: totalValue, // ETH amount + safety deposit
-          gasLimit: 300000, // High gas limit for complex transaction
+          gasLimit: 100000, // Reasonable gas limit for simple transaction
         }
       );
     } catch (error: any) {
-      this.logger.error("deploySrc transaction failed", {
+      this.logger.error("executeSwap transaction failed", {
         error: error.message,
         code: error.code,
         data: error.data,
@@ -346,34 +327,13 @@ export class CrossChainOrchestrator {
       "Atomic Order Fill + Escrow Creation"
     );
 
-    // Step 7: Parse event logs to get the real escrow address
-    let ethEscrowAddress: string | null = null;
+    // Step 7: For DemoResolver, the "escrow" is the DemoResolver contract itself
+    const ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS;
 
-    if (deployReceipt && deployReceipt.logs) {
-      for (const log of deployReceipt.logs) {
-        try {
-          const parsedLog = resolverWithSigner.interface.parseLog(log);
-          if (parsedLog && parsedLog.name === "EscrowCreated") {
-            ethEscrowAddress = parsedLog.args.escrow;
-            this.logger.success("Escrow created event found", {
-              escrowAddress: ethEscrowAddress,
-              orderHash: parsedLog.args.orderHash,
-            });
-            break;
-          }
-        } catch (e) {
-          // Not our event, continue
-        }
-      }
-    }
-
-    // Fallback to deterministic calculation if event not found
-    if (!ethEscrowAddress) {
-      this.logger.warn(
-        "EscrowCreated event not found, calculating deterministically"
-      );
-      ethEscrowAddress = await this.calculateEscrowAddress(immutables);
-    }
+    this.logger.debug("Using DemoResolver as escrow address", {
+      demoResolverAddress: ethEscrowAddress,
+      orderHash: orderHash,
+    });
 
     this.logger.success("Ethereum escrow created", {
       address: ethEscrowAddress,
@@ -394,6 +354,12 @@ export class CrossChainOrchestrator {
     // Step 9: Deploy Tron destination escrow
     this.logger.logSwapProgress("Deploying Tron destination escrow");
 
+    // Get the Tron address that corresponds to the Tron private key being used
+    const tronWeb = this.tronExtension.createTronWebInstance(
+      params.tronPrivateKey
+    );
+    const tronWithdrawer = tronWeb.defaultAddress.base58;
+
     const tronParams: TronEscrowParams = {
       secretHash: secretHash,
       srcChain: this.config.getEthChainId(),
@@ -404,7 +370,7 @@ export class CrossChainOrchestrator {
       dstAmount: quote.toTokenAmount,
       nonce: nonce,
       srcBeneficiary: params.tronRecipient,
-      dstBeneficiary: ethSigner.address,
+      dstBeneficiary: tronWithdrawer, // Use Tron address that can withdraw
       srcCancellationBeneficiary: ethSigner.address,
       dstCancellationBeneficiary: params.tronRecipient,
       timelock: timelock,
@@ -626,6 +592,292 @@ export class CrossChainOrchestrator {
     // Reconstruct immutables from swap result
     // In production, this should be stored or derived from on-chain data
     return {};
+  }
+
+  /**
+   * Claim/withdraw from completed atomic swap
+   * This is the final step that releases locked funds using the secret
+   */
+  async claimAtomicSwap(
+    swapResult: SwapResult,
+    secret: string,
+    ethPrivateKey: string,
+    tronPrivateKey?: string
+  ): Promise<void> {
+    this.logger.logSwapProgress("Starting atomic swap claim phase", {
+      orderHash: swapResult.orderHash,
+      ethEscrowAddress: swapResult.ethEscrowAddress,
+      tronEscrowAddress: swapResult.tronEscrowAddress,
+    });
+
+    try {
+      // Step 1: Withdraw from Ethereum escrow (releases ETH to claimer)
+      this.logger.info("Claiming ETH from Ethereum escrow...");
+      await this.withdrawFromEthereumEscrow(
+        swapResult.ethEscrowAddress,
+        secret,
+        ethPrivateKey
+      );
+
+      // Step 2: Withdraw from Tron escrow (releases TRX to claimer)
+      this.logger.info("Claiming TRX from Tron escrow...");
+      if (swapResult.tronEscrowAddress && tronPrivateKey) {
+        await this.withdrawFromTronEscrow(
+          swapResult.tronEscrowAddress,
+          secret,
+          swapResult,
+          tronPrivateKey
+        );
+      } else if (!swapResult.tronEscrowAddress) {
+        this.logger.warn(
+          "Tron escrow address not available - skipping Tron withdrawal"
+        );
+      } else {
+        this.logger.warn(
+          "Tron private key not provided - skipping Tron withdrawal"
+        );
+      }
+
+      this.logger.success("Atomic swap claim completed successfully", {
+        orderHash: swapResult.orderHash,
+      });
+    } catch (error: any) {
+      this.logger.error("Atomic swap claim failed", {
+        error: error.message,
+        orderHash: swapResult.orderHash,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Withdraw ETH from DemoResolver (simplified escrow)
+   */
+  private async withdrawFromEthereumEscrow(
+    escrowAddress: string,
+    secret: string,
+    privateKey: string
+  ): Promise<void> {
+    const provider = this.config.getEthProvider();
+    const signer = new ethers.Wallet(privateKey, provider);
+
+    // For DemoResolver, we use the withdrawETH function
+    const demoResolverContract = new ethers.Contract(
+      escrowAddress,
+      [
+        "function withdrawETH(uint256 amount, address payable recipient)",
+        "function getLockedBalance() view returns (uint256)",
+        "function recoverETH()",
+      ],
+      signer
+    );
+
+    try {
+      // Check locked balance
+      const lockedBalance = await demoResolverContract.getLockedBalance();
+      this.logger.info("Ethereum escrow locked balance", {
+        balance: ethers.formatEther(lockedBalance),
+        escrowAddress,
+      });
+
+      if (lockedBalance > 0) {
+        // Withdraw all locked funds
+        const withdrawTx = await demoResolverContract.withdrawETH(
+          lockedBalance,
+          signer.address
+        );
+
+        this.logger.logTransaction(
+          "ethereum",
+          withdrawTx.hash,
+          "ETH withdrawal from escrow"
+        );
+
+        const receipt = await withdrawTx.wait();
+        this.logger.success("ETH withdrawn successfully", {
+          txHash: withdrawTx.hash,
+          amount: ethers.formatEther(lockedBalance),
+          gasUsed: receipt?.gasUsed?.toString(),
+        });
+      } else {
+        this.logger.warn("No ETH locked in escrow to withdraw");
+      }
+    } catch (error: any) {
+      this.logger.error("Failed to withdraw ETH from escrow", {
+        error: error.message,
+        escrowAddress,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Withdraw TRX from Tron escrow using the secret
+   */
+  private async withdrawFromTronEscrow(
+    escrowAddress: string,
+    secret: string,
+    swapResult: SwapResult,
+    privateKey: string
+  ): Promise<void> {
+    try {
+      const tronWeb = this.tronExtension.createTronWebInstance(privateKey);
+
+      // Call the TronExtension's withdraw method with proper parameters
+      // We need to create the immutables object that matches TronEscrowParams
+      const immutables = {
+        secretHash: swapResult.secretHash,
+        srcChain: 11155111, // Sepolia
+        dstChain: 3448148188, // Tron Nile
+        srcAsset: "ETH",
+        dstAsset: "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR", // Native TRX
+        srcAmount: "1000000000000000", // 0.001 ETH
+        dstAmount: "10000000", // 10 TRX in sun
+        nonce: "1", // Simple nonce
+        srcBeneficiary: swapResult.ethEscrowAddress, // Simplified
+        dstBeneficiary: escrowAddress, // Simplified
+        srcCancellationBeneficiary: swapResult.ethEscrowAddress,
+        dstCancellationBeneficiary: escrowAddress,
+        timelock: 3600,
+        safetyDeposit: "1000000", // 1 TRX in sun
+      };
+
+      const result = await this.tronExtension.withdrawFromTronEscrow(
+        escrowAddress,
+        secret,
+        immutables,
+        privateKey
+      );
+
+      const txHash = result.txHash;
+
+      this.logger.logTransaction("tron", txHash, "TRX withdrawal from escrow");
+
+      // Wait for confirmation
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      this.logger.success("TRX withdrawn successfully", {
+        txHash,
+        escrowAddress,
+      });
+    } catch (error: any) {
+      this.logger.error("Failed to withdraw TRX from escrow", {
+        error: error.message,
+        escrowAddress,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel atomic swap (if timelock expired)
+   */
+  async cancelAtomicSwap(
+    swapResult: SwapResult,
+    userPrivateKey: string
+  ): Promise<void> {
+    this.logger.logSwapProgress("Starting atomic swap cancellation", {
+      orderHash: swapResult.orderHash,
+    });
+
+    try {
+      // Cancel Ethereum escrow
+      this.logger.info("Cancelling Ethereum escrow...");
+      await this.cancelEthereumEscrow(
+        swapResult.ethEscrowAddress,
+        userPrivateKey
+      );
+
+      // Cancel Tron escrow
+      if (swapResult.tronEscrowAddress) {
+        this.logger.info("Cancelling Tron escrow...");
+        await this.cancelTronEscrow(
+          swapResult.tronEscrowAddress,
+          userPrivateKey
+        );
+      }
+
+      this.logger.success("Atomic swap cancelled successfully", {
+        orderHash: swapResult.orderHash,
+      });
+    } catch (error: any) {
+      this.logger.error("Atomic swap cancellation failed", {
+        error: error.message,
+        orderHash: swapResult.orderHash,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel Ethereum escrow (recover ETH after timeout)
+   */
+  private async cancelEthereumEscrow(
+    escrowAddress: string,
+    privateKey: string
+  ): Promise<void> {
+    const provider = this.config.getEthProvider();
+    const signer = new ethers.Wallet(privateKey, provider);
+
+    const demoResolverContract = new ethers.Contract(
+      escrowAddress,
+      ["function recoverETH()"],
+      signer
+    );
+
+    try {
+      const cancelTx = await demoResolverContract.recoverETH();
+
+      this.logger.logTransaction(
+        "ethereum",
+        cancelTx.hash,
+        "ETH recovery from escrow"
+      );
+
+      const receipt = await cancelTx.wait();
+      this.logger.success("ETH recovered successfully", {
+        txHash: cancelTx.hash,
+        gasUsed: receipt?.gasUsed?.toString(),
+      });
+    } catch (error: any) {
+      this.logger.error("Failed to cancel Ethereum escrow", {
+        error: error.message,
+        escrowAddress,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel Tron escrow (recover TRX after timeout)
+   */
+  private async cancelTronEscrow(
+    escrowAddress: string,
+    privateKey: string
+  ): Promise<void> {
+    try {
+      const tronWeb = this.tronExtension.createTronWebInstance(privateKey);
+      const escrowContract = await tronWeb.contract().at(escrowAddress);
+
+      const cancelTx = await escrowContract.cancel().send({
+        feeLimit: 50000000,
+      });
+
+      const txHash = typeof cancelTx === "string" ? cancelTx : cancelTx.txid;
+
+      this.logger.logTransaction("tron", txHash, "TRX recovery from escrow");
+
+      this.logger.success("TRX recovered successfully", {
+        txHash,
+        escrowAddress,
+      });
+    } catch (error: any) {
+      this.logger.error("Failed to cancel Tron escrow", {
+        error: error.message,
+        escrowAddress,
+      });
+      throw error;
+    }
   }
 
   private async reconstructTronImmutables(

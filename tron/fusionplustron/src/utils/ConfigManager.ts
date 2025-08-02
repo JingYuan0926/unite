@@ -29,6 +29,9 @@ export class ConfigManager {
   public readonly OFFICIAL_WETH_ADDRESS = process.env.OFFICIAL_WETH_ADDRESS!;
   public readonly FUSION_EXTENSION_ADDRESS =
     process.env.FUSION_EXTENSION_ADDRESS!;
+  public readonly DEMO_RESOLVER_ADDRESS =
+    process.env.DEMO_RESOLVER_ADDRESS ||
+    "0xA7fa9C3a4BDBa7A2d29F8A2bC62Cf75c69C4bf3F";
 
   // Tron Contract Addresses
   public readonly TRON_ESCROW_FACTORY_ADDRESS =
@@ -49,7 +52,7 @@ export class ConfigManager {
 
   // Constants
   public readonly TRX_REPRESENTATION_ADDRESS =
-    "0x0000000000000000000000000000000000000001";
+    "0x0000000000000000000000000000000000000000"; // Native TRX uses zero address
   public readonly ETH_CHAIN_ID = 11155111; // Sepolia
   public readonly TRON_CHAIN_ID = 3448148188; // Nile testnet
   public readonly MIN_TIMELOCK = 3600; // 1 hour
@@ -163,6 +166,7 @@ export class ConfigManager {
         lop: this.OFFICIAL_LOP_ADDRESS,
         escrowFactory: this.OFFICIAL_ESCROW_FACTORY_ADDRESS,
         resolver: this.OFFICIAL_RESOLVER_ADDRESS,
+        demoResolver: this.DEMO_RESOLVER_ADDRESS,
         weth: this.OFFICIAL_WETH_ADDRESS,
         fusionExtension: this.FUSION_EXTENSION_ADDRESS,
       },

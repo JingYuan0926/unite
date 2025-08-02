@@ -23,13 +23,8 @@ contract AddressLibTest {
     function testAddressGet(uint256 addressAsUint) 
         external returns (address converted, bool success) 
     {
-        try Address.wrap(addressAsUint).get() returns (address addr) {
-            converted = addr;
-            success = true;
-        } catch {
-            converted = address(0);
-            success = false;
-        }
+        converted = Address.wrap(addressAsUint).get();
+        success = true;
         
         emit AddressConversion(addressAsUint, converted, success);
         return (converted, success);
@@ -78,23 +73,9 @@ contract AddressLibTest {
     ) {
         allSuccess = true;
         
-        try Address.wrap(token).get() returns (address addr) {
-            tokenAddr = addr;
-        } catch {
-            allSuccess = false;
-        }
-        
-        try Address.wrap(maker).get() returns (address addr) {
-            makerAddr = addr;
-        } catch {
-            allSuccess = false;
-        }
-        
-        try Address.wrap(taker).get() returns (address addr) {
-            takerAddr = addr;
-        } catch {
-            allSuccess = false;
-        }
+        tokenAddr = Address.wrap(token).get();
+        makerAddr = Address.wrap(maker).get();
+        takerAddr = Address.wrap(taker).get();
         
         return (tokenAddr, makerAddr, takerAddr, allSuccess);
     }

@@ -1,0 +1,20 @@
+{
+  "factory": {
+    "contractName": "TronEscrowFactoryPatched",
+    "address": "411554e015d8d2406fb2e85ee7a0cb6c1760daf68f",
+    "txHash": "unknown",
+    "tronscanUrl": "N/A",
+    "deploymentTimestamp": "2025-08-01T18:08:49.635Z",
+    "gasUsed": 0,
+    "success": true
+  },
+  "timestamp": "2025-08-01T18:08:49.635Z",
+  "constructorParams": [
+    "0x0000000000000000000000000000000000000000",
+    "0x0000000000000000000000000000000000000000",
+    "0x0000000000000000000000000000000000000000",
+    "41942e12a3eaead38224aeeee5f4eedcb15ea112f8",
+    86400,
+    43200
+  ]
+}

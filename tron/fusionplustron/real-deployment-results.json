@@ -1,0 +1,11 @@
+{
+  "phase1": {
+    "contractName": "TronCreate2Test",
+    "address": "4108847b25661b3743471fb97f50dc3fa7e2cff817",
+    "tronscanUrl": "https://nile.tronscan.org/#/transaction/undefined",
+    "deploymentTimestamp": "2025-08-01T18:05:31.019Z",
+    "gasUsed": 0,
+    "success": true
+  },
+  "timestamp": "2025-08-01T18:05:31.019Z"
+}

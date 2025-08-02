@@ -1,0 +1,31 @@
+{
+  "testType": "LIVE_FACTORY_CREATE_ESCROW_TEST",
+  "factoryAddress": "TBuzsL2xgcxDf8sc4gYgLAfAKC1J7WhhAH",
+  "network": "Tron Nile Testnet",
+  "timestamp": "2025-08-02T06:40:25.869Z",
+  "results": [
+    {
+      "testName": "createDstEscrow",
+      "txHash": "unknown",
+      "escrowAddress": null,
+      "gasUsed": 0,
+      "success": false,
+      "timestamp": "2025-08-02T06:40:25.868Z",
+      "tronscanUrl": "https://nile.tronscan.org/#/transaction/unknown",
+      "contractExplorerUrl": null,
+      "testParameters": {
+        "orderHash": "0x00000000000000000000000000000000000000000000000000000000688db29c",
+        "hashlock": "0x4dd73f7d8e1d963b62cea2412900bfdb75461730b0dfd1db804b597892974f67",
+        "secret": "test-secret-1754116764",
+        "amount": "1",
+        "safetyDeposit": "0.1",
+        "totalValue": "1.1"
+      }
+    }
+  ],
+  "summary": {
+    "success": false,
+    "escrowCreated": false,
+    "readyForIntegration": false
+  }
+}

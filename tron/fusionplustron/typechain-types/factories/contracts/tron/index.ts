@@ -2,6 +2,9 @@
 /* tslint:disable */
 /* eslint-disable */
 export * as interfaces from "./interfaces";
+export * as test from "./test";
+export { TronDemoEscrow__factory } from "./TronDemoEscrow__factory";
 export { TronEscrowDst__factory } from "./TronEscrowDst__factory";
 export { TronEscrowFactory__factory } from "./TronEscrowFactory__factory";
+export { TronEscrowFactoryPatched__factory } from "./TronEscrowFactoryPatched__factory";
 export { TronEscrowSrc__factory } from "./TronEscrowSrc__factory";

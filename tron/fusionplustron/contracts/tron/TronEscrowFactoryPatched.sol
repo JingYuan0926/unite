@@ -106,12 +106,7 @@ contract TronEscrowFactoryPatched is IEscrowFactory {
         if (dstImmutables.hashlock == bytes32(0)) revert InvalidHashlock();
         
         // TRON FIX: Safer address extraction with validation
-        address tokenAddress;
-        try dstImmutables.token.get() returns (address addr) {
-            tokenAddress = addr;
-        } catch {
-            revert InvalidToken();
-        }
+        address tokenAddress = dstImmutables.token.get();
         
         uint256 nativeAmount = dstImmutables.safetyDeposit;
 
