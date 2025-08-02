@@ -77,27 +77,142 @@ Implement the complete cross-chain atomic swap flows between Ethereum and Tron u
 ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS; // Uses DemoResolver as escrow
 ```
 
-**Required Fix**:
+**Required Fix (Robust Implementation)**:
 
 ```typescript
-// ✅ REQUIRED: Extract real EscrowSrc address from transaction receipt
+// ✅ STEP 1: Pre-calculate deterministic EscrowSrc address for immediate use
+const expectedEscrowAddress = computeDeterministicEscrowAddress(
+  this.config.OFFICIAL_ESCROW_FACTORY_ADDRESS,
+  immutables,
+  ESCROW_SRC_PROXY_BYTECODE_HASH
+);
+console.log("Expected EscrowSrc Address:", expectedEscrowAddress);
+
+// ✅ STEP 2: Execute atomic swap transaction
+const deployTx = await (resolverWithSigner as any).executeAtomicSwap(
+  immutables,
+  preparedOrder.order,
+  r,
+  vs,
+  params.ethAmount,
+  0,
+  "0x",
+  { gasLimit: 2000000 }
+);
+
+// ✅ STEP 3: Confirm real escrow creation via transaction receipt
 const receipt = await deployTx.wait();
-const escrowCreatedEvent = parseEscrowCreatedEvent(receipt);
-ethEscrowAddress = escrowCreatedEvent.escrowAddress; // Use real EscrowSrc contract
+const escrowCreatedEvent = parseEscrowFactoryEvent(receipt, "SrcEscrowCreated");
+const confirmedEscrowAddress = computeEscrowAddress(
+  escrowCreatedEvent.srcImmutables
+);
+
+// ✅ STEP 4: Validate addresses match (robustness check)
+if (
+  expectedEscrowAddress.toLowerCase() !== confirmedEscrowAddress.toLowerCase()
+) {
+  throw new Error(
+    `Address mismatch: expected ${expectedEscrowAddress}, got ${confirmedEscrowAddress}`
+  );
+}
+
+// ✅ STEP 5: Use confirmed real EscrowSrc address
+ethEscrowAddress = confirmedEscrowAddress; // Real EscrowSrc contract
 ```
 
 **Implementation Steps**:
 
-1. **Parse Transaction Receipt**: Add event parsing logic in CrossChainOrchestrator.ts
-2. **Extract SrcEscrowCreated Event**: Parse `EscrowFactory.SrcEscrowCreated(IBaseEscrow.Immutables, DstImmutablesComplement)`
-3. **Compute Escrow Address**: Use `immutables.hash()` to get deterministic address
-4. **Update ethEscrowAddress**: Replace hardcoded value with extracted address
-5. **Test Integration**: Verify claims work with real EscrowSrc contracts
+1. **Pre-Calculate Address**: Compute deterministic EscrowSrc address before transaction
+2. **Execute Transaction**: DemoResolverV2.executeAtomicSwap() with LOP integration
+3. **Parse Transaction Receipt**: Extract SrcEscrowCreated event from receipt
+4. **Validate Address Match**: Confirm pre-calculated matches actual deployed address
+5. **Use Real Address**: Replace hardcoded DemoResolver with confirmed EscrowSrc
+6. **Test Integration**: Verify claims work with real EscrowSrc contracts
+
+**Utility Functions Needed**:
+
+```typescript
+// Add to CrossChainOrchestrator.ts or utils
+function computeDeterministicEscrowAddress(
+  factoryAddress: string,
+  immutables: IBaseEscrow.Immutables,
+  proxyBytecodeHash: string
+): string {
+  const salt = keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      [
+        "bytes32",
+        "bytes32",
+        "uint256",
+        "uint256",
+        "uint256",
+        "uint256",
+        "uint256",
+      ],
+      [
+        immutables.orderHash,
+        immutables.hashlock,
+        immutables.maker,
+        immutables.taker,
+        immutables.token,
+        immutables.amount,
+        immutables.safetyDeposit,
+      ]
+    )
+  );
+
+  return ethers.utils.getCreate2Address(
+    factoryAddress,
+    salt,
+    proxyBytecodeHash
+  );
+}
+
+function parseEscrowFactoryEvent(
+  receipt: TransactionReceipt,
+  eventName: string
+) {
+  const escrowFactoryInterface = new ethers.utils.Interface(ESCROW_FACTORY_ABI);
+
+  for (const log of receipt.logs) {
+    try {
+      const parsed = escrowFactoryInterface.parseLog(log);
+      if (parsed.name === eventName) {
+        return parsed.args;
+      }
+    } catch (e) {
+      // Skip logs that don't match
+      continue;
+    }
+  }
+
+  throw new Error(`${eventName} event not found in transaction receipt`);
+}
+```
 
 **Files to Modify**:
 
 - `fusionplustron/src/sdk/CrossChainOrchestrator.ts` (line 406)
 - Add event parsing utilities for EscrowFactory events
+
+**Required Constants**:
+
+```typescript
+// Add to CrossChainOrchestrator.ts or constants file
+const ESCROW_SRC_PROXY_BYTECODE_HASH = "0x..."; // Get from EscrowFactory deployment
+const ESCROW_FACTORY_ABI = [
+  "event SrcEscrowCreated(tuple(bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256) srcImmutables, tuple(uint256,uint256,uint256,uint256,uint256) dstImmutablesComplement)",
+  "function addressOfEscrowSrc(tuple(bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256)) external view returns (address)",
+];
+```
+
+**Benefits of This Approach**:
+
+1. **Immediate Address Availability**: Pre-calculated address can be used for UI updates and logging
+2. **Robustness**: Validation ensures consistency between expected and actual deployment
+3. **Better UX**: Faster response to user actions (no need to wait for receipt parsing)
+4. **Debugging**: Clear logging for troubleshooting address computation issues
+5. **Fail-Fast**: Early detection of any computation mismatches
 
 ### **1.2 Verify Official Pattern Compliance**
 
@@ -280,10 +395,18 @@ const tronEscrowAddress = await tronExtension.deployTronEscrowDst({
 });
 ```
 
-**Step 3: Atomic Execution (DemoResolverV2)**
+**Step 3: Atomic Execution (DemoResolverV2) - Robust Implementation**
 
 ```typescript
-// Resolver calls DemoResolverV2.executeAtomicSwap()
+// ✅ STEP 3A: Pre-calculate expected EscrowSrc address
+const expectedEscrowAddress = computeDeterministicEscrowAddress(
+  ESCROW_FACTORY_ADDRESS,
+  immutables, // Include hashlock from Tron escrow
+  ESCROW_SRC_PROXY_BYTECODE_HASH
+);
+console.log("Expected EscrowSrc Address:", expectedEscrowAddress);
+
+// ✅ STEP 3B: Resolver calls DemoResolverV2.executeAtomicSwap()
 const deployTx = await demoResolver.executeAtomicSwap(
   immutables, // Include hashlock from Tron escrow
   selectedOrder.order, // User A's signed order
@@ -294,14 +417,25 @@ const deployTx = await demoResolver.executeAtomicSwap(
   args
 );
 
-// ✅ CRITICAL: Extract real EscrowSrc address from transaction
+// ✅ STEP 3C: Confirm real EscrowSrc creation via transaction receipt
 const receipt = await deployTx.wait();
 const escrowCreatedEvent = parseEscrowFactoryEvent(receipt, "SrcEscrowCreated");
-const realEthEscrowAddress = computeEscrowAddress(
+const confirmedEscrowAddress = computeEscrowAddress(
   escrowCreatedEvent.srcImmutables
 );
 
-// LOP automatically transfers ETH from User A to real EscrowSrc
+// ✅ STEP 3D: Validate address consistency (robustness check)
+if (
+  expectedEscrowAddress.toLowerCase() !== confirmedEscrowAddress.toLowerCase()
+) {
+  throw new Error(
+    `EscrowSrc address mismatch: expected ${expectedEscrowAddress}, confirmed ${confirmedEscrowAddress}`
+  );
+}
+
+// ✅ STEP 3E: LOP automatically transfers ETH from User A to confirmed real EscrowSrc
+const realEthEscrowAddress = confirmedEscrowAddress;
+console.log("Confirmed EscrowSrc Address:", realEthEscrowAddress);
 ```
 
 **Step 4: Claims**
