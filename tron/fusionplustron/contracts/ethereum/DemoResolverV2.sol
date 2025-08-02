@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "./official-lop/LimitOrderProtocol.sol";
 import "./official-escrow/interfaces/IEscrowFactory.sol";
 import "./official-escrow/interfaces/IBaseEscrow.sol";
@@ -14,6 +15,7 @@ import "./official-escrow/libraries/TimelocksLib.sol";
  * LimitOrderProtocol while bypassing whitelisting restrictions
  */
 contract DemoResolverV2 {
+    using AddressLib for Address;
     using TimelocksLib for Timelocks;
 
     LimitOrderProtocol public immutable LOP;
@@ -66,35 +68,39 @@ contract DemoResolverV2 {
             "Invalid ETH: must equal amount + safetyDeposit"
         );
 
-        // Set deployment timestamp for timelocks
+        // Set deployment timestamp for timelocks (following official pattern)
         IBaseEscrow.Immutables memory immutablesMem = immutables;
         immutablesMem.timelocks = TimelocksLib.setDeployedAt(immutables.timelocks, block.timestamp);
 
-        // Calculate the escrow address
-        address escrowAddress = ESCROW_FACTORY.addressOfEscrowSrc(immutablesMem);
+        // Calculate the escrow address (following official Resolver.sol pattern)
+        address computed = ESCROW_FACTORY.addressOfEscrowSrc(immutablesMem);
 
-        // Send safety deposit to the computed escrow address
-        (bool success,) = payable(escrowAddress).call{value: immutablesMem.safetyDeposit}("");
+        // Send safety deposit to the computed escrow address BEFORE LOP call
+        // This is critical - the escrow must have funds before postInteraction creates it
+        (bool success,) = payable(computed).call{value: immutablesMem.safetyDeposit}("");
         require(success, "Safety deposit transfer failed");
 
-        // Fill the order through the official LOP
-        // We'll use the official LOP's fillOrderArgs function
-        try LOP.fillOrderArgs(order, r, vs, amount, takerTraits, args) {
-            // Order successfully filled
-            emit EscrowCreated(escrowAddress, immutables.orderHash);
-            
-            emit SwapExecuted(
-                order.maker.get(),
-                escrowAddress,
-                immutables.orderHash,
-                amount,
-                immutablesMem.safetyDeposit
-            );
-        } catch (bytes memory reason) {
-            // If LOP order fails, we need to refund the safety deposit
-            // In a real implementation, this would be more sophisticated
-            revert(string(reason));
-        }
+        // Follow official Resolver pattern: set special flag to trigger postInteraction
+        // _ARGS_HAS_TARGET = 1 << 251 (tells LOP to call postInteraction on EscrowFactory)
+        takerTraits = TakerTraits.wrap(TakerTraits.unwrap(takerTraits) | uint256(1 << 251));
+        
+        // Encode the computed escrow address into args (official pattern)
+        bytes memory argsMem = abi.encodePacked(computed, args);
+
+        // Fill the order through the official LOP with proper postInteraction flow
+        // This will trigger EscrowFactory._postInteraction which creates the actual escrow
+        LOP.fillOrderArgs(order, r, vs, amount, takerTraits, argsMem);
+
+        // If we reach here, the order was successfully filled and escrow created
+        emit EscrowCreated(computed, immutables.orderHash);
+        
+        emit SwapExecuted(
+            order.maker.get(),
+            computed,
+            immutables.orderHash,
+            amount,
+            immutablesMem.safetyDeposit
+        );
     }
 
     /**

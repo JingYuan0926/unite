@@ -353,19 +353,24 @@ export class CrossChainOrchestrator {
       preparedOrder.order.makerTraits || 0,
     ];
 
-    // Execute atomic swap via DemoResolver (simplified approach)
-    this.logger.info("Executing simplified atomic swap via DemoResolver...");
+    // Execute atomic swap via DemoResolver (TRUE 1inch LOP integration)
+    this.logger.info(
+      "Executing TRUE atomic swap with 1inch LOP integration..."
+    );
 
     let deployTx;
     try {
-      deployTx = await (resolverWithSigner as any).executeSwap(
-        orderHash, // Order hash
-        params.ethAmount, // Amount being swapped
-        safetyDeposit, // Safety deposit
-        ethSigner.address, // Maker address
+      deployTx = await (resolverWithSigner as any).executeAtomicSwap(
+        immutables, // Full escrow immutables struct
+        preparedOrder.order, // 1inch order structure
+        r, // Order signature r component
+        vs, // Order signature vs component
+        params.ethAmount, // Amount to fill
+        0, // TakerTraits (default to 0)
+        "0x", // Additional args (empty)
         {
           value: totalValue, // ETH amount + safety deposit
-          gasLimit: 100000, // Reasonable gas limit for simple transaction
+          gasLimit: 500000, // Higher gas limit for LOP integration
         }
       );
     } catch (error: any) {
