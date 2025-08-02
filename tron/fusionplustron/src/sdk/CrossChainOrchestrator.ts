@@ -21,8 +21,32 @@ const ESCROW_FACTORY_ABI = [
 ];
 
 // Helper functions for encoding Address and Timelocks as uint256
-function encodeAddress(addr: string): bigint {
-  return BigInt(addr);
+function encodeAddress(
+  addr: string,
+  tronExtension?: TronExtension,
+  config?: ConfigManager
+): bigint {
+  // Properly convert address to BigInt
+  if (addr.startsWith("0x")) {
+    // Ethereum address (hex string) - convert directly
+    return BigInt(addr);
+  } else if (addr.startsWith("T")) {
+    // Tron address (base58) - convert to hex first
+    if (!tronExtension || !config) {
+      throw new Error(
+        "TronExtension and ConfigManager required to convert Tron address"
+      );
+    }
+    // Use any valid private key just to get the TronWeb address utility
+    const tronWeb = tronExtension.createTronWebInstance(
+      config.USER_B_TRON_PRIVATE_KEY
+    );
+    const hexAddress = (tronWeb as any).address.toHex(addr);
+    return BigInt("0x" + hexAddress);
+  } else {
+    // Assume it's already a numeric string or hex without 0x
+    return BigInt(addr.startsWith("0x") ? addr : "0x" + addr);
+  }
 }
 
 function encodeTimelocks(timelocks: {
@@ -96,6 +120,14 @@ export class CrossChainOrchestrator {
   private tronExtension: TronExtension;
   private resolverContract: ethers.Contract;
 
+  // SINGLE SOURCE OF TRUTH FOR USER ROLES
+  // User A: ETH holder wanting TRX (MAKER)
+  // User B: TRX holder wanting ETH (TAKER)
+  private userA_ethSigner: ethers.Wallet;
+  private userA_tronAddress: string;
+  private userB_tronPrivateKey: string;
+  private userB_ethAddress: string;
+
   constructor(config: ConfigManager, logger: ScopedLogger) {
     this.config = config;
     this.logger = logger;
@@ -110,8 +142,31 @@ export class CrossChainOrchestrator {
       provider
     );
 
+    // Initialize user roles clearly
+    this.userA_ethSigner = new ethers.Wallet(
+      config.USER_A_ETH_PRIVATE_KEY,
+      provider
+    );
+    this.userA_tronAddress = config.USER_A_TRX_RECEIVE_ADDRESS;
+    this.userB_tronPrivateKey = config.USER_B_TRON_PRIVATE_KEY;
+    this.userB_ethAddress = config.USER_B_ETH_RECEIVE_ADDRESS;
+
     this.logger.info("CrossChainOrchestrator initialized", {
       demoResolverAddress: config.DEMO_RESOLVER_ADDRESS,
+      userRoles: {
+        userA_maker: {
+          ethAddress: this.userA_ethSigner.address,
+          tronAddress: this.userA_tronAddress,
+          role: "MAKER (ETH → TRX)",
+        },
+        userB_taker: {
+          ethAddress: this.userB_ethAddress,
+          tronPrivateKey: this.userB_tronPrivateKey
+            ? "***SET***"
+            : "***MISSING***",
+          role: "TAKER (TRX → ETH)",
+        },
+      },
     });
   }
 
@@ -176,6 +231,11 @@ export class CrossChainOrchestrator {
     const nonce = ethers.hexlify(ethers.randomBytes(32));
     const safetyDeposit = ethers.parseEther("0.01"); // 0.01 ETH safety deposit
 
+    // Get User B's actual Tron address from their private key (needed for both ETH and Tron immutables)
+    const userB_tronAddress = this.tronExtension.getTronAddressFromPrivateKey(
+      this.userB_tronPrivateKey
+    );
+
     // Create EIP-712 domain for order hash calculation (needed for immutables)
     const domain = {
       name: "1inch Limit Order Protocol",
@@ -204,13 +264,17 @@ export class CrossChainOrchestrator {
       preparedOrder.order
     );
 
-    // Create properly encoded immutables for the corrected ABI
+    // Create properly encoded immutables using clear user roles
     const immutables = [
       orderHash, // bytes32 orderHash
       secretHash, // bytes32 hashlock
-      encodeAddress(ethSigner.address), // uint256 maker (encoded Address)
-      encodeAddress(ethSigner.address), // uint256 taker (encoded Address)
-      encodeAddress(ethers.ZeroAddress), // uint256 token (encoded Address for ETH)
+      encodeAddress(
+        this.userA_ethSigner.address,
+        this.tronExtension,
+        this.config
+      ), // uint256 maker (User A - ETH holder)
+      encodeAddress(userB_tronAddress, this.tronExtension, this.config), // uint256 taker (User B - TRX holder with correct Tron address)
+      encodeAddress(ethers.ZeroAddress, this.tronExtension, this.config), // uint256 token (encoded Address for ETH)
       params.ethAmount, // uint256 amount
       safetyDeposit, // uint256 safetyDeposit
       encodeTimelocks({
@@ -218,7 +282,7 @@ export class CrossChainOrchestrator {
         deployedAt: Math.floor(Date.now() / 1000),
         srcWithdrawal: Math.floor(Date.now() / 1000) + 600, // 10 min
         srcCancellation: Math.floor(Date.now() / 1000) + timelock,
-        dstWithdrawal: Math.floor(Date.now() / 1000) + 300, // 5 min
+        dstWithdrawal: Math.floor(Date.now() / 1000) + 15, // 15 seconds for fast testing
         dstCancellation: Math.floor(Date.now() / 1000) + timelock - 300,
       }),
     ];
@@ -354,13 +418,11 @@ export class CrossChainOrchestrator {
     // Step 9: Deploy Tron destination escrow
     this.logger.logSwapProgress("Deploying Tron destination escrow");
 
-    // Get the Tron address that corresponds to the Tron private key being used
-    const tronWeb = this.tronExtension.createTronWebInstance(
-      params.tronPrivateKey
-    );
-    const tronWithdrawer = tronWeb.defaultAddress.base58;
+    // Get User B's actual Tron address from their private key (reuse the same address)
+    const tronWithdrawer = userB_tronAddress;
 
     const tronParams: TronEscrowParams = {
+      orderHash: orderInfo.orderHash, // CRITICAL: Use actual orderHash from Ethereum
       secretHash: secretHash,
       srcChain: this.config.getEthChainId(),
       dstChain: this.config.getTronChainId(),
@@ -369,12 +431,18 @@ export class CrossChainOrchestrator {
       srcAmount: params.ethAmount.toString(),
       dstAmount: quote.toTokenAmount,
       nonce: nonce,
-      srcBeneficiary: params.tronRecipient,
-      dstBeneficiary: tronWithdrawer, // Use Tron address that can withdraw
-      srcCancellationBeneficiary: ethSigner.address,
-      dstCancellationBeneficiary: params.tronRecipient,
+      // CORRECT ROLE ASSIGNMENTS FOR TRON IMMUTABLES:
+      // The TronExtension maps: srcBeneficiary → maker, dstBeneficiary → taker
+      // For Tron escrow: maker=User A's TRON address (to receive TRX), taker=User B (TRX holder who calls withdraw)
+      srcBeneficiary: this.userA_tronAddress, // User A's TRON address (to receive the TRX)
+      dstBeneficiary: tronWithdrawer, // User B is the taker (who can call withdraw)
+      // CORRECT CANCELLATION ASSIGNMENTS:
+      // - srcCancellation: ETH returns to maker (User A) if cancelled
+      // - dstCancellation: TRX returns to taker (User B) if cancelled
+      srcCancellationBeneficiary: this.userA_ethSigner.address, // User A gets ETH back if cancelled
+      dstCancellationBeneficiary: tronWithdrawer, // User B gets TRX back if cancelled
       timelock: timelock,
-      safetyDeposit: this.tronExtension.toSun("10"), // 10 TRX safety deposit
+      safetyDeposit: this.tronExtension.toSun("5"), // 5 TRX safety deposit (reduced for testing)
     };
 
     const tronResult = await this.tronExtension.deployTronEscrowDst(
@@ -390,6 +458,7 @@ export class CrossChainOrchestrator {
       secretHash: secretHash,
       ethTxHash: deployTx.hash,
       tronTxHash: tronResult.txHash,
+      tronImmutables: tronResult.immutables, // Store exact immutables from creation
     };
 
     this.logger.success("ETH -> TRX atomic swap initiated", result);
@@ -444,13 +513,20 @@ export class CrossChainOrchestrator {
       );
       return withdrawTx.hash;
     } else {
-      // Tron withdrawal
-      const immutables = await this.reconstructTronImmutables(swapResult);
+      // Tron withdrawal - use exact immutables from creation
+      if (!swapResult.tronImmutables) {
+        throw new Error(
+          "No tronImmutables found in SwapResult - cannot withdraw"
+        );
+      }
+
+      // CRITICAL: The taker (User B) must call withdraw, but funds go to maker (User A)
+      // Use User B's private key to call withdraw, TRX will be sent to User A (maker)
       const result = await this.tronExtension.withdrawFromTronEscrow(
         swapResult.tronEscrowAddress,
         swapResult.secret,
-        immutables,
-        privateKey
+        swapResult.tronImmutables, // Use exact immutables from creation
+        this.userB_tronPrivateKey // Use User B's key to call withdraw
       );
       return result.txHash;
     }
@@ -723,30 +799,25 @@ export class CrossChainOrchestrator {
     try {
       const tronWeb = this.tronExtension.createTronWebInstance(privateKey);
 
-      // Call the TronExtension's withdraw method with proper parameters
-      // We need to create the immutables object that matches TronEscrowParams
-      const immutables = {
-        secretHash: swapResult.secretHash,
-        srcChain: 11155111, // Sepolia
-        dstChain: 3448148188, // Tron Nile
-        srcAsset: "ETH",
-        dstAsset: "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR", // Native TRX
-        srcAmount: "1000000000000000", // 0.001 ETH
-        dstAmount: "10000000", // 10 TRX in sun
-        nonce: "1", // Simple nonce
-        srcBeneficiary: swapResult.ethEscrowAddress, // Simplified
-        dstBeneficiary: escrowAddress, // Simplified
-        srcCancellationBeneficiary: swapResult.ethEscrowAddress,
-        dstCancellationBeneficiary: escrowAddress,
-        timelock: 3600,
-        safetyDeposit: "1000000", // 1 TRX in sun
-      };
+      // Use the exact immutables stored during escrow creation
+      if (!swapResult.tronImmutables) {
+        throw new Error(
+          "No tronImmutables found in SwapResult - cannot withdraw"
+        );
+      }
 
+      this.logger.debug("Using stored tronImmutables for withdrawal", {
+        hasImmutables: !!swapResult.tronImmutables,
+        immutablesLength: swapResult.tronImmutables.length,
+      });
+
+      // CRITICAL: The taker (User B) must call withdraw, but funds go to maker (User A)
+      // Use User B's private key to call withdraw, TRX will be sent to User A (maker)
       const result = await this.tronExtension.withdrawFromTronEscrow(
-        escrowAddress,
-        secret,
-        immutables,
-        privateKey
+        swapResult.tronEscrowAddress,
+        swapResult.secret,
+        swapResult.tronImmutables, // Use exact immutables from creation
+        this.userB_tronPrivateKey // Use User B's key to call withdraw
       );
 
       const txHash = result.txHash;
@@ -857,9 +928,19 @@ export class CrossChainOrchestrator {
   ): Promise<void> {
     try {
       const tronWeb = this.tronExtension.createTronWebInstance(privateKey);
-      const escrowContract = await tronWeb.contract().at(escrowAddress);
+      // For cancellation, we need the escrow ABI - simplified for this demo
+      const escrowABI = [
+        {
+          inputs: [],
+          name: "cancel",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ];
+      const escrowContract = await tronWeb.contract(escrowABI, escrowAddress);
 
-      const cancelTx = await escrowContract.cancel().send({
+      const cancelTx = await (escrowContract as any).cancel().send({
         feeLimit: 50000000,
       });
 

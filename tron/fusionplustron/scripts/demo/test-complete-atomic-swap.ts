@@ -68,11 +68,11 @@ async function testCompleteAtomicSwap() {
       "Waiting for blockchain confirmations and DstWithdrawal timelock (5 minutes)..."
     );
     console.log(
-      "⏰ The Tron escrow requires 300 seconds (5 minutes) before withdrawal is allowed"
+      "⏰ The Tron escrow requires 15 seconds before withdrawal is allowed (fast testing mode)"
     );
 
-    // Wait for the DstWithdrawal timelock (300 seconds = 5 minutes)
-    const waitTime = 310000; // 310 seconds = 5 minutes 10 seconds (with buffer)
+    // Wait for the DstWithdrawal timelock (15 seconds for fast testing)
+    const waitTime = 20000; // 20 seconds (15 seconds + 5 second buffer)
     console.log(`⏳ Waiting ${waitTime / 1000} seconds for timelock...`);
     await new Promise((resolve) => setTimeout(resolve, waitTime));
 

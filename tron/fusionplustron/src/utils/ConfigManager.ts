@@ -19,6 +19,7 @@ export class ConfigManager {
   public readonly ONE_INCH_API_KEY = process.env.ONE_INCH_API_KEY || "";
   public readonly ONE_INCH_API_URL =
     process.env.ONE_INCH_API_URL || "https://api.1inch.dev";
+  public readonly TRON_API_KEY = process.env.TRON_API_KEY || "";
 
   // Official Contract Addresses (Ethereum Sepolia)
   public readonly OFFICIAL_LOP_ADDRESS = process.env.OFFICIAL_LOP_ADDRESS!;

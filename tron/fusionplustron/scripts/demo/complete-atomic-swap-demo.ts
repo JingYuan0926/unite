@@ -160,6 +160,7 @@ async function main() {
 
   let stage2TxHash: string;
   let tronEscrowAddress: string;
+  let tronImmutables: any[] | undefined;
 
   // Create TRON escrow parameters for real transaction (shared between stages 2 & 3)
   const tronParams: TronEscrowParams = {
@@ -202,6 +203,9 @@ async function main() {
     tronEscrowAddress =
       tronResult.contractAddress || "Contract address pending";
 
+    // Store the exact immutables for withdrawal
+    tronImmutables = tronResult.immutables;
+
     console.log(`✅ TRON Transaction: ${stage2TxHash}`);
     console.log(
       `🔗 Tronscan: https://nile.tronscan.org/#/transaction/${stage2TxHash}`
@@ -230,11 +234,15 @@ async function main() {
     if (tronEscrowAddress && tronEscrowAddress !== "Contract address pending") {
       console.log("📡 Executing REAL TRON withdrawal with secret reveal...");
 
-      // Execute real TRON withdrawal transaction
+      // Execute real TRON withdrawal transaction using exact immutables
+      if (!tronImmutables) {
+        throw new Error("No tronImmutables available from escrow creation");
+      }
+
       const withdrawResult = await tronExtension.withdrawFromTronEscrow(
         tronEscrowAddress,
         ethers.hexlify(secret),
-        tronParams, // Use the same parameters from Stage 2
+        tronImmutables, // Use exact immutables from creation
         process.env.TRON_PRIVATE_KEY!
       );
 

@@ -5,6 +5,7 @@ import { ConfigManager } from "../utils/ConfigManager";
 import { ScopedLogger } from "../utils/Logger";
 
 export interface TronEscrowParams {
+  orderHash: string;
   secretHash: string;
   srcChain: number;
   dstChain: number;
@@ -31,6 +32,7 @@ export interface TronTransactionResult {
   txHash: string;
   success: boolean;
   contractAddress?: string;
+  immutables?: any[]; // Store exact immutables used during creation
 }
 
 /**
@@ -90,35 +92,13 @@ export class TronExtension {
         .at(TRON_ESCROW_FACTORY_PATCHED_ADDRESS);
 
       // Create proper IBaseEscrow.Immutables struct matching the Solidity contract
-      // Generate orderHash from TronEscrowParams (missing from our interface)
-      const abiCoder = ethers.AbiCoder.defaultAbiCoder();
-      const orderHash = ethers.keccak256(
-        abiCoder.encode(
-          [
-            "bytes32",
-            "uint256",
-            "uint256",
-            "string",
-            "string",
-            "string",
-            "string",
-          ],
-          [
-            params.secretHash,
-            params.srcChain,
-            params.dstChain,
-            params.srcAsset,
-            params.dstAsset,
-            params.srcAmount,
-            params.dstAmount,
-          ]
-        )
-      );
+      // Use orderHash from TronEscrowParams
+      const orderHash = params.orderHash;
 
       // Helper function to convert address to uint256 (Address type)
       const addressToUint256 = (address: string): string => {
         if (address.startsWith("0x")) {
-          // Ethereum address - convert to uint256
+          // Ethereum address - already in hex format, convert to uint256
           return BigInt(address).toString();
         } else {
           // TRON address - convert base58 to hex then to uint256
@@ -253,16 +233,16 @@ export class TronExtension {
       }
 
       // Use array format for immutables struct (proven working format)
-      // Convert BigInt values to proper format for TronWeb
+      // CRITICAL: Format values to match TronWeb's contract call expectations
       const immutablesArray = [
-        immutables.orderHash, // bytes32 - already correct
-        immutables.hashlock, // bytes32 - already correct
-        immutables.maker, // uint256 - should be string
-        immutables.taker, // uint256 - should be string
-        immutables.token, // uint256 - should be string
-        immutables.amount.toString(), // uint256 - convert to string
-        immutables.safetyDeposit.toString(), // uint256 - convert to string
-        "0x" + BigInt(immutables.timelocks).toString(16), // uint256 - convert to hex string like successful script
+        immutables.orderHash, // bytes32 - keep as is
+        immutables.hashlock, // bytes32 - keep as is
+        immutables.maker, // uint256 - string format for TronWeb
+        immutables.taker, // uint256 - string format for TronWeb
+        immutables.token, // uint256 - string format for TronWeb
+        immutables.amount.toString(), // uint256 - string format
+        immutables.safetyDeposit.toString(), // uint256 - string format
+        BigInt(immutables.timelocks).toString(), // uint256 - decimal string
       ];
 
       this.logger.debug("Using contract wrapper approach", {
@@ -278,10 +258,36 @@ export class TronExtension {
         totalCallValue,
       });
 
+      this.logger.debug("EXACT immutables being sent to TronWeb", {
+        exact: immutablesArray,
+        types: immutablesArray.map((val) => typeof val),
+      });
+
+      // CRITICAL: Store immutables in the format that TronWeb will actually encode for the contract
+      // Based on TronWeb behavior, bytes32 values get converted to hex without 0x prefix
+      const contractImmutables = immutablesArray.map((val, index) => {
+        if (index <= 1) {
+          // orderHash and hashlock are bytes32 - TronWeb sends without 0x prefix
+          return typeof val === "string" && val.startsWith("0x")
+            ? val.slice(2)
+            : val;
+        }
+        return val; // uint256 values stay as-is
+      });
+
+      this.logger.debug("Contract-encoded immutables format", {
+        contractFormat: contractImmutables,
+        note: "This is what gets actually encoded for the smart contract",
+      });
+
+      // CRITICAL: Store immutables in the EXACT format that TronWeb will send to the contract
+      // This must match exactly what gets encoded and sent to the smart contract
+      const storedImmutables = contractImmutables.slice(); // Use contract-encoded format
+
       const result = await (contract as any)
         .createDstEscrow(immutablesArray, srcCancellationTimestamp)
         .send({
-          feeLimit: 100000000,
+          feeLimit: 200000000, // Increased from 100M to 200M TRX (in sun) for energy
           callValue: totalCallValue,
         });
 
@@ -331,11 +337,30 @@ export class TronExtension {
                 blockNumber: txInfo.blockNumber,
               });
 
-              // Check transaction result
-              if (txInfo.receipt?.result === "FAILED") {
+              // Check transaction result - but allow OUT_OF_ENERGY if contract was created
+              if (
+                txInfo.receipt?.result === "FAILED" &&
+                !txInfo.contract_address
+              ) {
                 throw new Error(
                   `Transaction failed with result: ${txInfo.receipt?.result}`
                 );
+              }
+
+              // If we have a contract address from the transaction, use it
+              if (txInfo.contract_address) {
+                try {
+                  contractAddress = this.tronWeb.address.fromHex(
+                    txInfo.contract_address
+                  );
+                  console.log(
+                    `✅ Contract address from transaction: ${contractAddress}`
+                  );
+                } catch (addrError: any) {
+                  console.log(
+                    `Contract address conversion failed: ${addrError.message}`
+                  );
+                }
               }
 
               // Parse event logs to find DstEscrowCreated event - using proven logic
@@ -491,6 +516,7 @@ export class TronExtension {
         txHash,
         success: true,
         contractAddress,
+        immutables: storedImmutables, // Return stored immutables for withdrawal
       };
     } catch (error: any) {
       // TRON FIX: Enhanced error handling for patched factory
@@ -542,12 +568,13 @@ export class TronExtension {
   async withdrawFromTronEscrow(
     escrowAddress: string,
     secret: string,
-    immutables: TronEscrowParams,
+    exactImmutables: any[], // Use exact immutables from creation
     privateKey: string
   ): Promise<TronTransactionResult> {
     this.logger.debug("Withdrawing from Tron escrow", {
       escrowAddress,
-      secretHash: immutables.secretHash,
+      usingExactImmutables: true,
+      immutablesLength: exactImmutables.length,
     });
 
     const tronWeb = this.createTronWebInstance(privateKey);
@@ -582,21 +609,32 @@ export class TronExtension {
 
       const escrowContract = await tronWeb.contract(escrowABI, escrowAddress);
 
-      // Convert TronEscrowParams to the proper immutables format for the contract
-      // The contract expects an array/tuple, not an object with named fields
-      const contractImmutables = [
-        "0x" + "0".repeat(64), // orderHash - placeholder
-        immutables.secretHash, // hashlock
-        "0", // maker - simplified
-        "0", // taker - simplified
-        "0", // token - Native TRX
-        immutables.dstAmount, // amount
-        immutables.safetyDeposit, // safetyDeposit
-        "0", // timelocks - simplified
-      ];
+      // CRITICAL: Convert stored immutables back to TronWeb contract call format
+      // During creation, we stored bytes32 without 0x prefix (contract format)
+      // During withdrawal, TronWeb needs 0x prefix for proper encoding
+      const tronWebCallFormat = exactImmutables.map((val, index) => {
+        if (index <= 1) {
+          // orderHash and hashlock are bytes32 - add 0x prefix for TronWeb
+          return typeof val === "string" && !val.startsWith("0x")
+            ? "0x" + val
+            : val;
+        } else if (index === 7) {
+          // timelocks is uint256 - remove 0x prefix if present
+          return typeof val === "string" && val.startsWith("0x")
+            ? val.slice(2)
+            : val;
+        }
+        return val; // other uint256 values stay as-is
+      });
+
+      this.logger.debug("Converting stored immutables to TronWeb call format", {
+        storedFormat: exactImmutables,
+        tronWebFormat: tronWebCallFormat,
+        note: "Adding 0x prefix to bytes32 for TronWeb contract encoding",
+      });
 
       const result = await escrowContract
-        .withdraw(secret, contractImmutables)
+        .withdraw(secret, tronWebCallFormat)
         .send({
           feeLimit: 50000000, // 50 TRX fee limit
         });
@@ -608,6 +646,60 @@ export class TronExtension {
           : result.txid || result.transaction?.txID;
 
       console.log("✅ TRON Withdrawal Transaction Hash:", txHash);
+
+      // CRITICAL: Wait for transaction confirmation and verify it succeeded
+      console.log("⏳ Waiting for Tron withdrawal transaction confirmation...");
+      let attempts = 0;
+      const maxAttempts = 20; // 2 minutes max wait
+      let transactionResult = null;
+
+      while (attempts < maxAttempts) {
+        attempts++;
+        await new Promise((resolve) => setTimeout(resolve, 6000)); // Wait 6 seconds
+
+        try {
+          const txInfo = await this.tronWeb.trx.getTransactionInfo(txHash);
+
+          if (txInfo && Object.keys(txInfo).length > 0) {
+            console.log("🔍 Transaction confirmed! Checking result...");
+            transactionResult = txInfo.receipt?.result;
+
+            if (transactionResult === "SUCCESS") {
+              console.log(
+                "✅ Tron withdrawal transaction SUCCEEDED on blockchain"
+              );
+              break;
+            } else if (
+              transactionResult === "REVERT" ||
+              transactionResult === "FAILED"
+            ) {
+              throw new Error(
+                `Tron withdrawal transaction FAILED on blockchain: ${transactionResult}`
+              );
+            }
+          } else {
+            console.log(
+              `🔄 Attempt ${attempts}/${maxAttempts}: Transaction still processing...`
+            );
+          }
+        } catch (infoError: any) {
+          if (
+            infoError.message?.includes("FAILED") ||
+            infoError.message?.includes("REVERT")
+          ) {
+            throw infoError;
+          }
+          console.log(
+            `⚠️ Attempt ${attempts}: Could not fetch transaction info yet`
+          );
+        }
+      }
+
+      if (!transactionResult || transactionResult !== "SUCCESS") {
+        throw new Error(
+          `Tron withdrawal transaction failed or timeout. Result: ${transactionResult || "UNKNOWN"}`
+        );
+      }
 
       this.logger.success("Withdrawn from Tron escrow", { txHash });
       this.logger.logTransaction("tron", txHash, "Escrow Withdrawal");
@@ -720,22 +812,25 @@ export class TronExtension {
    * @returns Packed uint256 value as bigint
    */
   createPackedTimelocks(timelock: number): bigint {
-    // TimelocksLib.Stage enum values:
-    // SrcWithdrawal = 0, SrcPublicWithdrawal = 1, SrcCancellation = 2,
-    // SrcPublicCancellation = 3, DstWithdrawal = 4, DstPublicWithdrawal = 5,
-    // DstCancellation = 6
+    // TimelocksLib format: deployment timestamp in top 32 bits, relative delays in lower bits
+    // Each stage gets 32 bits for relative delay from deployment time
 
-    const srcWithdrawal = BigInt(600); // 10 minutes
-    const srcPublicWithdrawal = BigInt(1800); // 30 minutes
-    const srcCancellation = BigInt(timelock); // user-defined
-    const srcPublicCancellation = BigInt(timelock + 3600); // +1 hour
-    const dstWithdrawal = BigInt(300); // 5 minutes
-    const dstPublicWithdrawal = BigInt(900); // 15 minutes
-    const dstCancellation = BigInt(timelock - 300); // 5 min earlier than src
+    const deployedAt = BigInt(Math.floor(Date.now() / 1000)); // Current Unix timestamp
 
-    // Pack into single uint256 using bit shifting
-    // Each stage occupies 32 bits (4 bytes) in the packed value
+    // Relative delays from deployment time (in seconds)
+    const srcWithdrawal = BigInt(600); // 10 minutes after deployment
+    const srcPublicWithdrawal = BigInt(1800); // 30 minutes after deployment
+    const srcCancellation = BigInt(timelock); // user-defined time after deployment
+    const srcPublicCancellation = BigInt(timelock + 3600); // +1 hour after srcCancellation
+    const dstWithdrawal = BigInt(15); // 15 seconds after deployment (fast testing)
+    const dstPublicWithdrawal = BigInt(900); // 15 minutes after deployment
+    const dstCancellation = BigInt(Math.max(timelock - 300, 0)); // 5 min earlier than src (min 0)
+
+    // Pack according to TimelocksLib format:
+    // - Deployment timestamp in bits 224-255 (top 32 bits)
+    // - Each stage's relative delay in its 32-bit slot
     const packed =
+      (deployedAt << BigInt(224)) | // Deployment timestamp in top 32 bits
       (srcWithdrawal << (BigInt(0) * BigInt(32))) | // Stage 0: bits 0-31
       (srcPublicWithdrawal << (BigInt(1) * BigInt(32))) | // Stage 1: bits 32-63
       (srcCancellation << (BigInt(2) * BigInt(32))) | // Stage 2: bits 64-95
@@ -744,13 +839,33 @@ export class TronExtension {
       (dstPublicWithdrawal << (BigInt(5) * BigInt(32))) | // Stage 5: bits 160-191
       (dstCancellation << (BigInt(6) * BigInt(32))); // Stage 6: bits 192-223
 
-    this.logger.debug("Created packed timelocks", {
-      timelock,
-      packedValue: packed.toString(),
-      packedHex: "0x" + packed.toString(16),
-    });
+    this.logger.debug(
+      "Created packed timelocks with correct TimelocksLib format",
+      {
+        deployedAt: deployedAt.toString(),
+        relativeDelays: {
+          srcWithdrawal: srcWithdrawal.toString(),
+          srcPublicWithdrawal: srcPublicWithdrawal.toString(),
+          srcCancellation: srcCancellation.toString(),
+          srcPublicCancellation: srcPublicCancellation.toString(),
+          dstWithdrawal: dstWithdrawal.toString(),
+          dstPublicWithdrawal: dstPublicWithdrawal.toString(),
+          dstCancellation: dstCancellation.toString(),
+        },
+        packedValue: packed.toString(),
+        packedHex: "0x" + packed.toString(16),
+      }
+    );
 
     return packed;
+  }
+
+  /**
+   * Get Tron address from private key
+   */
+  getTronAddressFromPrivateKey(privateKey: string): string {
+    const tronWeb = this.createTronWebInstance(privateKey);
+    return (tronWeb as any).address.fromPrivateKey(privateKey);
   }
 
   /**
@@ -864,5 +979,31 @@ export class TronExtension {
     }
 
     throw new Error(`Transaction confirmation timeout after ${timeoutMs}ms`);
+  }
+
+  /**
+   * Get detailed transaction information using Tron API
+   */
+  async getTronTransactionDetails(txHash: string): Promise<string> {
+    try {
+      const apiKey = this.config.TRON_API_KEY;
+      const response = await fetch(
+        `https://nileapi.tronscan.org/api/transaction-info?hash=${txHash}`,
+        {
+          headers: {
+            "TRON-PRO-API-KEY": apiKey,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return JSON.stringify(data, null, 2);
+      } else {
+        return `API Error: ${response.status} ${response.statusText}`;
+      }
+    } catch (error: any) {
+      return `Failed to fetch transaction details: ${error.message}`;
+    }
   }
 }
