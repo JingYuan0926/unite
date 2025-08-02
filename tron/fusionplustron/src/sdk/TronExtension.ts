@@ -87,8 +87,8 @@ export class TronExtension {
       const TRON_ESCROW_FACTORY_PATCHED_ADDRESS =
         this.config.TRON_ESCROW_FACTORY_ADDRESS; // LIVE FACTORY ADDRESS - TESTED AND VERIFIED
 
-      const factoryContract = await tronWeb
-        .contract()
+      const factoryContract = await (tronWeb
+        .contract() as any)
         .at(TRON_ESCROW_FACTORY_PATCHED_ADDRESS);
 
       // Create proper IBaseEscrow.Immutables struct matching the Solidity contract
@@ -563,6 +563,415 @@ export class TronExtension {
   }
 
   /**
+   * Deploy Tron escrow source contract (for TRX → ETH flow)
+   * User A locks TRX on Tron while User B locks ETH on Ethereum
+   */
+  async deployTronEscrowSrc(
+    params: TronEscrowParams,
+    privateKey: string
+  ): Promise<TronTransactionResult> {
+    this.logger.debug("Deploying Tron escrow source", params);
+
+    const tronWeb = this.createTronWebInstance(privateKey);
+
+    try {
+      // TRON FIX: Get the patched escrow factory contract from ConfigManager
+      const TRON_ESCROW_FACTORY_PATCHED_ADDRESS =
+        this.config.TRON_ESCROW_FACTORY_ADDRESS; // LIVE FACTORY ADDRESS - TESTED AND VERIFIED
+
+      const factoryContract = await (tronWeb
+        .contract() as any)
+        .at(TRON_ESCROW_FACTORY_PATCHED_ADDRESS);
+
+      // Create proper IBaseEscrow.Immutables struct matching the Solidity contract
+      const orderHash = params.orderHash;
+
+      // Helper function to convert address to uint256 (Address type)
+      const addressToUint256 = (address: string): string => {
+        if (address.startsWith("0x")) {
+          // Ethereum address - already in hex format, convert to uint256
+          return BigInt(address).toString();
+        } else {
+          // TRON address - convert base58 to hex then to uint256
+          const tronHex = this.tronWeb.address.toHex(address);
+          return BigInt("0x" + tronHex).toString();
+        }
+      };
+
+      // Create packed timelocks (NOT the complex object)
+      const packedTimelocks = this.createPackedTimelocks(params.timelock);
+
+      // Map TronEscrowParams to IBaseEscrow.Immutables (8 fields exactly)
+      // For TRX→ETH: User A (TRX holder) is maker, User B (ETH recipient) is taker
+      const immutables = {
+        orderHash: orderHash, // bytes32
+        hashlock: params.secretHash, // bytes32 (secretHash)
+        maker: addressToUint256(params.srcBeneficiary), // Address as uint256 (User A - TRX holder)
+        taker: addressToUint256(params.dstBeneficiary), // Address as uint256 (User B - ETH recipient)
+        token: addressToUint256(
+          params.srcAsset === "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR"
+            ? "0x0000000000000000000000000000000000000000"
+            : params.srcAsset
+        ), // Address as uint256 (0x0 for native TRX)
+        amount: params.srcAmount, // uint256 (TRX amount to lock)
+        safetyDeposit: params.safetyDeposit, // uint256
+        timelocks: packedTimelocks.toString(), // Timelocks as uint256 string
+      };
+
+      this.logger.debug("Created IBaseEscrow.Immutables for TronEscrowSrc", {
+        orderHash,
+        immutablesFields: Object.keys(immutables).length,
+        packedTimelocks: packedTimelocks.toString(),
+        srcAmount: params.srcAmount,
+      });
+
+      // Calculate total value needed for native TRX
+      // For native TRX: callValue = amount + safetyDeposit
+      // For TRC20 tokens: callValue = safetyDeposit only
+      const isNativeTRX =
+        params.srcAsset === "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR" ||
+        params.srcAsset === "0x0000000000000000000000000000000000000000";
+      const totalCallValue = isNativeTRX
+        ? (
+            parseInt(params.srcAmount) + parseInt(params.safetyDeposit)
+          ).toString()
+        : params.safetyDeposit;
+
+      this.logger.debug("Calculated call value for TronEscrowSrc", {
+        isNativeTRX,
+        srcAmount: params.srcAmount,
+        safetyDeposit: params.safetyDeposit,
+        totalCallValue,
+      });
+
+      // ABI for createSrcEscrow method
+      const factoryABI = [
+        {
+          inputs: [
+            {
+              components: [
+                { name: "orderHash", type: "bytes32" },
+                { name: "hashlock", type: "bytes32" },
+                { name: "maker", type: "uint256" }, // Address as uint256 in Tron
+                { name: "taker", type: "uint256" }, // Address as uint256 in Tron
+                { name: "token", type: "uint256" }, // Address as uint256 in Tron
+                { name: "amount", type: "uint256" },
+                { name: "safetyDeposit", type: "uint256" },
+                { name: "timelocks", type: "uint256" },
+              ],
+              name: "srcImmutables",
+              type: "tuple",
+            },
+          ],
+          name: "createSrcEscrow",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              components: [
+                { name: "orderHash", type: "bytes32" },
+                { name: "hashlock", type: "bytes32" },
+                { name: "maker", type: "uint256" },
+                { name: "taker", type: "uint256" },
+                { name: "token", type: "uint256" },
+                { name: "amount", type: "uint256" },
+                { name: "safetyDeposit", type: "uint256" },
+                { name: "timelocks", type: "uint256" },
+              ],
+              indexed: false,
+              name: "srcImmutables",
+              type: "tuple",
+            },
+            {
+              components: [
+                { name: "maker", type: "uint256" },
+                { name: "amount", type: "uint256" },
+                { name: "token", type: "uint256" },
+                { name: "safetyDeposit", type: "uint256" },
+                { name: "chainId", type: "uint256" },
+              ],
+              indexed: false,
+              name: "dstImmutablesComplement",
+              type: "tuple",
+            },
+          ],
+          name: "SrcEscrowCreated",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "isTronFactory",
+          outputs: [{ name: "", type: "bool" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "getTronChainId",
+          outputs: [{ name: "", type: "uint256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+      ];
+
+      const contract = await tronWeb.contract(
+        factoryABI,
+        TRON_ESCROW_FACTORY_PATCHED_ADDRESS
+      );
+
+      // TRON FIX: Verify we're connected to the correct Tron factory
+      try {
+        const isTronFactory = await (contract as any).isTronFactory().call();
+        const chainId = await (contract as any).getTronChainId().call();
+
+        this.logger.info("Factory verification for TronEscrowSrc", {
+          isTronFactory,
+          chainId: chainId.toString(),
+          expectedChainId: "3448148188", // Nile testnet
+        });
+
+        if (!isTronFactory) {
+          throw new Error("Connected to non-Tron factory");
+        }
+      } catch (verificationError: any) {
+        this.logger.warn("Factory verification failed", {
+          error: verificationError?.message || "Unknown error",
+        });
+        // Continue anyway for backwards compatibility
+      }
+
+      // Use array format for immutables struct (proven working format)
+      const immutablesArray = [
+        immutables.orderHash, // bytes32 - keep as is
+        immutables.hashlock, // bytes32 - keep as is
+        immutables.maker, // uint256 - string format for TronWeb
+        immutables.taker, // uint256 - string format for TronWeb
+        immutables.token, // uint256 - string format for TronWeb
+        immutables.amount.toString(), // uint256 - string format
+        immutables.safetyDeposit.toString(), // uint256 - string format
+        BigInt(immutables.timelocks).toString(), // uint256 - decimal string
+      ];
+
+      this.logger.debug("Using contract wrapper approach for TronEscrowSrc", {
+        immutablesArrayLength: immutablesArray.length,
+        totalCallValue,
+      });
+
+      // Call the createSrcEscrow method using TronWeb with array format
+      this.logger.debug("Calling createSrcEscrow with array format", {
+        immutablesArray,
+        totalCallValue,
+      });
+
+      // CRITICAL: Store immutables in the format that TronWeb will actually encode for the contract
+      const contractImmutables = immutablesArray.map((val, index) => {
+        if (index <= 1) {
+          // orderHash and hashlock are bytes32 - TronWeb sends without 0x prefix
+          return typeof val === "string" && val.startsWith("0x")
+            ? val.slice(2)
+            : val;
+        }
+        return val; // uint256 values stay as-is
+      });
+
+      // CRITICAL: Store immutables in the EXACT format that TronWeb will send to the contract
+      const storedImmutables = contractImmutables.slice(); // Use contract-encoded format
+
+      const result = await (contract as any)
+        .createSrcEscrow(immutablesArray)
+        .send({
+          feeLimit: 200000000, // 200M TRX (in sun) for energy
+          callValue: totalCallValue,
+        });
+
+      // TronWeb .send() returns the transaction hash directly as a string
+      const txHash =
+        typeof result === "string"
+          ? result
+          : result.txid || result.transaction?.txID;
+
+      console.log("✅ TRON SrcEscrow Transaction Hash:", txHash);
+
+      // For contract creation, we need to compute the contract address
+      let contractAddress: string | undefined;
+
+      if (txHash) {
+        // Wait for Tron transaction confirmation with proper retry mechanism
+        console.log(
+          "⏳ Waiting for Tron SrcEscrow transaction confirmation..."
+        );
+
+        let attempts = 0;
+        const maxAttempts = 30; // Try for up to 5 minutes
+        let transactionConfirmed = false;
+
+        while (attempts < maxAttempts && !transactionConfirmed) {
+          attempts++;
+          const waitTime = 10000; // 10 seconds per attempt
+
+          console.log(
+            `🔄 TronSrcEscrow Attempt ${attempts}/${maxAttempts} - waiting ${waitTime / 1000}s...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+          // Try to get transaction info and parse event logs for escrow address
+          try {
+            const txInfo = await this.tronWeb.trx.getTransactionInfo(txHash);
+
+            if (txInfo && Object.keys(txInfo).length > 0) {
+              console.log("🔍 TronSrcEscrow transaction confirmed! Processing event logs...");
+              transactionConfirmed = true;
+
+              this.logger.debug("TronSrcEscrow transaction info retrieved", {
+                result: txInfo.receipt?.result,
+                logCount: txInfo.log?.length || 0,
+                blockNumber: txInfo.blockNumber,
+              });
+
+              // Check transaction result
+              if (
+                txInfo.receipt?.result === "FAILED" &&
+                !txInfo.contract_address
+              ) {
+                throw new Error(
+                  `TronSrcEscrow transaction failed with result: ${txInfo.receipt?.result}`
+                );
+              }
+
+              // If we have a contract address from the transaction, use it
+              if (txInfo.contract_address) {
+                try {
+                  contractAddress = this.tronWeb.address.fromHex(
+                    txInfo.contract_address
+                  );
+                  console.log(
+                    `✅ TronSrcEscrow contract address from transaction: ${contractAddress}`
+                  );
+                } catch (addrError: any) {
+                  console.log(
+                    `TronSrcEscrow contract address conversion failed: ${addrError.message}`
+                  );
+                }
+              }
+
+              // Parse event logs to find SrcEscrowCreated event
+              if (txInfo.log && txInfo.log.length > 0) {
+                console.log(
+                  `🔍 Found ${txInfo.log.length} event log(s) for TronSrcEscrow - analyzing...`
+                );
+
+                for (let i = 0; i < txInfo.log.length; i++) {
+                  const log = txInfo.log[i];
+                  console.log(`   SrcEscrow Event ${i + 1}:`);
+
+                  // Try to decode SrcEscrowCreated event
+                  try {
+                    const eventSignature = this.tronWeb
+                      .sha3("SrcEscrowCreated((bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,uint256),(uint256,uint256,uint256,uint256,uint256))")
+                      .substring(2, 10); // Remove '0x' prefix and take first 8 hex chars
+
+                    console.log(`     Expected SrcEscrowCreated signature: ${eventSignature}`);
+                    console.log(`     Log signature: ${log.topics?.[0] || "None"}`);
+
+                    if (
+                      log.topics &&
+                      log.topics[0].substring(0, 8) === eventSignature
+                    ) {
+                      console.log("✅ Found SrcEscrowCreated event!");
+                      
+                      // For SrcEscrowCreated, we need to compute the address deterministically
+                      // since it's not directly provided in the event like DstEscrowCreated
+                      if (log.data) {
+                        console.log(`     SrcEscrow event data length: ${log.data.length}`);
+                        this.logger.success(
+                          "SrcEscrow creation event detected",
+                          {
+                            txHash,
+                            logIndex: i,
+                            dataLength: log.data.length,
+                          }
+                        );
+                      }
+                      break;
+                    }
+                  } catch (eventError: any) {
+                    console.log(
+                      `     SrcEscrow event decode failed: ${eventError.message}`
+                    );
+                  }
+                }
+              }
+
+              break; // Exit retry loop
+            } else {
+              console.log(
+                `🔄 TronSrcEscrow attempt ${attempts}: No transaction info yet...`
+              );
+            }
+          } catch (error: any) {
+            console.log(
+              `🔄 TronSrcEscrow attempt ${attempts} failed: ${error.message}`
+            );
+          }
+        }
+
+        if (!transactionConfirmed) {
+          this.logger.warn(
+            "TronSrcEscrow transaction confirmation timeout - proceeding with transaction hash",
+            {
+              txHash,
+              tronscanUrl: `https://nile.tronscan.org/#/transaction/${txHash}`,
+            }
+          );
+        }
+      }
+
+      this.logger.success("Tron escrow source deployed", {
+        txHash,
+        contractAddress,
+      });
+
+      this.logger.logTransaction("tron", txHash, "Escrow Src Deployment");
+
+      return {
+        txHash,
+        success: true,
+        contractAddress,
+        immutables: storedImmutables, // Return stored immutables for withdrawal
+      };
+    } catch (error: any) {
+      // TRON FIX: Enhanced error handling for patched factory
+      this.logger.failure("Failed to deploy Tron escrow source", error);
+
+      // Check for specific TronEscrowFactoryPatched error types
+      const errorMessage =
+        error?.message || error?.toString() || "Unknown error";
+
+      if (errorMessage.includes("InsufficientNativeValue")) {
+        const match = errorMessage.match(
+          /InsufficientNativeValue\((\d+), (\d+)\)/
+        );
+        if (match) {
+          throw new Error(
+            `Insufficient TRX value for SrcEscrow: required ${match[1]}, provided ${match[2]}`
+          );
+        }
+      } else if (errorMessage.includes("InvalidAmount")) {
+        throw new Error("Invalid amount for SrcEscrow: amount must be greater than 0");
+      } else if (errorMessage.includes("InvalidHashlock")) {
+        throw new Error("Invalid hashlock for SrcEscrow: hashlock cannot be zero");
+      }
+
+      // Re-throw with original error if no specific match
+      throw error;
+    }
+  }
+
+  /**
    * Withdraw from Tron escrow using secret
    */
   async withdrawFromTronEscrow(
@@ -730,7 +1139,7 @@ export class TronExtension {
     const tronWeb = this.createTronWebInstance(privateKey);
 
     try {
-      const escrowContract = await tronWeb.contract().at(escrowAddress);
+      const escrowContract = await (tronWeb.contract() as any).at(escrowAddress);
 
       const result = await escrowContract.cancel(immutables).send({
         feeLimit: 50000000, // 50 TRX fee limit
@@ -756,7 +1165,7 @@ export class TronExtension {
    */
   async getTronEscrowStatus(escrowAddress: string): Promise<any> {
     try {
-      const escrowContract = await this.tronWeb.contract().at(escrowAddress);
+      const escrowContract = await (this.tronWeb.contract() as any).at(escrowAddress);
 
       // Call view functions to get escrow state
       const [isWithdrawn, isCancelled] = await Promise.all([

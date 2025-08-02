@@ -143,6 +143,58 @@ contract TronEscrowFactoryPatched is IEscrowFactory {
     }
 
     /**
+     * @notice Create a new source escrow contract on Tron (for TRX→ETH flow)
+     * @dev Creates TronEscrowSrc for User A to lock TRX while User B locks ETH on destination
+     * @param srcImmutables The source escrow immutables for TronEscrowSrc
+     */
+    function createSrcEscrow(
+        IBaseEscrow.Immutables calldata srcImmutables
+    ) external payable {
+        // TRON FIX: Enhanced validation with specific error messages
+        if (srcImmutables.amount == 0) revert InvalidAmount();
+        if (srcImmutables.hashlock == bytes32(0)) revert InvalidHashlock();
+        
+        // TRON FIX: Safer address extraction with validation
+        address tokenAddress = srcImmutables.token.get();
+        
+        uint256 nativeAmount = srcImmutables.safetyDeposit;
+
+        // Handle TRX (native) vs TRC20 tokens
+        if (tokenAddress == address(0)) {
+            // Native TRX case - total value includes token amount + safety deposit
+            nativeAmount += srcImmutables.amount;
+        }
+
+        if (msg.value < nativeAmount) {
+            revert InsufficientNativeValue(nativeAmount, msg.value);
+        }
+
+        // Create immutables with deployment timestamp
+        IBaseEscrow.Immutables memory immutables = srcImmutables;
+        immutables.timelocks = immutables.timelocks.setDeployedAt(block.timestamp);
+
+        // TRON FIX: Calculate deterministic address using Tron-compatible CREATE2
+        bytes32 salt = immutables.hashMem();
+        address escrowAddress = _deployEscrow(salt, msg.value, _PROXY_SRC_BYTECODE_HASH, ESCROW_SRC_IMPLEMENTATION);
+
+        // Transfer TRC20 tokens if not native TRX
+        if (tokenAddress != address(0)) {
+            IERC20(tokenAddress).safeTransferFrom(msg.sender, escrowAddress, immutables.amount);
+        }
+
+        // Emit event for off-chain tracking (using DstImmutablesComplement pattern)
+        IEscrowFactory.DstImmutablesComplement memory dstComplement = IEscrowFactory.DstImmutablesComplement({
+            maker: srcImmutables.maker,
+            amount: srcImmutables.amount,
+            token: srcImmutables.token,
+            safetyDeposit: srcImmutables.safetyDeposit,
+            chainId: TRON_CHAIN_ID
+        });
+        
+        emit SrcEscrowCreated(immutables, dstComplement);
+    }
+
+    /**
      * @notice See {IEscrowFactory-addressOfEscrowSrc}.
      * @dev TRON FIX: Use Tron-compatible CREATE2 address computation
      */

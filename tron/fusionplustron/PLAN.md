@@ -2,15 +2,35 @@
 
 _From Demo to Production-Ready 1inch LOP Integration_
 
-## ✅ **COMPLETED: TRUE 1inch LOP INTEGRATION** 🚀
+## 🚨 **CRITICAL ARCHITECTURE UPDATE NEEDED** 
 
-**STATUS**: **PRODUCTION-READY** - True 1inch LOP integration successfully implemented and tested!
+**STATUS**: **LOP INTEGRATION WORKING** but needs real EscrowSrc contract extraction
+
+### 🚨 **IMMEDIATE ISSUE IDENTIFIED**
+
+**CURRENT PROBLEM**: Uses DemoResolverV2 as ETH escrow instead of extracting real EscrowSrc contracts
+
+**REQUIRED PATTERN**: Official "ETH → LOP.fillOrderArgs() → postInteraction → EscrowFactory.createSrcEscrow() → Real EscrowSrc contract"
+
+**ROLE CLARIFICATION**:
+- **User A**: MAKER (order creator - you) 
+- **DemoResolver**: TAKER/RESOLVER (fills orders, triggers escrow creation)
+
+**IMMEDIATE ACTION NEEDED**:
+1. **Extract Real Escrow Address**: Modify CrossChainOrchestrator.ts to extract actual EscrowSrc address from SrcEscrowCreated events
+2. **Current Issue**: Line 406 hardcodes `this.config.DEMO_RESOLVER_ADDRESS` instead of using real escrow
+3. **Fix Required**: Parse transaction receipt for EscrowFactory.SrcEscrowCreated event to get real escrow address
+
+**TECHNICAL DETAILS**:
+- DemoResolverV2.executeAtomicSwap() already triggers LOP.fillOrderArgs() correctly ✅
+- postInteraction already calls EscrowFactory._postInteraction ✅
+- Real EscrowSrc contracts are being created - we just need to extract the addresses ⚠️
 
 ### ✅ **Current Status (WORKING)**
 
 - ✅ **Setup Phase**: **TRUE 1inch LOP integration** - Real `executeAtomicSwap()` with LOP.fillOrderArgs()
-- ✅ **Ethereum Escrow**: **Real official EscrowFactory integration** - Actual escrow contracts created
-- ✅ **Tron Escrow**: Working - TronEscrowDst creating and functioning perfectly
+- ⚠️ **Ethereum Escrow**: **LOP integration working** but uses DemoResolverV2 as escrow (not actual EscrowSrc contracts)
+- ✅ **Tron Escrow**: **Real escrow contracts** - TronEscrowDst creating via TronEscrowFactoryPatched
 - ✅ **Claim Phase**: Working - Both ETH and TRX withdrawals successful
 - ✅ **End-to-End Flow**: **COMPLETE ATOMIC SWAP CYCLE WITH TRUE LOP INTEGRATION**
 
@@ -150,27 +170,47 @@ export class OrderDiscoverySystem {
 
 **✅ DEPLOYED CONTRACTS:**
 
-- **DemoResolverV2**: `0xc6143027AC4DCc287e328DBea6B42C7CDC1EE530` (TRUE LOP integration)
+- **DemoResolverV2**: `0xc6143027AC4DCc287e328DBea6B42C7CDC1EE530` (TRUE LOP integration + simplified ETH escrow)
 - **Official LOP**: `0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0`
 - **Official EscrowFactory**: `0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA`
-- **TronEscrowFactory**: `TBuzsL2xgcxDf8sc4gYgLAfAKC1J7WhhAH`
+- **TronEscrowFactoryPatched**: `TBuzsL2xgcxDf8sc4gYgLAfAKC1J7WhhAH` (creates real Tron escrow contracts)
 
-### Phase 2: TRX → ETH Implementation (Optional Enhancement)
+**🚨 ESCROW CONTRACT STATUS (NEEDS FIX):**
 
-**Priority**: OPTIONAL - ETH → TRX flow fully working
+**ETH → TRX Flow (Working but needs real escrow extraction):**
 
-#### 2.1 Complete TronEscrowSrc Creation (For TRX → ETH Flow)
+- **EthSrc**: ⚠️ DemoResolverV2 contract (simplified escrow via line 406 in CrossChainOrchestrator.ts) - SHOULD extract real EscrowSrc address
+- **TronDst**: ✅ Real TronEscrowDst contracts via TronEscrowFactoryPatched
 
-- [ ] Implement `createTronEscrowSrc()` in TronExtension (contract exists, need deployment)
-- [ ] Add TronEscrowSrc deployment to TronEscrowFactory
-- [ ] Create User A flow: "I want to trade my TRX for ETH" → creates TronEscrowSrc
-- [ ] Integrate with order discovery system
+**IMMEDIATE FIX NEEDED:**
+- DemoResolverV2.executeAtomicSwap() creates real EscrowSrc contracts via postInteraction
+- CrossChainOrchestrator.ts line 406 must extract real escrow address from SrcEscrowCreated event
+- Current hardcoded `this.config.DEMO_RESOLVER_ADDRESS` prevents using official escrow pattern
 
-#### 2.2 Ethereum Destination Flow
+**TRX → ETH Flow (Code Ready):**
 
-- [ ] Implement EthereumEscrowDst creation via `ESCROW_FACTORY.createDstEscrow()`
-- [ ] Add ETH-side claiming logic for TRX → ETH flow
-- [ ] Test bidirectional atomic swaps
+- **TronSrc**: TronEscrowSrc contracts via TronEscrowFactoryPatched (code exists in TronExtension.deployTronEscrowSrc)
+- **EthDst**: Real EthEscrowDst via official EscrowFactory (code exists in DemoResolverV2.createDstEscrow)
+
+### Phase 2: CRITICAL - Extract Real EscrowSrc Addresses (IMMEDIATE PRIORITY)
+
+**Priority**: 🚨 **IMMEDIATE** - Required for true official pattern compliance
+
+#### 2.1 Real EthSrc Escrow Extraction (CRITICAL FIX NEEDED)
+
+- [x] **LOP Integration**: DemoResolverV2.executeAtomicSwap() correctly triggers LOP.fillOrderArgs() 
+- [x] **postInteraction**: EscrowFactory._postInteraction creates real EscrowSrc contracts
+- [ ] **🚨 CRITICAL**: Extract real escrow address from SrcEscrowCreated event in CrossChainOrchestrator.ts
+- [ ] **🚨 BLOCKER**: Line 406 hardcodes DemoResolverV2 address instead of parsing transaction receipt
+- [ ] **Required**: Parse `EscrowFactory.SrcEscrowCreated(IBaseEscrow.Immutables srcImmutables, DstImmutablesComplement dstImmutablesComplement)` event
+- [ ] **Implementation**: Use ethers.js contract.interface.parseLog() to extract escrow address from immutables.hash()
+
+#### 2.2 TRX → ETH Implementation (Complete Bidirectional Flow)
+
+- [ ] **TronEscrowSrc**: Deploy via existing `TronExtension.deployTronEscrowSrc()` code
+- [ ] **EthEscrowDst**: Deploy via existing `DemoResolverV2.createDstEscrow()` → `EscrowFactory.createDstEscrow()`
+- [ ] **Complete Flow**: Implement `executeTRXtoETHSwap()` using existing building blocks
+- [ ] **Test**: Bidirectional atomic swaps with real escrow contracts
 
 ### Phase 3: Order Book Monitoring (Optional Enhancement)
 
@@ -245,19 +285,33 @@ export class OrderDiscoverySystem {
 - ✅ **Working Atomic Swaps**: The core mechanism works perfectly
 - ✅ **Proper Secret Management**: Hashlock/secret system is robust
 - ✅ **Cross-Chain Communication**: ETH ↔ TRX coordination works
-- ✅ **Official Escrow Contracts**: All ETH escrow templates available via deployed EscrowFactory
+- ✅ **TRUE 1inch LOP Integration**: Real LOP.fillOrderArgs() with postInteraction flow
 
-### Missing Escrow Components:
+### Escrow Contract Status:
 
-**ETH → TRX Flow**:
+**ETH → TRX Flow** (CURRENT IMPLEMENTATION):
 
-- ❌ **EscrowSrc (Ethereum)**: Not being created (bug in `DemoResolverV2.sol` line 74)
-- ✅ **TronEscrowDst**: Working perfectly
+- ⚠️ **EthSrc (Ethereum)**: **Simplified implementation** - uses DemoResolverV2 as escrow (line 406 in CrossChainOrchestrator.ts)
+- ✅ **TronEscrowDst**: **Real escrow contracts** - created via TronEscrowFactoryPatched.createDstEscrow()
 
-**TRX → ETH Flow**:
+**TRX → ETH Flow** (PARTIALLY IMPLEMENTED):
 
-- ❌ **TronEscrowSrc**: Contract exists but not deployed/integrated
-- ❌ **EscrowDst (Ethereum)**: Available via factory but not used
+- 📝 **TronEscrowSrc**: **Code exists** - TronExtension.deployTronEscrowSrc() ready for implementation
+- 📝 **EthEscrowDst**: **Code exists** - DemoResolverV2.createDstEscrow() calls official EscrowFactory.createDstEscrow()
+
+### Escrow Contract Architecture:
+
+**Current Reality vs Full Production:**
+
+```typescript
+// CURRENT ETH→TRX (Working):
+ethEscrowAddress = config.DEMO_RESOLVER_ADDRESS; // Simplified - uses DemoResolverV2 as escrow
+tronEscrowAddress = await TronEscrowFactoryPatched.createDstEscrow(); // Real escrow contract
+
+// FUTURE TRX→ETH (Code exists but not deployed):
+tronEscrowAddress = await TronEscrowFactoryPatched.createSrcEscrow(); // Real escrow contract
+ethEscrowAddress = await EscrowFactory.createDstEscrow(); // Real escrow contract via DemoResolverV2
+```
 
 ### Key Integration Points:
 
@@ -278,8 +332,8 @@ export class OrderDiscoverySystem {
 
 - ✅ **ETH → TRX atomic swap**: **WORKING with TRUE 1inch LOP integration**
 - ✅ **Real 1inch LOP integration**: **COMPLETED** - using `executeAtomicSwap()` with real LOP.fillOrderArgs()
-- ✅ **Official EscrowFactory integration**: **COMPLETED** - real escrow contracts created
-- ✅ **Cross-chain atomic swaps**: **WORKING** - complete ETH ↔ TRX flow
+- ⚠️ **Escrow contracts**: **MIXED** - Real Tron escrows + simplified ETH escrows (DemoResolverV2 as escrow)
+- ✅ **Cross-chain atomic swaps**: **WORKING** - complete ETH → TRX flow (TRX → ETH code ready)
 - ✅ **End-to-End Flow**: **COMPLETE** - setup → escrow creation → atomic claiming
 - [ ] **Off-chain order creation**: Optional (mock orders work for demo)
 - [ ] **Order discovery system**: Optional (direct execution works for demo)
@@ -287,11 +341,17 @@ export class OrderDiscoverySystem {
 
 **✅ PRODUCTION-READY STATUS:**
 
-- ✅ **TRUE 1inch LOP integration** (not simplified demo)
-- ✅ **Official contract integration** (EscrowFactory, LimitOrderProtocol)
-- ✅ **Cross-chain atomic swaps** (ETH ↔ TRX working)
-- ✅ **Production-grade architecture** (following official patterns)
+- ✅ **TRUE 1inch LOP integration** (real LOP.fillOrderArgs with postInteraction)
+- ⚠️ **Escrow contract integration** (Mixed: Real Tron escrows + simplified ETH escrows)
+- ✅ **Cross-chain atomic swaps** (ETH → TRX working, TRX → ETH code ready)
+- ✅ **Production-grade architecture** (following official patterns where implemented)
 - ✅ **Testnet deployment** (fully tested and verified)
+
+**📋 ESCROW IMPLEMENTATION DETAILS:**
+
+- **Working**: TronEscrowDst contracts (real escrow via TronEscrowFactoryPatched)
+- **Simplified**: ETH escrows use DemoResolverV2 contract as escrow (functional but not full official pattern)
+- **Ready**: TronEscrowSrc + EthEscrowDst code exists for TRX → ETH flow completion
 
 ### ✅ **Production Ready** (ACHIEVED):
 

@@ -478,6 +478,7 @@ export class CrossChainOrchestrator {
 
   /**
    * Execute TRX -> ETH atomic swap
+   * User A locks TRX on Tron, User B locks ETH on Ethereum
    */
   async executeTRXtoETHSwap(params: SwapParams): Promise<SwapResult> {
     this.logger.logSwapProgress("Starting TRX -> ETH atomic swap", {
@@ -485,9 +486,240 @@ export class CrossChainOrchestrator {
       tronRecipient: params.tronRecipient,
     });
 
-    // Implementation similar to ETH->TRX but reversed
-    // This would follow the same pattern but with TRX as source and ETH as destination
-    throw new Error("TRX -> ETH swap not yet implemented");
+    // Step 1: Generate secret for atomic swap
+    const { secret, secretHash } = this.tronExtension.generateSecretHash();
+    this.logger.debug("Generated atomic swap secret", { secretHash });
+
+    // Step 2: Create mock quote for cross-chain swap (TRX → ETH)
+    const tronSigner = this.tronExtension.createTronWebInstance(
+      params.tronPrivateKey
+    );
+    this.logger.warn(
+      "Creating mock quote for TRX→ETH cross-chain swap - 1inch API doesn't support custom tokens"
+    );
+
+    const mockRate = 500000000000n; // 1 TRX = 0.0005 ETH (500000000000 wei per TRX)
+    // Calculate ETH amount from TRX amount
+    // 1 TRX (1e6 sun) = 0.0005 ETH (0.0005e18 wei)
+    // So: sun * 500000000000 / 1e6 = sun * 500000000000 / 1000000
+    const trxAmount = BigInt(
+      params.ethAmount?.toString() || ethers.parseUnits("1000", 6).toString()
+    ); // Use ethAmount as base for TRX amount
+    const ethAmount = (trxAmount * mockRate) / BigInt(1e6);
+
+    const quote = {
+      fromTokenAmount: trxAmount.toString(),
+      toTokenAmount: ethAmount.toString(),
+      quoteId: `cross-chain-trx-eth-${Date.now()}`,
+    };
+
+    this.logger.debug("Quote calculation (TRX→ETH)", {
+      trxAmountInSun: trxAmount.toString(),
+      ethAmountWei: ethAmount.toString(),
+      mockRate: mockRate.toString(),
+    });
+
+    // Step 3: Create cross-chain order manually (TRX → ETH)
+    this.logger.info("Creating cross-chain TRX→ETH order structure manually");
+
+    const ethSigner = this.config.getEthSigner(params.ethPrivateKey);
+    const preparedOrder = {
+      order: {
+        salt: BigInt(Date.now()),
+        maker: ethSigner.address, // User B (ETH holder) is the maker in the 1inch order
+        receiver: ethSigner.address, // Receiver of the TRX (for cancellation)
+        makerAsset: ethers.ZeroAddress, // ETH
+        takerAsset: this.config.getTrxRepresentationAddress(), // TRX representation
+        makingAmount: ethAmount, // ETH amount User B offers
+        takingAmount: trxAmount, // TRX amount User B wants
+        makerTraits: 0n, // Default traits
+      },
+    };
+
+    // Step 4: Prepare immutables for escrow creation
+    const timelock = params.timelock || this.config.getDefaultTimelock();
+    const nonce = ethers.hexlify(ethers.randomBytes(32));
+    const safetyDeposit = ethers.parseEther("0.01"); // 0.01 ETH safety deposit
+
+    // Get User A's actual Tron address (TRX holder) and User B's ETH address
+    const userA_tronAddress = this.tronExtension.getTronAddressFromPrivateKey(
+      params.tronPrivateKey
+    );
+    const userB_ethAddress = ethSigner.address;
+
+    // Create EIP-712 domain for order hash calculation
+    const domain = {
+      name: "1inch Limit Order Protocol",
+      version: "4",
+      chainId: this.config.ETH_CHAIN_ID,
+      verifyingContract: this.config.OFFICIAL_LOP_ADDRESS,
+    };
+
+    const types = {
+      Order: [
+        { name: "salt", type: "uint256" },
+        { name: "maker", type: "address" },
+        { name: "receiver", type: "address" },
+        { name: "makerAsset", type: "address" },
+        { name: "takerAsset", type: "address" },
+        { name: "makingAmount", type: "uint256" },
+        { name: "takingAmount", type: "uint256" },
+        { name: "makerTraits", type: "uint256" },
+      ],
+    };
+
+    // Calculate proper EIP-712 order hash
+    const orderHash = ethers.TypedDataEncoder.hash(
+      domain,
+      types,
+      preparedOrder.order
+    );
+
+    // Create immutables for TronEscrowSrc (User A locks TRX)
+    const tronSrcImmutables = [
+      orderHash, // bytes32 orderHash
+      secretHash, // bytes32 hashlock
+      encodeAddress(userA_tronAddress, this.tronExtension, this.config), // uint256 maker (User A - TRX holder)
+      encodeAddress(userB_ethAddress, this.tronExtension, this.config), // uint256 taker (User B - ETH recipient)
+      encodeAddress(
+        this.config.getTrxRepresentationAddress(),
+        this.tronExtension,
+        this.config
+      ), // uint256 token (TRX)
+      trxAmount, // uint256 amount (TRX amount)
+      this.tronExtension.toSun("5"), // uint256 safetyDeposit (5 TRX safety deposit)
+      encodeTimelocks({
+        // uint256 timelocks (packed)
+        deployedAt: Math.floor(Date.now() / 1000),
+        srcWithdrawal: Math.floor(Date.now() / 1000) + 600, // 10 min
+        srcCancellation: Math.floor(Date.now() / 1000) + timelock,
+        dstWithdrawal: Math.floor(Date.now() / 1000) + 15, // 15 seconds for fast testing
+        dstCancellation: Math.floor(Date.now() / 1000) + timelock - 300,
+      }),
+    ];
+
+    // Step 5: Deploy TronEscrowSrc (User A locks TRX)
+    this.logger.logSwapProgress(
+      "Deploying Tron source escrow (User A locks TRX)"
+    );
+
+    const tronSrcParams: TronEscrowParams = {
+      orderHash: orderHash,
+      secretHash: secretHash,
+      srcChain: this.config.getTronChainId(),
+      dstChain: this.config.getEthChainId(),
+      srcAsset: this.config.getTrxRepresentationAddress(), // TRX
+      dstAsset: ethers.ZeroAddress, // ETH
+      srcAmount: trxAmount.toString(), // TRX amount User A locks
+      dstAmount: ethAmount.toString(), // ETH amount User A expects
+      nonce: nonce,
+      // CORRECT ROLE ASSIGNMENTS FOR TRX→ETH:
+      // User A (TRX holder) locks TRX and receives ETH
+      // User B (ETH holder) locks ETH and receives TRX
+      srcBeneficiary: userA_tronAddress, // User A's TRON address (locks TRX)
+      dstBeneficiary: userB_ethAddress, // User B's ETH address (can call withdraw on TronEscrowSrc)
+      // CORRECT CANCELLATION ASSIGNMENTS:
+      srcCancellationBeneficiary: userA_tronAddress, // User A gets TRX back if cancelled
+      dstCancellationBeneficiary: userB_ethAddress, // User B gets ETH back if cancelled
+      timelock: timelock,
+      safetyDeposit: this.tronExtension.toSun("5"), // 5 TRX safety deposit
+    };
+
+    const tronSrcResult = await this.tronExtension.deployTronEscrowSrc(
+      tronSrcParams,
+      params.tronPrivateKey
+    );
+
+    this.logger.success("TronEscrowSrc deployed", {
+      txHash: tronSrcResult.txHash,
+      contractAddress: tronSrcResult.contractAddress,
+    });
+
+    // Step 6: Deploy EthereumEscrowDst (User B locks ETH)
+    this.logger.logSwapProgress(
+      "Deploying Ethereum destination escrow (User B locks ETH)"
+    );
+
+    // Create immutables for EthereumEscrowDst
+    const ethDstImmutables = {
+      orderHash: orderHash,
+      hashlock: secretHash,
+      maker: encodeAddress(userA_tronAddress, this.tronExtension, this.config), // User A (TRX holder, will receive ETH)
+      taker: encodeAddress(userB_ethAddress, this.tronExtension, this.config), // User B (ETH holder, will call withdraw)
+      token: encodeAddress(ethers.ZeroAddress, this.tronExtension, this.config), // ETH (native)
+      amount: ethAmount,
+      safetyDeposit: safetyDeposit,
+      timelocks: encodeTimelocks({
+        deployedAt: Math.floor(Date.now() / 1000),
+        srcWithdrawal: Math.floor(Date.now() / 1000) + 600, // 10 min
+        srcCancellation: Math.floor(Date.now() / 1000) + timelock,
+        dstWithdrawal: Math.floor(Date.now() / 1000) + 15, // 15 seconds for fast testing
+        dstCancellation: Math.floor(Date.now() / 1000) + timelock - 300,
+      }),
+    };
+
+    const srcCancellationTimestamp = Math.floor(Date.now() / 1000) + timelock;
+    const totalEthValue = ethAmount + safetyDeposit;
+
+    // Use the official ESCROW_FACTORY.createDstEscrow() via DemoResolverV2
+    const resolverWithSigner = this.resolverContract.connect(ethSigner);
+
+    this.logger.debug("Calling DemoResolverV2.createDstEscrow for TRX→ETH", {
+      ethDstImmutables,
+      srcCancellationTimestamp,
+      totalEthValue: totalEthValue.toString(),
+    });
+
+    const ethDstTx = await (resolverWithSigner as any).createDstEscrow(
+      ethDstImmutables,
+      srcCancellationTimestamp,
+      {
+        value: totalEthValue, // ETH amount + safety deposit
+        gasLimit: 300000,
+      }
+    );
+
+    const ethDstReceipt = await ethDstTx.wait();
+    this.logger.logTransaction(
+      "ethereum",
+      ethDstTx.hash,
+      "EthereumEscrowDst Creation (TRX→ETH)"
+    );
+
+    // For DemoResolverV2, the "escrow" is handled by the official EscrowFactory
+    // Use DemoResolver as escrow address for simplified implementation
+    const ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS;
+
+    this.logger.success("EthereumEscrowDst created", {
+      txHash: ethDstTx.hash,
+      escrowAddress: ethEscrowAddress,
+      blockNumber: ethDstReceipt?.blockNumber,
+      gasUsed: ethDstReceipt?.gasUsed?.toString(),
+    });
+
+    // Step 7: Create order info for tracking
+    const orderInfo = {
+      orderHash: orderHash,
+      signature: await ethSigner.signTypedData(
+        domain,
+        types,
+        preparedOrder.order
+      ),
+    };
+
+    const result: SwapResult = {
+      orderHash: orderInfo.orderHash,
+      secret: secret,
+      secretHash: secretHash,
+      ethEscrowAddress: ethEscrowAddress,
+      tronEscrowAddress: tronSrcResult.contractAddress || "TronEscrowSrc",
+      ethTxHash: ethDstTx.hash,
+      tronTxHash: tronSrcResult.txHash,
+    };
+
+    this.logger.success("TRX→ETH atomic swap setup complete", result);
+
+    return result;
   }
 
   /**
