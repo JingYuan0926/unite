@@ -89,6 +89,9 @@ export default function HowItWorks() {
                     </div>
                 </div>
             </div>
+
+            {/* Bottom Line */}
+            <BlackLine className="mt-8" />
         </div>
     );
 } 
