@@ -13,11 +13,18 @@ const geistMono = Geist_Mono({
 
 export default function Home() {
   return (
-    <div
-      className={"font-sans flex items-center justify-center min-h-screen bg-white p-8"}
-    >
-      {/* Centered content with logo and text side by side */}
-      <LogoHeader />
+    <div className="font-sans bg-white">
+      {/* Home Section */}
+      <div className="flex items-center justify-center min-h-screen p-8">
+        <LogoHeader />
+      </div>
+      
+      {/* How It Works Section */}
+      <div className="flex items-center justify-center min-h-screen p-8 bg-white">
+        <div className="text-center">
+          <p className="text-xl font-bold text-gray-500 mb-2">HOW IT WORKS</p>
+        </div>
+      </div>
     </div>
   );
 }
