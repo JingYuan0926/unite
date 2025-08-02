@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import HomePage from "@/components/HomePage";
 import HowItWorks from "@/components/HowItWorks";
+import Features from "@/components/Features";
 
 export default function Home() {
   return (
@@ -10,6 +11,9 @@ export default function Home() {
       
       {/* How It Works Section */}
       <HowItWorks />
+      
+      {/* Features Section */}
+      <Features />
     </div>
   );
 }
