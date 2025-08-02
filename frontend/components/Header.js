@@ -27,8 +27,12 @@ export default function Header() {
           </a>
         </nav>
 
-        {/* Right side - Empty for now, can be used for buttons later */}
-        <div className="w-32"></div>
+        {/* Right side - Blue button */}
+        <div className="w-32 flex justify-end">
+          <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-2xl transition-colors">
+            Get Started
+          </button>
+        </div>
       </div>
     </header>
   );
