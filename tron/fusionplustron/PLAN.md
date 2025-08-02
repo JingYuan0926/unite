@@ -71,27 +71,38 @@ deployTx = await resolverContract.executeAtomicSwap(
    - Missing: `ESCROW_FACTORY.createSrcEscrow()` to actually deploy the escrow
 4. **Proper Order Structure**: Pass real 1inch order format instead of mock data
 
-### 2. **Order Book Monitoring System** (Medium Priority)
+### 2. **Order Creation & Discovery System** (Medium Priority)
 
-**Current**: No order discovery mechanism
-**Needed**: Automatic order detection and execution
+**Current**: No order creation or discovery mechanism
+**Needed**: Complete order lifecycle for hackathon demo (replacing official 1inch infrastructure)
 
-#### Implementation Plan:
+#### Missing Components:
 
 ```typescript
-// New file: src/sdk/OrderBookMonitor.ts
-export class OrderBookMonitor {
-  async scanForFillableOrders(): Promise<FillableOrder[]>;
-  async executeOrderFill(order: FillableOrder): Promise<SwapResult>;
-  async startMonitoring(callback: OrderCallback): Promise<void>;
+// New file: src/sdk/OrderCreationSystem.ts
+export class OrderCreationSystem {
+  async createOffChainOrder(params: OrderParams): Promise<SignedOrder>;
+  async publishOrder(order: SignedOrder): Promise<string>;
+  async getOrderBook(): Promise<SignedOrder[]>;
+}
+
+// New file: src/sdk/OrderDiscoverySystem.ts
+export class OrderDiscoverySystem {
+  // ETH → TRX: Monitor off-chain orders
+  async scanForETHOrders(): Promise<SignedOrder[]>;
+  // TRX → ETH: Monitor Tron chain for TronEscrowSrc contracts
+  async scanForTronEscrows(): Promise<TronEscrowSrc[]>;
+  async executeOrderFill(order: SignedOrder): Promise<SwapResult>;
 }
 ```
 
 **Features Needed**:
 
-- 1inch API integration for order discovery
-- Profitability calculation (safety deposits + fees)
-- Automatic execution triggers
+- **Off-chain order creation** (User A creates intent to swap)
+- **Order storage/discovery** (local DB or simple API, not 1inch)
+- **Tron chain monitoring** (for TronEscrowSrc contracts)
+- **Profitability calculation** (safety deposits + fees)
+- **Automatic execution triggers**
 
 ### 3. **TRX → ETH Swap Flow** (Medium Priority)
 
@@ -151,37 +162,39 @@ async executeTRXtoETHSwap(params: SwapParams): Promise<SwapResult> {
 
 **Priority**: MEDIUM - For autonomous operation
 
-#### 2.1 Create OrderBookMonitor Class
+#### 2.1 Create Order Creation System (Replaces 1inch dApp)
 
 ```typescript
-// Key features:
-- Poll 1inch API for active orders
-- Filter for profitable opportunities
-- Calculate optimal execution parameters
-- Queue orders for execution
+// New file: src/sdk/OrderCreationSystem.ts
+- Create EIP-712 signed orders off-chain
+- Simple order storage (JSON file or local DB)
+- Order validation and formatting
+- Integration with existing CrossChainOrchestrator
 ```
 
-#### 2.2 Integrate with CrossChainOrchestrator
+#### 2.2 Create Order Discovery System (Replaces 1inch Order Book)
 
-- [ ] Add monitoring capabilities to orchestrator
+- [ ] **ETH → TRX**: Scan local order storage for fillable orders
+- [ ] **TRX → ETH**: Monitor Tron chain for new TronEscrowSrc deployments
 - [ ] Implement callback system for order detection
-- [ ] Add profitability analysis
+- [ ] Add profitability analysis for resolvers
 
-#### 2.3 Testing & Optimization
+#### 2.3 Demo Integration
 
-- [ ] Test order discovery accuracy
-- [ ] Optimize polling intervals
-- [ ] Add error handling for network issues
+- [ ] Create simple UI for order creation (or CLI commands)
+- [ ] Test order creation → discovery → execution flow
+- [ ] Demonstrate both ETH → TRX and TRX → ETH flows
 
 ### Phase 3: TRX → ETH Implementation (1-2 days)
 
 **Priority**: MEDIUM - For bidirectional swaps
 
-#### 3.1 Complete TronEscrowSrc Creation
+#### 3.1 Complete TronEscrowSrc Creation (For TRX → ETH Flow)
 
 - [ ] Implement `createTronEscrowSrc()` in TronExtension (contract exists, need deployment)
-- [ ] Add TronEscrowSrc to TronEscrowFactory
-- [ ] Create escrow deployment flow for TRX → ETH
+- [ ] Add TronEscrowSrc deployment to TronEscrowFactory
+- [ ] Create User A flow: "I want to trade my TRX for ETH" → creates TronEscrowSrc
+- [ ] Integrate with order discovery system
 
 #### 3.2 Ethereum Destination Flow
 
@@ -233,10 +246,11 @@ async executeTRXtoETHSwap(params: SwapParams): Promise<SwapResult> {
 
 ### Medium Term (Tomorrow - 1 day)
 
-3. **Order Book Demo**:
-   - Create a simple order scanner
-   - Show finding and filling orders automatically
-   - Demonstrates the "resolver" concept
+3. **Complete Order Creation & Discovery Demo**:
+   - **Order Creation**: Simple CLI/UI for User A to create off-chain orders
+   - **Order Discovery**: Scanner that finds orders and TronEscrowSrc contracts
+   - **End-to-End Demo**: Show complete ETH → TRX and TRX → ETH flows
+   - **Demonstrates the "resolver" concept perfectly**
 
 ## Technical Details 🔧
 
@@ -279,8 +293,10 @@ async executeTRXtoETHSwap(params: SwapParams): Promise<SwapResult> {
 
 - ⚠️ **ETH → TRX atomic swap**: Working but **NOT using 1inch LOP** (using simplified locking)
 - [ ] **Real 1inch LOP integration**: Need to switch from `executeSimpleSwap()` to `executeAtomicSwap()`
-- [ ] **Basic TRX → ETH swap**: Not implemented
-- [ ] **Order discovery demonstration**: Not implemented
+- [ ] **Off-chain order creation**: Need system to replace 1inch dApp (whitelisting issue)
+- [ ] **Order discovery system**: Need to replace 1inch Order Book with local solution
+- [ ] **TRX → ETH swap**: Not implemented (need TronEscrowSrc + EthereumEscrowDst)
+- [ ] **Complete demo flow**: End-to-end order creation → discovery → execution
 
 ### Production Ready:
 
