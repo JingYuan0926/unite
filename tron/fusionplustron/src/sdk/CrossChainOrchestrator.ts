@@ -5,13 +5,19 @@ import { ConfigManager } from "../utils/ConfigManager";
 import { ScopedLogger } from "../utils/Logger";
 import { OrderStatus } from "@1inch/fusion-sdk";
 
-// DemoResolver ABI for permissionless atomic swaps
+// DemoResolver ABI for permissionless atomic swaps (including TRUE LOP integration)
 const DEMO_RESOLVER_ABI = [
+  // Legacy function for compatibility
   "function executeSwap(bytes32 orderHash, uint256 amount, uint256 safetyDeposit, address maker) payable",
+  // NEW: True 1inch LOP integration function with properly named tuples
+  "function executeAtomicSwap(tuple(bytes32 orderHash, bytes32 hashlock, uint256 maker, uint256 taker, uint256 token, uint256 amount, uint256 safetyDeposit, uint256 timelocks), tuple(uint256 salt, uint256 maker, uint256 receiver, uint256 makerAsset, uint256 takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits), bytes32, bytes32, uint256, uint256, bytes) payable",
+  // Utility functions
   "function withdrawETH(uint256 amount, address payable recipient)",
   "function getLockedBalance() view returns (uint256)",
   "function recoverETH()",
+  // Events
   "event SwapExecuted(address indexed maker, address indexed escrow, bytes32 indexed orderHash, uint256 amount, uint256 safetyDeposit)",
+  "event EscrowCreated(address indexed escrow, bytes32 indexed orderHash)",
 ];
 
 // EscrowFactory ABI with correct format for direct testing

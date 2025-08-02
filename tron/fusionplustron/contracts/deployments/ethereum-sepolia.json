@@ -26,6 +26,26 @@
     "deployedAt": "2025-08-01T16:12:18.689Z",
     "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
     "network": "sepolia",
-    "purpose": "Permissionless solver for atomic swap demonstration"
+    "purpose": "Permissionless solver for atomic swap demonstration",
+    "deprecated": true,
+    "replacedBy": "0xc6143027AC4DCc287e328DBea6B42C7CDC1EE530"
+  },
+  "DemoResolverV2": {
+    "address": "0xc6143027AC4DCc287e328DBea6B42C7CDC1EE530",
+    "constructorArgs": [
+      "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0",
+      "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA"
+    ],
+    "deployedAt": "2025-08-02T20:03:55.497Z",
+    "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
+    "network": "sepolia",
+    "purpose": "TRUE 1inch LOP integration resolver with executeAtomicSwap",
+    "features": [
+      "executeAtomicSwap() - Real LOP integration",
+      "executeSwap() - Legacy compatibility",
+      "createDstEscrow() - Destination escrow creation",
+      "Official EscrowFactory integration",
+      "Proper postInteraction flow"
+    ]
   }
 }
