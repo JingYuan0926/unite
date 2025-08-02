@@ -91,6 +91,7 @@ export interface TronEscrowFactoryPatchedInterface extends Interface {
       | "addressOfEscrowDst"
       | "addressOfEscrowSrc"
       | "createDstEscrow"
+      | "createSrcEscrow"
       | "debugComputeAddress"
       | "emergencyRescue"
       | "getFactoryConfig"
@@ -127,6 +128,10 @@ export interface TronEscrowFactoryPatchedInterface extends Interface {
   encodeFunctionData(
     functionFragment: "createDstEscrow",
     values: [IBaseEscrow.ImmutablesStruct, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "createSrcEscrow",
+    values: [IBaseEscrow.ImmutablesStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "debugComputeAddress",
@@ -173,6 +178,10 @@ export interface TronEscrowFactoryPatchedInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "createDstEscrow",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "createSrcEscrow",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -308,6 +317,12 @@ export interface TronEscrowFactoryPatched extends BaseContract {
     "payable"
   >;
 
+  createSrcEscrow: TypedContractMethod<
+    [srcImmutables: IBaseEscrow.ImmutablesStruct],
+    [void],
+    "payable"
+  >;
+
   debugComputeAddress: TypedContractMethod<
     [salt: BytesLike, bytecodeHash: BytesLike],
     [[string, string] & { computed: string; deployer: string }],
@@ -376,6 +391,13 @@ export interface TronEscrowFactoryPatched extends BaseContract {
       dstImmutables: IBaseEscrow.ImmutablesStruct,
       srcCancellationTimestamp: BigNumberish
     ],
+    [void],
+    "payable"
+  >;
+  getFunction(
+    nameOrSignature: "createSrcEscrow"
+  ): TypedContractMethod<
+    [srcImmutables: IBaseEscrow.ImmutablesStruct],
     [void],
     "payable"
   >;

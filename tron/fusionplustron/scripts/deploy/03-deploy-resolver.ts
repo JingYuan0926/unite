@@ -2,43 +2,53 @@ import { ethers } from "hardhat";
 import { readFileSync, writeFileSync } from "fs";
 
 async function main() {
-  console.log("🚀 Deploying Official Resolver");
+  console.log("🚀 Deploying DemoResolver with LOP + EscrowFactory Integration");
 
-  // Read previous deployments
-  const deployment = JSON.parse(
-    readFileSync("contracts/deployments/ethereum-sepolia.json", "utf8")
-  );
-
-  const lopAddress = deployment.contracts.LimitOrderProtocol;
-  const escrowFactoryAddress = deployment.contracts.EscrowFactory;
-  const ownerAddress = (await ethers.getSigners())[0].address;
+  // Use hardcoded addresses for now (user will deploy their own LOP for hackathon)
+  const lopAddress = "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0"; // Current LOP on Sepolia
+  const escrowFactoryAddress = "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA"; // EscrowFactory on Sepolia
 
   console.log("📍 Using LOP at:", lopAddress);
   console.log("📍 Using EscrowFactory at:", escrowFactoryAddress);
-  console.log("📍 Using Owner at:", ownerAddress);
 
-  // Deploy Official Resolver
-  const Resolver = await ethers.getContractFactory("Resolver");
-  const resolver = await Resolver.deploy(
-    escrowFactoryAddress, // factory
-    lopAddress, // lop
-    ownerAddress // initialOwner
+  // Deploy DemoResolver
+  const DemoResolver = await ethers.getContractFactory("DemoResolver");
+  const demoResolver = await DemoResolver.deploy(
+    lopAddress, // LOP address (payable)
+    escrowFactoryAddress // EscrowFactory address
   );
-  await resolver.waitForDeployment();
-  console.log("✅ Official Resolver deployed to:", await resolver.getAddress());
+  await demoResolver.waitForDeployment();
 
-  // Verify resolver initialization (owner is public in Ownable)
-  const resolverOwner = await resolver.owner();
-  console.log("✅ Resolver Owner:", resolverOwner);
+  const deployedAddress = await demoResolver.getAddress();
+  console.log("✅ DemoResolver deployed to:", deployedAddress);
 
-  // Update deployment
-  deployment.contracts.Resolver = await resolver.getAddress();
+  // Verify deployment by checking the immutable addresses
+  const lopCheck = await demoResolver.LOP();
+  const factoryCheck = await demoResolver.ESCROW_FACTORY();
+  console.log("✅ LOP address verified:", lopCheck);
+  console.log("✅ EscrowFactory address verified:", factoryCheck);
+
+  // Update deployment (create if doesn't exist)
+  let deployment;
+  try {
+    deployment = JSON.parse(
+      readFileSync("contracts/deployments/ethereum-sepolia.json", "utf8")
+    );
+  } catch (e) {
+    deployment = { contracts: {} };
+  }
+
+  deployment.contracts.DemoResolver = deployedAddress;
   writeFileSync(
     "contracts/deployments/ethereum-sepolia.json",
     JSON.stringify(deployment, null, 2)
   );
 
-  console.log("🎉 Official Resolver deployment complete!");
+  console.log("🎉 DemoResolver deployment complete!");
+  console.log("📋 Contract addresses:");
+  console.log("   DemoResolver:", deployedAddress);
+  console.log("   LOP:", lopAddress);
+  console.log("   EscrowFactory:", escrowFactoryAddress);
   console.log(
     "📝 Deployment updated in contracts/deployments/ethereum-sepolia.json"
   );

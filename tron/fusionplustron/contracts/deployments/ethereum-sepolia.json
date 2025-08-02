@@ -8,8 +8,10 @@
     "EscrowFactory": "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA",
     "EscrowSrcImplementation": "0x890D63E67e7537e94855D3634f8D6A62f95eF928",
     "EscrowDstImplementation": "0xe5De9De3B8fB5AD8C75C441327f50Cd6e19D46D8",
-    "Resolver": "0xEdC45bD18674BdD4A22D4904e6252A8DA9e29946",
-    "TronFusionExtension": "0x6997AC00dB9159A9331863d73a5CdA9fc3b47df1"
+    "Resolver": "0x80d1E22F66b30D444559225ED4740A9C0DA19F91",
+    "TronFusionExtension": "0x6997AC00dB9159A9331863d73a5CdA9fc3b47df1",
+    "DemoResolver": "0x8E46D1688aCeF18Cae7b2af9C0e4f8dF7d9B6A7B",
+    "MockTRX": "0x74Fc932f869f088D2a9516AfAd239047bEb209BF"
   },
   "phase4": {
     "timestamp": "2025-08-01T13:17:29.790Z",
@@ -28,15 +30,15 @@
     "network": "sepolia",
     "purpose": "Permissionless solver for atomic swap demonstration",
     "deprecated": true,
-    "replacedBy": "0xc6143027AC4DCc287e328DBea6B42C7CDC1EE530"
+    "replacedBy": "0x852fE13c80bC1557fDBb5897E6884d9DACf7f66F"
   },
   "DemoResolverV2": {
-    "address": "0xc6143027AC4DCc287e328DBea6B42C7CDC1EE530",
+    "address": "0x852fE13c80bC1557fDBb5897E6884d9DACf7f66F",
     "constructorArgs": [
       "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0",
       "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA"
     ],
-    "deployedAt": "2025-08-02T20:03:55.497Z",
+    "deployedAt": "2025-08-02T22:16:20.404Z",
     "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
     "network": "sepolia",
     "purpose": "TRUE 1inch LOP integration resolver with executeAtomicSwap",
@@ -47,5 +49,6 @@
       "Official EscrowFactory integration",
       "Proper postInteraction flow"
     ]
-  }
+  },
+  "lastUpdated": "2025-08-02T22:31:43.256Z"
 }

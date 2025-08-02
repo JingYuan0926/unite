@@ -23,18 +23,88 @@ import type {
   TypedContractMethod,
 } from "../../common";
 
+export declare namespace IBaseEscrow {
+  export type ImmutablesStruct = {
+    orderHash: BytesLike;
+    hashlock: BytesLike;
+    maker: BigNumberish;
+    taker: BigNumberish;
+    token: BigNumberish;
+    amount: BigNumberish;
+    safetyDeposit: BigNumberish;
+    timelocks: BigNumberish;
+  };
+
+  export type ImmutablesStructOutput = [
+    orderHash: string,
+    hashlock: string,
+    maker: bigint,
+    taker: bigint,
+    token: bigint,
+    amount: bigint,
+    safetyDeposit: bigint,
+    timelocks: bigint
+  ] & {
+    orderHash: string;
+    hashlock: string;
+    maker: bigint;
+    taker: bigint;
+    token: bigint;
+    amount: bigint;
+    safetyDeposit: bigint;
+    timelocks: bigint;
+  };
+}
+
+export declare namespace IOrderMixin {
+  export type OrderStruct = {
+    salt: BigNumberish;
+    maker: BigNumberish;
+    receiver: BigNumberish;
+    makerAsset: BigNumberish;
+    takerAsset: BigNumberish;
+    makingAmount: BigNumberish;
+    takingAmount: BigNumberish;
+    makerTraits: BigNumberish;
+  };
+
+  export type OrderStructOutput = [
+    salt: bigint,
+    maker: bigint,
+    receiver: bigint,
+    makerAsset: bigint,
+    takerAsset: bigint,
+    makingAmount: bigint,
+    takingAmount: bigint,
+    makerTraits: bigint
+  ] & {
+    salt: bigint;
+    maker: bigint;
+    receiver: bigint;
+    makerAsset: bigint;
+    takerAsset: bigint;
+    makingAmount: bigint;
+    takingAmount: bigint;
+    makerTraits: bigint;
+  };
+}
+
 export interface DemoResolverInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "ESCROW_FACTORY"
       | "LOP"
-      | "executeSwap"
+      | "createDstEscrow"
+      | "executeAtomicSwap"
+      | "executeSimpleSwap"
       | "getLockedBalance"
       | "recoverETH"
       | "withdrawETH"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "SwapExecuted"): EventFragment;
+  getEvent(
+    nameOrSignatureOrTopic: "EscrowCreated" | "SwapExecuted"
+  ): EventFragment;
 
   encodeFunctionData(
     functionFragment: "ESCROW_FACTORY",
@@ -42,7 +112,23 @@ export interface DemoResolverInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "LOP", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "executeSwap",
+    functionFragment: "createDstEscrow",
+    values: [IBaseEscrow.ImmutablesStruct, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "executeAtomicSwap",
+    values: [
+      IBaseEscrow.ImmutablesStruct,
+      IOrderMixin.OrderStruct,
+      BytesLike,
+      BytesLike,
+      BigNumberish,
+      BigNumberish,
+      BytesLike
+    ]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "executeSimpleSwap",
     values: [BytesLike, BigNumberish, BigNumberish, AddressLike]
   ): string;
   encodeFunctionData(
@@ -64,7 +150,15 @@ export interface DemoResolverInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "LOP", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "executeSwap",
+    functionFragment: "createDstEscrow",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "executeAtomicSwap",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "executeSimpleSwap",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -76,6 +170,19 @@ export interface DemoResolverInterface extends Interface {
     functionFragment: "withdrawETH",
     data: BytesLike
   ): Result;
+}
+
+export namespace EscrowCreatedEvent {
+  export type InputTuple = [escrow: AddressLike, orderHash: BytesLike];
+  export type OutputTuple = [escrow: string, orderHash: string];
+  export interface OutputObject {
+    escrow: string;
+    orderHash: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace SwapExecutedEvent {
@@ -153,7 +260,30 @@ export interface DemoResolver extends BaseContract {
 
   LOP: TypedContractMethod<[], [string], "view">;
 
-  executeSwap: TypedContractMethod<
+  createDstEscrow: TypedContractMethod<
+    [
+      dstImmutables: IBaseEscrow.ImmutablesStruct,
+      srcCancellationTimestamp: BigNumberish
+    ],
+    [void],
+    "payable"
+  >;
+
+  executeAtomicSwap: TypedContractMethod<
+    [
+      immutables: IBaseEscrow.ImmutablesStruct,
+      order: IOrderMixin.OrderStruct,
+      r: BytesLike,
+      vs: BytesLike,
+      amount: BigNumberish,
+      takerTraits: BigNumberish,
+      args: BytesLike
+    ],
+    [void],
+    "payable"
+  >;
+
+  executeSimpleSwap: TypedContractMethod<
     [
       orderHash: BytesLike,
       amount: BigNumberish,
@@ -185,7 +315,32 @@ export interface DemoResolver extends BaseContract {
     nameOrSignature: "LOP"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "executeSwap"
+    nameOrSignature: "createDstEscrow"
+  ): TypedContractMethod<
+    [
+      dstImmutables: IBaseEscrow.ImmutablesStruct,
+      srcCancellationTimestamp: BigNumberish
+    ],
+    [void],
+    "payable"
+  >;
+  getFunction(
+    nameOrSignature: "executeAtomicSwap"
+  ): TypedContractMethod<
+    [
+      immutables: IBaseEscrow.ImmutablesStruct,
+      order: IOrderMixin.OrderStruct,
+      r: BytesLike,
+      vs: BytesLike,
+      amount: BigNumberish,
+      takerTraits: BigNumberish,
+      args: BytesLike
+    ],
+    [void],
+    "payable"
+  >;
+  getFunction(
+    nameOrSignature: "executeSimpleSwap"
   ): TypedContractMethod<
     [
       orderHash: BytesLike,
@@ -211,6 +366,13 @@ export interface DemoResolver extends BaseContract {
   >;
 
   getEvent(
+    key: "EscrowCreated"
+  ): TypedContractEvent<
+    EscrowCreatedEvent.InputTuple,
+    EscrowCreatedEvent.OutputTuple,
+    EscrowCreatedEvent.OutputObject
+  >;
+  getEvent(
     key: "SwapExecuted"
   ): TypedContractEvent<
     SwapExecutedEvent.InputTuple,
@@ -219,6 +381,17 @@ export interface DemoResolver extends BaseContract {
   >;
 
   filters: {
+    "EscrowCreated(address,bytes32)": TypedContractEvent<
+      EscrowCreatedEvent.InputTuple,
+      EscrowCreatedEvent.OutputTuple,
+      EscrowCreatedEvent.OutputObject
+    >;
+    EscrowCreated: TypedContractEvent<
+      EscrowCreatedEvent.InputTuple,
+      EscrowCreatedEvent.OutputTuple,
+      EscrowCreatedEvent.OutputObject
+    >;
+
     "SwapExecuted(address,address,bytes32,uint256,uint256)": TypedContractEvent<
       SwapExecutedEvent.InputTuple,
       SwapExecutedEvent.OutputTuple,

@@ -178,6 +178,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.DemoResolverV2__factory>;
     getContractFactory(
+      name: "MockTRX",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MockTRX__factory>;
+    getContractFactory(
       name: "BaseEscrow",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.BaseEscrow__factory>;
@@ -482,17 +486,9 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.TronCreate2Test__factory>;
     getContractFactory(
-      name: "TronDemoEscrow",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.TronDemoEscrow__factory>;
-    getContractFactory(
       name: "TronEscrowDst",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.TronEscrowDst__factory>;
-    getContractFactory(
-      name: "TronEscrowFactory",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.TronEscrowFactory__factory>;
     getContractFactory(
       name: "TronEscrowFactoryPatched",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -708,6 +704,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.DemoResolverV2>;
     getContractAt(
+      name: "MockTRX",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MockTRX>;
+    getContractAt(
       name: "BaseEscrow",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -1088,20 +1089,10 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.TronCreate2Test>;
     getContractAt(
-      name: "TronDemoEscrow",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer
-    ): Promise<Contracts.TronDemoEscrow>;
-    getContractAt(
       name: "TronEscrowDst",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.TronEscrowDst>;
-    getContractAt(
-      name: "TronEscrowFactory",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer
-    ): Promise<Contracts.TronEscrowFactory>;
     getContractAt(
       name: "TronEscrowFactoryPatched",
       address: string | ethers.Addressable,
@@ -1278,6 +1269,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.DemoResolverV2>;
     deployContract(
+      name: "MockTRX",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockTRX>;
+    deployContract(
       name: "BaseEscrow",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.BaseEscrow>;
@@ -1582,17 +1577,9 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.TronCreate2Test>;
     deployContract(
-      name: "TronDemoEscrow",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.TronDemoEscrow>;
-    deployContract(
       name: "TronEscrowDst",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.TronEscrowDst>;
-    deployContract(
-      name: "TronEscrowFactory",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.TronEscrowFactory>;
     deployContract(
       name: "TronEscrowFactoryPatched",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -1808,6 +1795,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.DemoResolverV2>;
     deployContract(
+      name: "MockTRX",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockTRX>;
+    deployContract(
       name: "BaseEscrow",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -2188,20 +2180,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.TronCreate2Test>;
     deployContract(
-      name: "TronDemoEscrow",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.TronDemoEscrow>;
-    deployContract(
       name: "TronEscrowDst",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.TronEscrowDst>;
-    deployContract(
-      name: "TronEscrowFactory",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.TronEscrowFactory>;
     deployContract(
       name: "TronEscrowFactoryPatched",
       args: any[],

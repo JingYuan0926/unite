@@ -5,8 +5,6 @@ import type * as interfaces from "./interfaces";
 export type { interfaces };
 import type * as test from "./test";
 export type { test };
-export type { TronDemoEscrow } from "./TronDemoEscrow";
 export type { TronEscrowDst } from "./TronEscrowDst";
-export type { TronEscrowFactory } from "./TronEscrowFactory";
 export type { TronEscrowFactoryPatched } from "./TronEscrowFactoryPatched";
 export type { TronEscrowSrc } from "./TronEscrowSrc";

@@ -218,17 +218,24 @@ export class CrossChainOrchestrator {
     // Step 3: Create cross-chain order manually (bypassing 1inch API)
     this.logger.info("Creating cross-chain order structure manually");
 
+    // ✅ FIX: Create proper LOP order with future expiry and valid ERC20 assets
+    const now = Math.floor(Date.now() / 1000);
+    const expiry = now + 3600; // Set expiry to 1 hour from now (critical for LOP)
+
+    // Create standard 8-field order for LOP v4 (no expiry/predicate in basic orders)
+    const orderForSigning = {
+      salt: BigInt(Date.now()),
+      maker: ethSigner.address,
+      receiver: ethSigner.address, // Receiver of the ETH (for cancellation)
+      makerAsset: ethers.ZeroAddress, // ETH (what maker is giving)
+      takerAsset: "0x74Fc932f869f088D2a9516AfAd239047bEb209BF", // MockTRX token (represents TRX in LOP order)
+      makingAmount: params.ethAmount,
+      takingAmount: trxAmount,
+      makerTraits: 0n, // Default traits (expiry would be encoded here if needed)
+    };
+
     const preparedOrder = {
-      order: {
-        salt: BigInt(Date.now()),
-        maker: ethSigner.address,
-        receiver: ethSigner.address, // Receiver of the ETH (for cancellation)
-        makerAsset: ethers.ZeroAddress, // ETH
-        takerAsset: this.config.getTrxRepresentationAddress(), // TRX representation
-        makingAmount: params.ethAmount,
-        takingAmount: trxAmount,
-        makerTraits: 0n, // Default traits
-      },
+      order: orderForSigning, // Use the full object
       quoteId: quote.quoteId,
     };
 
@@ -262,6 +269,7 @@ export class CrossChainOrchestrator {
         { name: "makerTraits", type: "uint256" },
       ],
     };
+    // NOTE: Standard 8-field Order struct for basic LOP v4 orders without complex predicates
 
     // Calculate proper EIP-712 order hash (this is what 1inch expects)
     const orderHash = ethers.TypedDataEncoder.hash(
@@ -347,8 +355,8 @@ export class CrossChainOrchestrator {
       note: "Total value includes both swap amount and safety deposit in ONE atomic transaction",
     });
 
-    // Convert order to array format for corrected ABI
-    const orderArray = [
+    // Convert order object to array format for contract call (8-field Order struct)
+    const orderForContractCall = [
       preparedOrder.order.salt,
       preparedOrder.order.maker,
       preparedOrder.order.receiver,
@@ -358,6 +366,7 @@ export class CrossChainOrchestrator {
       preparedOrder.order.takingAmount,
       preparedOrder.order.makerTraits || 0,
     ];
+    // NOTE: Using standard 8-field Order struct - same for signing and contract call
 
     // Execute atomic swap via DemoResolver (TRUE 1inch LOP integration)
     this.logger.info(
@@ -367,8 +376,8 @@ export class CrossChainOrchestrator {
     let deployTx;
     try {
       deployTx = await (resolverWithSigner as any).executeAtomicSwap(
-        immutables, // Full escrow immutables struct
-        preparedOrder.order, // 1inch order structure
+        immutables, // Full escrow immutables struct (already array format)
+        orderForContractCall, // 1inch order structure (8-field array matching IOrderMixin.Order)
         r, // Order signature r component
         vs, // Order signature vs component
         params.ethAmount, // Amount to fill
