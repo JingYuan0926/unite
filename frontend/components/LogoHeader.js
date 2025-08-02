@@ -23,6 +23,11 @@ export default function LogoHeader() {
         </div>
       </div>
       
+      {/* Description */}
+      <p className="text-lg text-black-600 text-center max-w-3xl leading-relaxed">
+        Harness 15 unified <strong><em>1inch</em></strong> APIs through a developer-ready SDK and an AI NLP web app that lets anyone quote, route, and swap in seconds
+      </p>
+      
       {/* Rainbow Buttons */}
       <div className="flex items-center space-x-4 mt-8">
         <RainbowButton className="flex items-center space-x-2">
