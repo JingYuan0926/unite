@@ -62,10 +62,25 @@ async function testCompleteAtomicSwap() {
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
 
     // ✅ CRITICAL: Reload environment variables after .env update
-    console.log("🔄 Reloading environment variables with updated DemoResolver address...");
-    delete require.cache[require.resolve('dotenv')];
+    console.log(
+      "🔄 Reloading environment variables with updated DemoResolver address..."
+    );
+    delete require.cache[require.resolve("dotenv")];
     require("dotenv").config();
-    
+
+    // Verify the new address is loaded correctly
+    console.log(
+      `🔍 Loaded DEMO_RESOLVER_ADDRESS: ${process.env.DEMO_RESOLVER_ADDRESS}`
+    );
+    console.log(`🔍 Expected address: ${demoResolverAddress}`);
+
+    if (process.env.DEMO_RESOLVER_ADDRESS !== demoResolverAddress) {
+      console.warn(
+        "⚠️ Address mismatch detected! Manually setting environment variable..."
+      );
+      process.env.DEMO_RESOLVER_ADDRESS = demoResolverAddress;
+    }
+
     // Initialize components with fresh config
     const config = new ConfigManager();
     const baseLogger = Logger.getInstance();

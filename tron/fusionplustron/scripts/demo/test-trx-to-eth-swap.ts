@@ -4,6 +4,10 @@ import { CrossChainOrchestrator } from "../../src/sdk/CrossChainOrchestrator";
 import { prepareAccountForTesting } from "../utils/invalidation-reset";
 import { LimitOrderProtocol__factory } from "../../typechain-types";
 import { ethers } from "hardhat";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 /**
  * 🚀 COMPLETE TRX → ETH ATOMIC SWAP TEST
@@ -30,7 +34,46 @@ async function testTRXtoETHAtomicSwap() {
   require("dotenv").config();
 
   try {
-    // Initialize components
+    // =================================================================
+    // DEPLOY FRESH RESOLVER (Prevents order replay attacks)
+    // =================================================================
+    console.log("\n🏭 Deploying fresh DemoResolver to prevent order replay...");
+    
+    // Deploy using hardhat run command
+    const { stdout } = await execAsync("npx hardhat run scripts/deploy-resolver.ts --network sepolia");
+    console.log(stdout);
+    
+    // Extract the deployed address from the output
+    const addressMatch = stdout.match(/DemoResolver deployed to: (0x[a-fA-F0-9]{40})/);
+    const demoResolverAddress = addressMatch ? addressMatch[1] : null;
+    
+    if (!demoResolverAddress) {
+      throw new Error("Failed to extract DemoResolver address from deployment output");
+    }
+    
+    console.log(`✅ Fresh DemoResolver deployed: ${demoResolverAddress}`);
+    
+    // Small delay to ensure .env file is updated and contracts are ready
+    console.log("⏳ Waiting for deployment to settle...");
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
+
+    // ✅ CRITICAL: Reload environment variables after .env update
+    console.log(
+      "🔄 Reloading environment variables with updated DemoResolver address..."
+    );
+    delete require.cache[require.resolve("dotenv")];
+    require("dotenv").config();
+
+    // Verify the new address is loaded correctly
+    console.log(`🔍 Loaded DEMO_RESOLVER_ADDRESS: ${process.env.DEMO_RESOLVER_ADDRESS}`);
+    console.log(`🔍 Expected address: ${demoResolverAddress}`);
+    
+    if (process.env.DEMO_RESOLVER_ADDRESS !== demoResolverAddress) {
+      console.warn("⚠️ Address mismatch detected! Manually setting environment variable...");
+      process.env.DEMO_RESOLVER_ADDRESS = demoResolverAddress;
+    }
+
+    // Initialize components with fresh config
     const config = new ConfigManager();
     const baseLogger = Logger.getInstance();
     const logger = new ScopedLogger(baseLogger, "TRXtoETHSwapTest");
@@ -40,7 +83,6 @@ async function testTRXtoETHAtomicSwap() {
     const lopAddress = "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0";
     const mockTrxAddress = "0x74Fc932f869f088D2a9516AfAd239047bEb209BF";
     const escrowFactoryAddress = "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA";
-    const demoResolverAddress = "0x97dBd3D0b836a824E34DBF3e06107b36EfF077F8"; // Fixed resolver with corrected payment logic
 
     // Prepare account for testing (reset invalidation + ensure approvals)
     console.log("\n🛠️ Preparing User A account for testing...");
