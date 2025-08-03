@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import chainData from '../data/chains.json';
+import { validateWalletAddress } from '../lib/portfolioAPI';
 
 export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress }) {
   const [trackedWallets, setTrackedWallets] = useState([]);
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [includeCurrentWallet, setIncludeCurrentWallet] = useState(false);
   const [selectedNetworks, setSelectedNetworks] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const supportedNetworks = chainData.networks.map(network => network.name);
 
@@ -15,9 +19,15 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
   }, {});
 
   const handleAddWallet = () => {
-    if (newWalletAddress.trim() && !trackedWallets.includes(newWalletAddress.trim())) {
-      setTrackedWallets([...trackedWallets, newWalletAddress.trim()]);
-      setNewWalletAddress('');
+    const address = newWalletAddress.trim();
+    if (address && !trackedWallets.includes(address)) {
+      if (validateWalletAddress(address)) {
+        setTrackedWallets([...trackedWallets, address]);
+        setNewWalletAddress('');
+        setError('');
+      } else {
+        setError('Please enter a valid Ethereum wallet address (0x followed by 40 hex characters)');
+      }
     }
   };
 
@@ -35,13 +45,36 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
     });
   };
 
-  const handleSave = () => {
-    const config = {
-      trackedWallets,
-      includeCurrentWallet,
-      selectedNetworks
-    };
-    onSave(config);
+  const handleSave = async () => {
+    if (selectedNetworks.length === 0 || (trackedWallets.length === 0 && !includeCurrentWallet)) {
+      setError('Please add at least one wallet address and select at least one network');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const config = {
+        trackedWallets,
+        includeCurrentWallet,
+        selectedNetworks
+      };
+
+      // Save the configuration
+      onSave(config);
+      setSuccess('Portfolio configuration saved successfully!');
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (err) {
+      setError(`Failed to save configuration: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -49,6 +82,8 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
     setNewWalletAddress('');
     setIncludeCurrentWallet(false);
     setSelectedNetworks([]);
+    setError('');
+    setSuccess('');
     onClose();
   };
 
@@ -78,6 +113,19 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[70vh] p-6">
+          
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+          
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-600">{success}</p>
+            </div>
+          )}
           
           {/* Wallet Configuration */}
           <div className="mb-6">
@@ -177,10 +225,10 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
           </button>
           <button
             onClick={handleSave}
-            disabled={selectedNetworks.length === 0 || (trackedWallets.length === 0 && !includeCurrentWallet)}
+            disabled={isLoading || selectedNetworks.length === 0 || (trackedWallets.length === 0 && !includeCurrentWallet)}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            Save Configuration
+            {isLoading ? 'Saving...' : 'Save Configuration'}
           </button>
         </div>
 
