@@ -114,10 +114,87 @@ export default function Dashboard() {
     if (api.name === "Gas Price API") {
       const config = api.config;
       const networkCount = config.selectedNetworks.length;
-      return `${networkCount} network(s), ${config.gasPricePreferences.updateInterval}s updates`;
+      return `${networkCount} network(s) configured`;
     }
     
     return null;
+  };
+
+  // Mock gas price data generator for demonstration - only gas prices are fake
+  const generateMockGasPriceData = (selectedNetworks) => {
+    const baseGasPrices = {
+      'Ethereum Mainnet': { fast: 45, standard: 35, safe: 25 },
+      'Polygon': { fast: 180, standard: 150, safe: 120 },
+      'BNB Chain': { fast: 5, standard: 3, safe: 2 },
+      'Arbitrum': { fast: 2, standard: 1.5, safe: 1 },
+      'Optimism': { fast: 0.8, standard: 0.6, safe: 0.4 },
+      'Avalanche': { fast: 28, standard: 25, safe: 22 },
+      'Base': { fast: 1.2, standard: 0.9, safe: 0.6 },
+      'ZKsync Era': { fast: 0.5, standard: 0.3, safe: 0.2 },
+      'Gnosis': { fast: 4, standard: 3, safe: 2 },
+      'Linea': { fast: 0.8, standard: 0.6, safe: 0.4 },
+      'Sonic': { fast: 1.5, standard: 1.2, safe: 0.9 },
+      'Unichain': { fast: 0.7, standard: 0.5, safe: 0.3 }
+    };
+
+    return selectedNetworks.map(network => {
+      const basePrice = baseGasPrices[network] || { fast: 10, standard: 8, safe: 6 };
+      // Add some random variation to make it look more realistic
+      const variation = 0.8 + Math.random() * 0.4; // 0.8 to 1.2 multiplier
+      
+      return {
+        network,
+        fast: Math.round(basePrice.fast * variation * 10) / 10,
+        standard: Math.round(basePrice.standard * variation * 10) / 10,
+        safe: Math.round(basePrice.safe * variation * 10) / 10
+      };
+    });
+  };
+
+  const GasPriceChart = ({ config }) => {
+    const gasPriceData = generateMockGasPriceData(config.selectedNetworks);
+    
+    return (
+      <div className="space-y-4">
+        {gasPriceData.map((networkData, index) => (
+          <div key={networkData.network} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: chainColors[networkData.network] || '#8884d8' }}
+              ></div>
+              <span className="font-medium text-gray-900">{networkData.network}</span>
+            </div>
+            <div className="flex space-x-6 text-sm">
+              <div className="text-center">
+                <div className="text-green-600 font-semibold">{networkData.safe}</div>
+                <div className="text-xs text-gray-500">Safe</div>
+              </div>
+              <div className="text-center">
+                <div className="text-yellow-600 font-semibold">{networkData.standard}</div>
+                <div className="text-xs text-gray-500">Standard</div>
+              </div>
+              <div className="text-center">
+                <div className="text-red-600 font-semibold">{networkData.fast}</div>
+                <div className="text-xs text-gray-500">Fast</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Mock portfolio data generator for demonstration - only amounts are fake
+  const generateMockPortfolioData = (walletConfig, walletIndex) => {
+    const chains = walletConfig.selectedNetworks;
+    
+    const mockData = chains.map((chain, index) => ({
+      chain,
+      // Only the amounts are fake/hardcoded for demonstration
+      amount: Math.floor(Math.random() * 8000) + 2000 + (walletIndex * 1000),
+    }));
+    return mockData;
   };
 
   // Generate chain colors dynamically from chain data
@@ -380,6 +457,54 @@ export default function Dashboard() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                         <p className="mt-2 text-sm text-gray-500">Click to configure wallets and view portfolio</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              
+              // Special handling for Gas Price API
+              if (api.name === "Gas Price API") {
+                return (
+                  <div 
+                    key={index}
+                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{api.name}</h3>
+                        <p className="text-sm text-gray-600">{api.description}</p>
+                      </div>
+                      {configStatusText && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          api.config ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {configStatusText}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {configSummary && (
+                      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded mb-3">
+                        {configSummary}
+                      </div>
+                    )}
+                    
+                    {/* Gas Price Display */}
+                    {api.config ? (
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="text-sm font-medium text-gray-700">Current Gas Prices (Gwei)</h4>
+                          <div className="text-xs text-gray-500">Live data</div>
+                        </div>
+                        <GasPriceChart config={api.config} />
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
+                        <svg className="mx-auto h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <p className="mt-2 text-sm text-gray-500">Configure networks to view gas prices</p>
                       </div>
                     )}
                   </div>
