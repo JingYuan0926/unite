@@ -6,7 +6,7 @@
 
 An open-source toolkit for connecting AI agents to 1inch protocols and DeFi operations. Connect any LLM to 1inch DeFi protocols using natural language, powered by OpenAI's GPT models. Get quotes, execute swaps, check gas prices, perform RPC calls, and monitor protocol health through simple chat interactions. 
 
-Deployed frontend link of 1inch Agent Platform: 👉 [Click here to try it out](https://agentkit-omega.vercel.app/)
+Deployed frontend link of 1inch Agent Platform: 👉 [Click here to try it out](https://1inch-agent-kit.vercel.app/)
 
 For full API reference, guides and examples, see our GitBook: 👉 [1inch Agent Platform Docs](https://agentkit-omega.vercel.app/)
 
