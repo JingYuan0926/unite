@@ -121,8 +121,16 @@ export default function APISelectionModal({ isOpen, onClose, onSaveChanges, exis
     });
 
     if (apisNeedingConfig.length === 0) {
-      // All configurations complete, save
-      handleSaveChanges();
+      // All configurations complete, save immediately
+      const selectedAPIData = availableAPIs
+        .filter(api => selectedAPIs.includes(api.name))
+        .map(api => ({
+          ...api,
+          config: updatedConfigStatus[api.name] || false
+        }));
+      onSaveChanges(selectedAPIData);
+      setCurrentStep('selection'); // Reset to selection step
+      onClose();
     } else {
       // Open next config modal
       const nextApi = apisNeedingConfig[0];
