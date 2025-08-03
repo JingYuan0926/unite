@@ -1,15 +1,21 @@
 import { LineShadowText } from "@/components/magicui/line-shadow-text";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
+import { useRouter } from "next/router";
 
 export default function Header() {
   const sectionIds = ['home', 'how-it-works', 'features'];
   const activeSection = useScrollSpy(sectionIds, 100); // 100px offset for header height
+  const router = useRouter();
 
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const goToDashboard = () => {
+    router.push('/dashboard');
   };
 
   return (
@@ -69,7 +75,10 @@ export default function Header() {
 
         {/* Right side - Blue button */}
         <div className="w-32 flex justify-end">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-2xl transition-colors">
+          <button 
+            onClick={goToDashboard}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-2xl transition-colors"
+          >
             Get Started
           </button>
         </div>
