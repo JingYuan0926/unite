@@ -1,0 +1,401 @@
+import { ContractFactory, ContractTransactionResponse } from "ethers";
+import type { Signer, BigNumberish, AddressLike, ContractDeployTransaction, ContractRunner } from "ethers";
+import type { NonPayableOverrides } from "../../../../../common";
+import type { EscrowSrcZkSync, EscrowSrcZkSyncInterface } from "../../../../../contracts/ethereum/official-escrow/zkSync/EscrowSrcZkSync";
+type EscrowSrcZkSyncConstructorParams = [signer?: Signer] | ConstructorParameters<typeof ContractFactory>;
+export declare class EscrowSrcZkSync__factory extends ContractFactory {
+    constructor(...args: EscrowSrcZkSyncConstructorParams);
+    getDeployTransaction(rescueDelay: BigNumberish, accessToken: AddressLike, overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<ContractDeployTransaction>;
+    deploy(rescueDelay: BigNumberish, accessToken: AddressLike, overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<EscrowSrcZkSync & {
+        deploymentTransaction(): ContractTransactionResponse;
+    }>;
+    connect(runner: ContractRunner | null): EscrowSrcZkSync__factory;
+    static readonly bytecode = "0x61012034610183576001600160401b0390601f610dbd38819003918201601f19168301918483118484101761016d5780849260409485528339810103126101835780519063ffffffff82168092036101835760200151906001600160a01b0382168203610183573360c05260a0526080526e5af43d82803e903d91602b57fd5bf360205230601152763d602d80600a3d3981f3363d3d373d3d3d363d730000003060881c17600052603760092060e05260405160208101903082526020815260408101928184109084111761016d578260405251902090610100918252610c34918261018983396080518281816101010152610886015260a05182818160a101526105e7015260c051828181610176015281816102fe0152818161040f01528181610581015281816106e401528181610784015261090f015260e051826106ab0152518181816101a50152818161032d0152818161043e015281816105b0015281816107b3015261093d0152f35b634e487b7160e01b600052604160045260246000fd5b600080fdfe608060408181526004918236101561001657600080fd5b60009260e0908435821c9283630af975581461084d5750826323305703146107135782632dd31000146106ce57826334862b6a146106925782634649088b146105185782636c10c0c81461038557826390d3252f146102a3578263daff233e146100c857505063f56cd69c1461008b57600080fd5b346100c457816003193601126100c457602090517f00000000000000000000000000000000000000000000000000000000000000008152f35b5080fd5b9150913461029f576101008060031936011261029b5781516370a0823160e01b815233848201526001600160a01b0394906020816024817f00000000000000000000000000000000000000000000000000000000000000008a165afa90811561029157879161025b575b501561024c5763ffffffff60e43580921c9160601c16810180911161023957421061022b5781518184823720303f825191600080516020610bdf83398151915283527f000000000000000000000000000000000000000000000000000000000000000060208401528383015260608201527f000000000000000000000000000000000000000000000000000000000000000060808201528360a0309220160361021e57836101eb60a43560443586166084358716610aff565b6101f760c43533610b68565b7f6e3be9294e58d10b9c8053cfd5e09871b67e442fe394d6b0870d336b9df984a98180a180f35b51635134a42560e11b8152fd5b50516337bf561360e11b8152fd5b634e487b7160e01b865260118452602486fd5b5050516348f5c3ed60e01b8152fd5b90506020813d602011610289575b8161027660209383610a80565b81010312610285575138610132565b8680fd5b3d9150610269565b84513d89823e3d90fd5b8480fd5b8380fd5b9150503461038157610100918260031936011261029f576001600160a01b039260643584163303610373576102d960e435610ab8565b421061022b5781518184823720303f825191600080516020610bdf83398151915283527f000000000000000000000000000000000000000000000000000000000000000060208401528383015260608201527f000000000000000000000000000000000000000000000000000000000000000060808201528360a0309220160361021e57836101eb60a43560443586166084358716610aff565b50516348f5c3ed60e01b8152fd5b8280fd5b8490843461038157610140366003190112610381578135916001600160a01b03906024359082821682036105145761010080604319360112610285578360a43516330361050557610124356103d981610ae8565b42106104f5576103e890610ab8565b4210156104e6578451816044823720303f855191600080516020610bdf83398151915283527f000000000000000000000000000000000000000000000000000000000000000060208401528683015260608201527f000000000000000000000000000000000000000000000000000000000000000060808201528360a030922016036104d85784865260208620606435036104ca5750916104b57fe346f5c97a360db5188bfa5d3ec5f0583abde420c6ba4d08b6cfe61addc17105949260209460e4359160c43516610aff565b6104c26101043533610b68565b51908152a180f35b835163abab6bd760e01b8152fd5b8351635134a42560e11b8152fd5b5083516337bf561360e11b8152fd5b85516337bf561360e11b81528390fd5b5083516348f5c3ed60e01b8152fd5b8580fd5b8484833461038157610140366003190112610381576001600160a01b038435818116929083900361029b576024359161010080604319360112610285578160a43516330361068257855181604482372090303f865192600080516020610bdf83398151915284527f000000000000000000000000000000000000000000000000000000000000000060208501528784015260608301527f0000000000000000000000000000000000000000000000000000000000000000608083015260a030922016036106725761012435901c7f0000000000000000000000000000000000000000000000000000000000000000014210610662577fc4474c2790e13695f6d2b6f1d8e164290b55370f87a542fd7711abe0a1bf40ac9394508115600014610652576106448133610b68565b82519182526020820152a180f35b61065d813384610aff565b610644565b82516337bf561360e11b81528590fd5b8351635134a42560e11b81528690fd5b85516348f5c3ed60e01b81528890fd5b505050346100c457816003193601126100c457602090517f00000000000000000000000000000000000000000000000000000000000000008152f35b505050346100c457816003193601126100c457517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b9291503461029f5761072436610a58565b909390916001600160a01b0391906060840135831633036105055783013561074b81610ae8565b42106104e65761075a90610ab8565b42101561083f578351610100908185823720303f855191600080516020610bdf83398151915283527f000000000000000000000000000000000000000000000000000000000000000060208401528683015260608201527f000000000000000000000000000000000000000000000000000000000000000060808201528260a030922016036104d857848652602086206020840135036104ca5750916104c260c08361083760209660a07fe346f5c97a360db5188bfa5d3ec5f0583abde420c6ba4d08b6cfe61addc1710599970135903390608085013516610aff565b013533610b68565b83516337bf561360e11b8152fd5b8591853461029f5761085e36610a58565b6370a0823160e01b855233858501529560209491936001600160a01b039290919086816024817f000000000000000000000000000000000000000000000000000000000000000088165afa908115610a4e578891610a1d575b5015610a0e578088013580911c63ffffffff82881c1681018091116109fb5742106109ec576108e590610ab8565b4210156109de578251610100908189823720303f845191600080516020610bdf83398151915283527f0000000000000000000000000000000000000000000000000000000000000000888401528583015260608201527f000000000000000000000000000000000000000000000000000000000000000060808201528260a030922016036109d05783865284862085880135036109c2575060c0866108376104c29360a07fe346f5c97a360db5188bfa5d3ec5f0583abde420c6ba4d08b6cfe61addc17105999a0135908060608501351690608085013516610aff565b825163abab6bd760e01b8152fd5b8251635134a42560e11b8152fd5b82516337bf561360e11b8152fd5b5082516337bf561360e11b8152fd5b634e487b7160e01b885260118352602488fd5b5082516348f5c3ed60e01b8152fd5b90508681813d8311610a47575b610a348183610a80565b81010312610a435751896108b7565b8780fd5b503d610a2a565b85513d8a823e3d90fd5b90610120600319830112610a7b57610100600435926023190112610a7b57602490565b600080fd5b90601f8019910116810190811067ffffffffffffffff821117610aa257604052565b634e487b7160e01b600052604160045260246000fd5b63ffffffff8160e01c9160401c168101809111610ad25790565b634e487b7160e01b600052601160045260246000fd5b63ffffffff8160e01c91168101809111610ad25790565b9160446020926000926040519163a9059cbb60e01b83526004830152602482015282855af19081610b45575b5015610b3357565b60405163fb7f507960e01b8152600490fd5b90503d15610b605750600160005114601f3d11165b38610b2b565b3b1515610b5a565b60008080809481945af1903d15610bd8573d9067ffffffffffffffff8211610bc45760405191610ba2601f8201601f191660200184610a80565b825260203d92013e5b15610bb257565b604051638a0332d560e01b8152600490fd5b634e487b7160e01b81526041600452602490fd5b50610bab56fe2020dba91b30cc0006188af794c2fb30dd8520db7e2c088b7fc7c103c00ca494a2646970667358221220b758f76f234f4d7f6c93b8d5b9881a3f4c9eb225d050cb3fd050945db9df89bb64736f6c63430008170033";
+    static readonly abi: readonly [{
+        readonly inputs: readonly [{
+            readonly internalType: "uint32";
+            readonly name: "rescueDelay";
+            readonly type: "uint32";
+        }, {
+            readonly internalType: "contract IERC20";
+            readonly name: "accessToken";
+            readonly type: "address";
+        }];
+        readonly stateMutability: "nonpayable";
+        readonly type: "constructor";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "InvalidCaller";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "InvalidImmutables";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "InvalidSecret";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "InvalidTime";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "NativeTokenSendingFailure";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "SafeTransferFailed";
+        readonly type: "error";
+    }, {
+        readonly anonymous: false;
+        readonly inputs: readonly [];
+        readonly name: "EscrowCancelled";
+        readonly type: "event";
+    }, {
+        readonly anonymous: false;
+        readonly inputs: readonly [{
+            readonly indexed: false;
+            readonly internalType: "bytes32";
+            readonly name: "secret";
+            readonly type: "bytes32";
+        }];
+        readonly name: "EscrowWithdrawal";
+        readonly type: "event";
+    }, {
+        readonly anonymous: false;
+        readonly inputs: readonly [{
+            readonly indexed: false;
+            readonly internalType: "address";
+            readonly name: "token";
+            readonly type: "address";
+        }, {
+            readonly indexed: false;
+            readonly internalType: "uint256";
+            readonly name: "amount";
+            readonly type: "uint256";
+        }];
+        readonly name: "FundsRescued";
+        readonly type: "event";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "FACTORY";
+        readonly outputs: readonly [{
+            readonly internalType: "address";
+            readonly name: "";
+            readonly type: "address";
+        }];
+        readonly stateMutability: "view";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "PROXY_BYTECODE_HASH";
+        readonly outputs: readonly [{
+            readonly internalType: "bytes32";
+            readonly name: "";
+            readonly type: "bytes32";
+        }];
+        readonly stateMutability: "view";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "RESCUE_DELAY";
+        readonly outputs: readonly [{
+            readonly internalType: "uint256";
+            readonly name: "";
+            readonly type: "uint256";
+        }];
+        readonly stateMutability: "view";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [{
+            readonly components: readonly [{
+                readonly internalType: "bytes32";
+                readonly name: "orderHash";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "bytes32";
+                readonly name: "hashlock";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "taker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "token";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "amount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "safetyDeposit";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Timelocks";
+                readonly name: "timelocks";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IBaseEscrow.Immutables";
+            readonly name: "immutables";
+            readonly type: "tuple";
+        }];
+        readonly name: "cancel";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [{
+            readonly components: readonly [{
+                readonly internalType: "bytes32";
+                readonly name: "orderHash";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "bytes32";
+                readonly name: "hashlock";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "taker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "token";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "amount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "safetyDeposit";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Timelocks";
+                readonly name: "timelocks";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IBaseEscrow.Immutables";
+            readonly name: "immutables";
+            readonly type: "tuple";
+        }];
+        readonly name: "publicCancel";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [{
+            readonly internalType: "bytes32";
+            readonly name: "secret";
+            readonly type: "bytes32";
+        }, {
+            readonly components: readonly [{
+                readonly internalType: "bytes32";
+                readonly name: "orderHash";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "bytes32";
+                readonly name: "hashlock";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "taker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "token";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "amount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "safetyDeposit";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Timelocks";
+                readonly name: "timelocks";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IBaseEscrow.Immutables";
+            readonly name: "immutables";
+            readonly type: "tuple";
+        }];
+        readonly name: "publicWithdraw";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [{
+            readonly internalType: "address";
+            readonly name: "token";
+            readonly type: "address";
+        }, {
+            readonly internalType: "uint256";
+            readonly name: "amount";
+            readonly type: "uint256";
+        }, {
+            readonly components: readonly [{
+                readonly internalType: "bytes32";
+                readonly name: "orderHash";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "bytes32";
+                readonly name: "hashlock";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "taker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "token";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "amount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "safetyDeposit";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Timelocks";
+                readonly name: "timelocks";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IBaseEscrow.Immutables";
+            readonly name: "immutables";
+            readonly type: "tuple";
+        }];
+        readonly name: "rescueFunds";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [{
+            readonly internalType: "bytes32";
+            readonly name: "secret";
+            readonly type: "bytes32";
+        }, {
+            readonly components: readonly [{
+                readonly internalType: "bytes32";
+                readonly name: "orderHash";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "bytes32";
+                readonly name: "hashlock";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "taker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "token";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "amount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "safetyDeposit";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Timelocks";
+                readonly name: "timelocks";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IBaseEscrow.Immutables";
+            readonly name: "immutables";
+            readonly type: "tuple";
+        }];
+        readonly name: "withdraw";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [{
+            readonly internalType: "bytes32";
+            readonly name: "secret";
+            readonly type: "bytes32";
+        }, {
+            readonly internalType: "address";
+            readonly name: "target";
+            readonly type: "address";
+        }, {
+            readonly components: readonly [{
+                readonly internalType: "bytes32";
+                readonly name: "orderHash";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "bytes32";
+                readonly name: "hashlock";
+                readonly type: "bytes32";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "taker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "token";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "amount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "safetyDeposit";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Timelocks";
+                readonly name: "timelocks";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IBaseEscrow.Immutables";
+            readonly name: "immutables";
+            readonly type: "tuple";
+        }];
+        readonly name: "withdrawTo";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }];
+    static createInterface(): EscrowSrcZkSyncInterface;
+    static connect(address: string, runner?: ContractRunner | null): EscrowSrcZkSync;
+}
+export {};
+//# sourceMappingURL=EscrowSrcZkSync__factory.d.ts.map

@@ -27,6 +27,7 @@ export { domainAPI } from "./functions/domainAPI";
 export { portfolioAPI } from "./functions/portfolioAPI";
 export { transactionAPI } from "./functions/transactionAPI";
 export { swapAPI } from "./functions/swapAPI";
+export { tron } from "./functions/tron";
 
 // Type exports
 export type {
@@ -253,6 +254,11 @@ export type {
   ProtocolsResponse,
   TokensResponse
 } from "./functions/swapAPI";
+
+export type {
+  TronSwapParams,
+  TronSwapResponse
+} from "./functions/tron";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";

@@ -1,0 +1,26 @@
+{
+  "network": "tron-nile-real",
+  "timestamp": "2025-08-01T12:51:09.956Z",
+  "chainId": 3448148188,
+  "phase": "Phase 3 - TRON NILE EXTENSION DEVELOPMENT",
+  "status": "COMPLETED",
+  "contracts": {
+    "TronEscrowSrc": "TYmKjtbZKdWMoURuGVjoGPTp3ZepL6qEak",
+    "TronEscrowDst": "TPxTSAnENueUsgYsBWNRZ3RBVndPqbSQYu",
+    "TronEscrowFactory": "TGFSxj53mAhVTVQpfhrc3Kh4f9YUcxB6Lk"
+  },
+  "deployer": "TPUiCeNRjjEpo1NFJ1ZURfU1ziNNMtn8yu",
+  "verified": true,
+  "explorerLinks": {
+    "TronEscrowSrc": "https://nile.tronscan.org/#/contract/TYmKjtbZKdWMoURuGVjoGPTp3ZepL6qEak",
+    "TronEscrowDst": "https://nile.tronscan.org/#/contract/TPxTSAnENueUsgYsBWNRZ3RBVndPqbSQYu",
+    "TronEscrowFactory": "https://nile.tronscan.org/#/contract/TGFSxj53mAhVTVQpfhrc3Kh4f9YUcxB6Lk"
+  },
+  "factoryConfig": {
+    "isTronFactory": true,
+    "chainId": "3448148188",
+    "owner": "41942e12a3eaead38224aeeee5f4eedcb15ea112f8",
+    "accessToken": "410000000000000000000000000000000000000000",
+    "feeToken": "410000000000000000000000000000000000000000"
+  }
+}

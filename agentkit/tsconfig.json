@@ -26,6 +26,10 @@
     "dist",
     "examples",
     "tests",
-    "scripts"
+    "scripts",
+    "src/functions/tron/fusionplustron/**/*",
+    "src/functions/tron/cross-chain-sdk-master/**/*",
+    "src/functions/tron/cross-chain-resolver-example-master/**/*",
+    "src/functions/tron/limit-order-protocol-master/**/*"
   ]
 } 

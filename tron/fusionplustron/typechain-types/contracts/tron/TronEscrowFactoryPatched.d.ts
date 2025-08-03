@@ -1,0 +1,258 @@
+import type { BaseContract, BigNumberish, BytesLike, FunctionFragment, Result, Interface, EventFragment, AddressLike, ContractRunner, ContractMethod, Listener } from "ethers";
+import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, TypedLogDescription, TypedListener, TypedContractMethod } from "../../common";
+export declare namespace IBaseEscrow {
+    type ImmutablesStruct = {
+        orderHash: BytesLike;
+        hashlock: BytesLike;
+        maker: BigNumberish;
+        taker: BigNumberish;
+        token: BigNumberish;
+        amount: BigNumberish;
+        safetyDeposit: BigNumberish;
+        timelocks: BigNumberish;
+    };
+    type ImmutablesStructOutput = [
+        orderHash: string,
+        hashlock: string,
+        maker: bigint,
+        taker: bigint,
+        token: bigint,
+        amount: bigint,
+        safetyDeposit: bigint,
+        timelocks: bigint
+    ] & {
+        orderHash: string;
+        hashlock: string;
+        maker: bigint;
+        taker: bigint;
+        token: bigint;
+        amount: bigint;
+        safetyDeposit: bigint;
+        timelocks: bigint;
+    };
+}
+export declare namespace IEscrowFactory {
+    type DstImmutablesComplementStruct = {
+        maker: BigNumberish;
+        amount: BigNumberish;
+        token: BigNumberish;
+        safetyDeposit: BigNumberish;
+        chainId: BigNumberish;
+    };
+    type DstImmutablesComplementStructOutput = [
+        maker: bigint,
+        amount: bigint,
+        token: bigint,
+        safetyDeposit: bigint,
+        chainId: bigint
+    ] & {
+        maker: bigint;
+        amount: bigint;
+        token: bigint;
+        safetyDeposit: bigint;
+        chainId: bigint;
+    };
+}
+export interface TronEscrowFactoryPatchedInterface extends Interface {
+    getFunction(nameOrSignature: "ACCESS_TOKEN" | "ESCROW_DST_IMPLEMENTATION" | "ESCROW_SRC_IMPLEMENTATION" | "FEE_TOKEN" | "OWNER" | "addressOfEscrowDst" | "addressOfEscrowSrc" | "createDstEscrow" | "createSrcEscrow" | "debugComputeAddress" | "emergencyRescue" | "getFactoryConfig" | "getTronChainId" | "isTronFactory"): FunctionFragment;
+    getEvent(nameOrSignatureOrTopic: "DstEscrowCreated" | "SrcEscrowCreated"): EventFragment;
+    encodeFunctionData(functionFragment: "ACCESS_TOKEN", values?: undefined): string;
+    encodeFunctionData(functionFragment: "ESCROW_DST_IMPLEMENTATION", values?: undefined): string;
+    encodeFunctionData(functionFragment: "ESCROW_SRC_IMPLEMENTATION", values?: undefined): string;
+    encodeFunctionData(functionFragment: "FEE_TOKEN", values?: undefined): string;
+    encodeFunctionData(functionFragment: "OWNER", values?: undefined): string;
+    encodeFunctionData(functionFragment: "addressOfEscrowDst", values: [IBaseEscrow.ImmutablesStruct]): string;
+    encodeFunctionData(functionFragment: "addressOfEscrowSrc", values: [IBaseEscrow.ImmutablesStruct]): string;
+    encodeFunctionData(functionFragment: "createDstEscrow", values: [IBaseEscrow.ImmutablesStruct, BigNumberish]): string;
+    encodeFunctionData(functionFragment: "createSrcEscrow", values: [IBaseEscrow.ImmutablesStruct]): string;
+    encodeFunctionData(functionFragment: "debugComputeAddress", values: [BytesLike, BytesLike]): string;
+    encodeFunctionData(functionFragment: "emergencyRescue", values: [AddressLike, BigNumberish, AddressLike]): string;
+    encodeFunctionData(functionFragment: "getFactoryConfig", values?: undefined): string;
+    encodeFunctionData(functionFragment: "getTronChainId", values?: undefined): string;
+    encodeFunctionData(functionFragment: "isTronFactory", values?: undefined): string;
+    decodeFunctionResult(functionFragment: "ACCESS_TOKEN", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ESCROW_DST_IMPLEMENTATION", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ESCROW_SRC_IMPLEMENTATION", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "FEE_TOKEN", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "OWNER", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "addressOfEscrowDst", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "addressOfEscrowSrc", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "createDstEscrow", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "createSrcEscrow", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "debugComputeAddress", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "emergencyRescue", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "getFactoryConfig", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "getTronChainId", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "isTronFactory", data: BytesLike): Result;
+}
+export declare namespace DstEscrowCreatedEvent {
+    type InputTuple = [
+        escrow: AddressLike,
+        hashlock: BytesLike,
+        taker: BigNumberish
+    ];
+    type OutputTuple = [escrow: string, hashlock: string, taker: bigint];
+    interface OutputObject {
+        escrow: string;
+        hashlock: string;
+        taker: bigint;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export declare namespace SrcEscrowCreatedEvent {
+    type InputTuple = [
+        srcImmutables: IBaseEscrow.ImmutablesStruct,
+        dstImmutablesComplement: IEscrowFactory.DstImmutablesComplementStruct
+    ];
+    type OutputTuple = [
+        srcImmutables: IBaseEscrow.ImmutablesStructOutput,
+        dstImmutablesComplement: IEscrowFactory.DstImmutablesComplementStructOutput
+    ];
+    interface OutputObject {
+        srcImmutables: IBaseEscrow.ImmutablesStructOutput;
+        dstImmutablesComplement: IEscrowFactory.DstImmutablesComplementStructOutput;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export interface TronEscrowFactoryPatched extends BaseContract {
+    connect(runner?: ContractRunner | null): TronEscrowFactoryPatched;
+    waitForDeployment(): Promise<this>;
+    interface: TronEscrowFactoryPatchedInterface;
+    queryFilter<TCEvent extends TypedContractEvent>(event: TCEvent, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    queryFilter<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    on<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    on<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    listeners<TCEvent extends TypedContractEvent>(event: TCEvent): Promise<Array<TypedListener<TCEvent>>>;
+    listeners(eventName?: string): Promise<Array<Listener>>;
+    removeAllListeners<TCEvent extends TypedContractEvent>(event?: TCEvent): Promise<this>;
+    ACCESS_TOKEN: TypedContractMethod<[], [string], "view">;
+    ESCROW_DST_IMPLEMENTATION: TypedContractMethod<[], [string], "view">;
+    ESCROW_SRC_IMPLEMENTATION: TypedContractMethod<[], [string], "view">;
+    FEE_TOKEN: TypedContractMethod<[], [string], "view">;
+    OWNER: TypedContractMethod<[], [string], "view">;
+    addressOfEscrowDst: TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    addressOfEscrowSrc: TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    createDstEscrow: TypedContractMethod<[
+        dstImmutables: IBaseEscrow.ImmutablesStruct,
+        srcCancellationTimestamp: BigNumberish
+    ], [
+        void
+    ], "payable">;
+    createSrcEscrow: TypedContractMethod<[
+        srcImmutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        void
+    ], "payable">;
+    debugComputeAddress: TypedContractMethod<[
+        salt: BytesLike,
+        bytecodeHash: BytesLike
+    ], [
+        [string, string] & {
+            computed: string;
+            deployer: string;
+        }
+    ], "view">;
+    emergencyRescue: TypedContractMethod<[
+        token: AddressLike,
+        amount: BigNumberish,
+        to: AddressLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFactoryConfig: TypedContractMethod<[
+    ], [
+        [
+            string,
+            string,
+            string
+        ] & {
+            owner: string;
+            accessToken: string;
+            feeToken: string;
+        }
+    ], "view">;
+    getTronChainId: TypedContractMethod<[], [bigint], "view">;
+    isTronFactory: TypedContractMethod<[], [boolean], "view">;
+    getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T;
+    getFunction(nameOrSignature: "ACCESS_TOKEN"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "ESCROW_DST_IMPLEMENTATION"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "ESCROW_SRC_IMPLEMENTATION"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "FEE_TOKEN"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "OWNER"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "addressOfEscrowDst"): TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    getFunction(nameOrSignature: "addressOfEscrowSrc"): TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    getFunction(nameOrSignature: "createDstEscrow"): TypedContractMethod<[
+        dstImmutables: IBaseEscrow.ImmutablesStruct,
+        srcCancellationTimestamp: BigNumberish
+    ], [
+        void
+    ], "payable">;
+    getFunction(nameOrSignature: "createSrcEscrow"): TypedContractMethod<[
+        srcImmutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        void
+    ], "payable">;
+    getFunction(nameOrSignature: "debugComputeAddress"): TypedContractMethod<[
+        salt: BytesLike,
+        bytecodeHash: BytesLike
+    ], [
+        [string, string] & {
+            computed: string;
+            deployer: string;
+        }
+    ], "view">;
+    getFunction(nameOrSignature: "emergencyRescue"): TypedContractMethod<[
+        token: AddressLike,
+        amount: BigNumberish,
+        to: AddressLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction(nameOrSignature: "getFactoryConfig"): TypedContractMethod<[
+    ], [
+        [
+            string,
+            string,
+            string
+        ] & {
+            owner: string;
+            accessToken: string;
+            feeToken: string;
+        }
+    ], "view">;
+    getFunction(nameOrSignature: "getTronChainId"): TypedContractMethod<[], [bigint], "view">;
+    getFunction(nameOrSignature: "isTronFactory"): TypedContractMethod<[], [boolean], "view">;
+    getEvent(key: "DstEscrowCreated"): TypedContractEvent<DstEscrowCreatedEvent.InputTuple, DstEscrowCreatedEvent.OutputTuple, DstEscrowCreatedEvent.OutputObject>;
+    getEvent(key: "SrcEscrowCreated"): TypedContractEvent<SrcEscrowCreatedEvent.InputTuple, SrcEscrowCreatedEvent.OutputTuple, SrcEscrowCreatedEvent.OutputObject>;
+    filters: {
+        "DstEscrowCreated(address,bytes32,uint256)": TypedContractEvent<DstEscrowCreatedEvent.InputTuple, DstEscrowCreatedEvent.OutputTuple, DstEscrowCreatedEvent.OutputObject>;
+        DstEscrowCreated: TypedContractEvent<DstEscrowCreatedEvent.InputTuple, DstEscrowCreatedEvent.OutputTuple, DstEscrowCreatedEvent.OutputObject>;
+        "SrcEscrowCreated(tuple,tuple)": TypedContractEvent<SrcEscrowCreatedEvent.InputTuple, SrcEscrowCreatedEvent.OutputTuple, SrcEscrowCreatedEvent.OutputObject>;
+        SrcEscrowCreated: TypedContractEvent<SrcEscrowCreatedEvent.InputTuple, SrcEscrowCreatedEvent.OutputTuple, SrcEscrowCreatedEvent.OutputObject>;
+    };
+}
+//# sourceMappingURL=TronEscrowFactoryPatched.d.ts.map

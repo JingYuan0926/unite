@@ -1,0 +1,6 @@
+@openzeppelin/=node_modules/@openzeppelin/
+openzeppelin-contracts/=node_modules/@openzeppelin/
+@1inch/solidity-utils/=node_modules/@1inch/solidity-utils/
+solidity-utils/=node_modules/@1inch/solidity-utils/
+limit-order-protocol/=contracts/ethereum/official-lop/
+limit-order-settlement/=contracts/ethereum/temporary-extensions/
