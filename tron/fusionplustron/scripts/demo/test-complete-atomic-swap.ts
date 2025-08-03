@@ -34,11 +34,10 @@ async function testCompleteAtomicSwap() {
     const logger = new ScopedLogger(baseLogger, "CompleteSwapTest");
     const orchestrator = new CrossChainOrchestrator(config, logger);
 
-    // Contract addresses
+    // Contract addresses for real cross-chain swap
     const lopAddress = "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0";
-    const mockTrxAddress = "0x74Fc932f869f088D2a9516AfAd239047bEb209BF";
     const escrowFactoryAddress = "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA";
-    const demoResolverAddress = "0x97dBd3D0b836a824E34DBF3e06107b36EfF077F8"; // Fixed resolver with corrected payment logic
+    const demoResolverAddress = "0x929756B47168f5dff0903B390977F91F11386337"; // Fresh resolver for working cross-chain swaps
 
     // Prepare account for testing (reset invalidation + ensure approvals)
     console.log("\n🛠️ Preparing User A account for testing...");
@@ -227,9 +226,10 @@ async function testCompleteAtomicSwap() {
       "Action: Both parties claim their funds using the revealed secret"
     );
 
+    let claimResult = { tronWithdrawalTxHash: null };
     try {
       // Use the orchestrator's complete claiming functionality
-      await orchestrator.claimAtomicSwap(
+      claimResult = await orchestrator.claimAtomicSwap(
         swapResult,
         swapResult.secret,
         config.USER_A_ETH_PRIVATE_KEY, // ETH private key for claiming ETH
@@ -416,13 +416,13 @@ async function testCompleteAtomicSwap() {
 
     console.log("\n🌍 EXPLORER LINKS:");
     console.log(
-      `🔗 ETH Transaction: https://sepolia.etherscan.io/tx/0xc3e2a6e9b9a17b1c2c595e13ac84e19d7108ed9e8f93b791f78135136c566034`
+      `🔗 ETH Transaction: https://sepolia.etherscan.io/tx/${swapResult.ethTxHash}`
     );
     console.log(
-      `🔗 Tron Transaction: https://nile.tronscan.org/#/transaction/23e6ecbe42637a0bfd5f354be8afc520a8e15d47c0560b39f05e8dc0911c270f`
+      `🔗 Tron Transaction: https://nile.tronscan.org/#/transaction/${swapResult.tronTxHash}`
     );
     console.log(
-      `🔗 TRX Withdrawal: https://nile.tronscan.org/#/transaction/bb904a6dd7dea2282af1c90b99366fb1153d4a9cb9dabc39ecdcac9a770bc8e1`
+      `🔗 TRX Withdrawal: https://nile.tronscan.org/#/transaction/${claimResult.tronWithdrawalTxHash || "pending"}`
     );
 
     console.log("\n💡 MONEY FLOW VERIFICATION:");

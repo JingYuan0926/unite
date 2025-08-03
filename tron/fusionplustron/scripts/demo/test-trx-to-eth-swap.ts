@@ -98,14 +98,14 @@ async function testTRXtoETHAtomicSwap() {
     console.log("  Step 4: Fund claiming mechanism");
 
     // Execute the complete atomic swap (OPPOSITE: TRX amount first)
-    const trxAmount = ethers.parseUnits("1000", 6); // 1000 TRX
-    const ethAmount = ethers.parseEther("0.0005"); // 0.0005 ETH
+    const trxAmount = ethers.parseUnits("10", 6); // 10 TRX (demo amount)
+    const ethAmount = ethers.parseEther("0.01"); // 0.01 ETH (demo amount)
 
     // Execute the complete TRX to ETH swap using orchestrator
     console.log("\n🌐 Executing Complete TRX → ETH Atomic Swap...");
 
     const swapParams = {
-      ethAmount: ethAmount, // Amount of ETH User A wants to receive
+      ethAmount: trxAmount, // IMPORTANT: In TRX→ETH flow, this is actually the TRX amount (misleading param name)
       tronPrivateKey: userATronPrivateKey!, // User A's Tron private key (TRX holder)
       ethPrivateKey: process.env.USER_B_ETH_PRIVATE_KEY!, // User B's ETH private key (ETH provider)
       tronRecipient: config.USER_A_TRX_RECEIVE_ADDRESS, // User A will receive ETH
@@ -205,10 +205,10 @@ async function testTRXtoETHAtomicSwap() {
       "├─────────────────────────────────────────────────────────────┤"
     );
     console.log(
-      `│ User A: Locked 1000 TRX → Will gain ${ethers.formatEther(ethAmount)} ETH              │`
+      `│ User A: Locked 10 TRX → Will gain ${ethers.formatEther(ethAmount)} ETH              │`
     );
     console.log(
-      `│ User B: Locked ${ethers.formatEther(ethAmount)} ETH + deposit → Will gain 1000 TRX     │`
+      `│ User B: Locked ${ethers.formatEther(ethAmount)} ETH + deposit → Will gain 10 TRX     │`
     );
     console.log(
       "├─────────────────────────────────────────────────────────────┤"
@@ -338,7 +338,7 @@ async function testTRXtoETHAtomicSwap() {
       "╠════════════════════════════════════════════════════════════════╣"
     );
     console.log(
-      "║ 📤 PAID: 1000 TRX (locked in TronEscrowSrc)                   ║"
+      "║ 📤 PAID: 10 TRX (locked in TronEscrowSrc)                     ║"
     );
     console.log(
       `║ 📥 RECEIVED: ${ethers.formatEther(ethAmount)} ETH (from EthereumEscrowDst)              ║`
@@ -369,7 +369,7 @@ async function testTRXtoETHAtomicSwap() {
       `║ 📤 PAID: ${ethers.formatEther(ethAmount)} ETH + ~0.01 ETH (safety deposit)             ║`
     );
     console.log(
-      "║ 📥 RECEIVED: 1000 TRX (from TronEscrowSrc)                    ║"
+      "║ 📥 RECEIVED: 10 TRX (from TronEscrowSrc)                      ║"
     );
     console.log(
       "║ 🎯 NET RESULT: Provided liquidity for TRX                    ║"
@@ -395,7 +395,7 @@ async function testTRXtoETHAtomicSwap() {
       "╠════════════════════════════════════════════════════════════════╣"
     );
     console.log(
-      "║ ✅ TronEscrowSrc Creation: User A locked 1000 TRX            ║"
+      "║ ✅ TronEscrowSrc Creation: User A locked 10 TRX              ║"
     );
     console.log(
       "║ ✅ EthereumEscrowDst Creation: User B locked ETH + deposit   ║"
@@ -419,10 +419,10 @@ async function testTRXtoETHAtomicSwap() {
 
     console.log("\n💡 MONEY FLOW VERIFICATION:");
     console.log(
-      "✅ User A: Locked 1000 TRX → Will gain 0.0005 ETH (Cross-chain swap complete)"
+      "✅ User A: Locked 10 TRX → Will gain 0.01 ETH (Cross-chain swap complete)"
     );
     console.log(
-      "✅ User B: Locked 0.0005 ETH + deposit → Will gain 1000 TRX (Liquidity provision)"
+      "✅ User B: Locked 0.01 ETH + deposit → Will gain 10 TRX (Liquidity provision)"
     );
     console.log("✅ Both parties: Achieved desired cross-chain asset exchange");
     console.log("🎯 ATOMIC SWAP: No counterparty risk, trustless execution");

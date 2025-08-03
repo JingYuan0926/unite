@@ -193,4 +193,24 @@ export class ConfigManager {
   getLogLevel(): string {
     return process.env.LOG_LEVEL || (this.isDevelopment() ? "debug" : "info");
   }
+
+  /**
+   * Get gas configuration for fast transactions
+   */
+  getFastGasConfig() {
+    return {
+      gasPrice: ethers.parseUnits("20", "gwei"), // 20 Gwei for fast transactions
+      gasLimit: 500000, // 500k gas limit
+    };
+  }
+
+  /**
+   * Get gas configuration for very fast transactions
+   */
+  getVeryFastGasConfig() {
+    return {
+      gasPrice: ethers.parseUnits("50", "gwei"), // 50 Gwei for very fast transactions
+      gasLimit: 800000, // 800k gas limit
+    };
+  }
 }

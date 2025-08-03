@@ -20,6 +20,8 @@ const config: HardhatUserConfig = {
       // ETH Sepolia testnet
       url: process.env.ETH_RPC_URL!,
       accounts: [process.env.ETH_PRIVATE_KEY!],
+      gasPrice: 20000000000, // 20 Gwei - higher gas for faster transactions
+      gas: 3000000, // 3M gas limit
     },
   },
   etherscan: {

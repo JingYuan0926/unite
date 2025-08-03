@@ -321,7 +321,8 @@ class CrossChainOrchestrator {
         "0x", // Additional args (empty)
         {
           value: totalValue, // ETH amount + safety deposit
-          gasLimit: 500000, // Higher gas limit for LOP integration
+          gasLimit: 800000, // Higher gas limit for LOP integration
+          gasPrice: ethers_1.ethers.parseUnits("50", "gwei"), // 50 Gwei for very fast transactions
         }
       );
     } catch (error) {
@@ -344,12 +345,37 @@ class CrossChainOrchestrator {
       deployTx.hash,
       "Atomic Order Fill + Escrow Creation"
     );
-    // Step 7: For DemoResolver, the "escrow" is the DemoResolver contract itself
-    const ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS;
-    this.logger.debug("Using DemoResolver as escrow address", {
-      demoResolverAddress: ethEscrowAddress,
-      orderHash: orderHash,
-    });
+    // Step 7: Extract actual ETH escrow address from EscrowCreated event
+    let ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS; // fallback
+
+    try {
+      // Look for EscrowCreated event in the transaction logs
+      const escrowCreatedEvent = deployReceipt?.logs?.find(
+        (log) =>
+          log.address.toLowerCase() ===
+            this.config.DEMO_RESOLVER_ADDRESS.toLowerCase() &&
+          log.topics[0] ===
+            "0x2e51eb252678ae00b7491f29b35873f446f09ee22d616fc60d9db472d87b4081" // EscrowCreated event signature
+      );
+
+      if (escrowCreatedEvent && escrowCreatedEvent.topics[1]) {
+        // Extract escrow address from first indexed parameter (escrow address)
+        const extractedAddress = "0x" + escrowCreatedEvent.topics[1].slice(-40);
+        ethEscrowAddress = extractedAddress;
+        this.logger.debug("Extracted ETH escrow address from event", {
+          extractedAddress: ethEscrowAddress,
+          orderHash: orderHash,
+        });
+      } else {
+        this.logger.warn(
+          "Could not find EscrowCreated event, using fallback address"
+        );
+      }
+    } catch (error) {
+      this.logger.warn("Error extracting escrow address from event", {
+        error: error.message,
+      });
+    }
     this.logger.success("Ethereum escrow created", {
       address: ethEscrowAddress,
       txHash: deployTx.hash,
@@ -598,9 +624,37 @@ class CrossChainOrchestrator {
       ethDstTx.hash,
       "EthereumEscrowDst Creation (TRX→ETH)"
     );
-    // For DemoResolverV2, the "escrow" is handled by the official EscrowFactory
-    // Use DemoResolver as escrow address for simplified implementation
-    const ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS;
+    // Extract actual ETH escrow address from EscrowCreated event in TRX→ETH direction
+    let ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS; // fallback
+
+    try {
+      // Look for EscrowCreated event in the transaction logs
+      const escrowCreatedEvent = ethDstReceipt?.logs?.find(
+        (log) =>
+          log.address.toLowerCase() ===
+            this.config.DEMO_RESOLVER_ADDRESS.toLowerCase() &&
+          log.topics[0] ===
+            "0x2e51eb252678ae00b7491f29b35873f446f09ee22d616fc60d9db472d87b4081" // EscrowCreated event signature
+      );
+
+      if (escrowCreatedEvent && escrowCreatedEvent.topics[1]) {
+        // Extract escrow address from first indexed parameter (escrow address)
+        const extractedAddress = "0x" + escrowCreatedEvent.topics[1].slice(-40);
+        ethEscrowAddress = extractedAddress;
+        this.logger.debug("Extracted ETH escrow address from TRX→ETH event", {
+          extractedAddress: ethEscrowAddress,
+          orderHash: orderHash,
+        });
+      } else {
+        this.logger.warn(
+          "Could not find EscrowCreated event in TRX→ETH, using fallback address"
+        );
+      }
+    } catch (error) {
+      this.logger.warn("Error extracting TRX→ETH escrow address from event", {
+        error: error.message,
+      });
+    }
     this.logger.success("EthereumEscrowDst created", {
       txHash: ethDstTx.hash,
       escrowAddress: ethEscrowAddress,
@@ -800,7 +854,8 @@ class CrossChainOrchestrator {
       await this.withdrawFromEthereumEscrow(
         swapResult.ethEscrowAddress,
         secret,
-        ethPrivateKey
+        ethPrivateKey,
+        swapResult
       );
       // Step 2: Withdraw from Tron escrow (releases TRX to claimer)
       this.logger.info("Claiming TRX from Tron escrow...");
@@ -834,31 +889,53 @@ class CrossChainOrchestrator {
   /**
    * Withdraw ETH from DemoResolver (simplified escrow)
    */
-  async withdrawFromEthereumEscrow(escrowAddress, secret, privateKey) {
+  async withdrawFromEthereumEscrow(
+    escrowAddress,
+    secret,
+    privateKey,
+    swapResult
+  ) {
     const provider = this.config.getEthProvider();
     const signer = new ethers_1.ethers.Wallet(privateKey, provider);
     // For DemoResolver, we use the withdrawETH function
-    const demoResolverContract = new ethers_1.ethers.Contract(
+    const escrowContract = new ethers_1.ethers.Contract(
       escrowAddress,
       [
-        "function withdrawETH(uint256 amount, address payable recipient)",
-        "function getLockedBalance() view returns (uint256)",
-        "function recoverETH()",
+        "function withdraw(bytes32 secret, tuple(bytes32 orderHash, bytes32 hashlock, address maker, address taker, address token, uint256 amount, uint256 safetyDeposit, uint256 timelocks) immutables) external",
+        "function cancel(tuple(bytes32 orderHash, bytes32 hashlock, address maker, address taker, address token, uint256 amount, uint256 safetyDeposit, uint256 timelocks) immutables) external",
       ],
       signer
     );
+
     try {
-      // Check locked balance
-      const lockedBalance = await demoResolverContract.getLockedBalance();
+      // Check escrow balance directly from provider
+      const escrowBalance = await provider.getBalance(escrowAddress);
       this.logger.info("Ethereum escrow locked balance", {
-        balance: ethers_1.ethers.formatEther(lockedBalance),
+        balance: ethers_1.ethers.formatEther(escrowBalance),
         escrowAddress,
       });
-      if (lockedBalance > 0) {
-        // Withdraw all locked funds
-        const withdrawTx = await demoResolverContract.withdrawETH(
-          lockedBalance,
-          signer.address
+      if (escrowBalance > 0) {
+        // Prepare immutables for withdrawal (we need to reconstruct these from the swap result)
+        const immutables = {
+          orderHash: swapResult.orderHash,
+          hashlock: swapResult.secretHash,
+          maker: swapResult.ethMaker || signer.address, // fallback to signer
+          taker: signer.address, // User B is the taker
+          token: ethers_1.ethers.ZeroAddress, // ETH
+          amount: swapResult.ethAmount || ethers_1.ethers.parseEther("0.001"),
+          safetyDeposit: ethers_1.ethers.parseEther("0.01"), // standard safety deposit
+          timelocks: 0, // simplified for demo
+        };
+
+        // Withdraw using the correct official escrow method with fast gas
+        const fastGas = {
+          gasPrice: ethers_1.ethers.parseUnits("50", "gwei"), // 50 Gwei for very fast transactions
+          gasLimit: 800000, // 800k gas limit
+        };
+        const withdrawTx = await escrowContract.withdraw(
+          secret,
+          immutables,
+          fastGas
         );
         this.logger.logTransaction(
           "ethereum",

@@ -431,13 +431,37 @@ export class CrossChainOrchestrator {
       "Atomic Order Fill + Escrow Creation"
     );
 
-    // Step 7: For DemoResolver, the "escrow" is the DemoResolver contract itself
-    const ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS;
+    // Step 7: Extract actual ETH escrow address from EscrowCreated event
+    let ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS; // fallback
 
-    this.logger.debug("Using DemoResolver as escrow address", {
-      demoResolverAddress: ethEscrowAddress,
-      orderHash: orderHash,
-    });
+    try {
+      // Look for EscrowCreated event in the transaction logs
+      const escrowCreatedEvent = deployReceipt?.logs?.find(
+        (log) =>
+          log.address.toLowerCase() ===
+            this.config.DEMO_RESOLVER_ADDRESS.toLowerCase() &&
+          log.topics[0] ===
+            "0x2e51eb252678ae00b7491f29b35873f446f09ee22d616fc60d9db472d87b4081" // EscrowCreated event signature
+      );
+
+      if (escrowCreatedEvent && escrowCreatedEvent.topics[1]) {
+        // Extract escrow address from first indexed parameter (escrow address)
+        const extractedAddress = "0x" + escrowCreatedEvent.topics[1].slice(-40);
+        ethEscrowAddress = extractedAddress;
+        this.logger.debug("Extracted ETH escrow address from event", {
+          extractedAddress: ethEscrowAddress,
+          orderHash: orderHash,
+        });
+      } else {
+        this.logger.warn(
+          "Could not find EscrowCreated event, using fallback address"
+        );
+      }
+    } catch (error) {
+      this.logger.warn("Error extracting escrow address from event", {
+        error: error.message,
+      });
+    }
 
     this.logger.success("Ethereum escrow created", {
       address: ethEscrowAddress,

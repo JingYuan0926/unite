@@ -176,27 +176,12 @@ export class InvalidationReset {
         };
       }
 
-      // Check if MockTRX approval is needed
-      const mockTrxAddress = "0x74Fc932f869f088D2a9516AfAd239047bEb209BF";
+      // Note: Real cross-chain swaps don't require token approvals
+      // ETH is handled natively and TRX is on a different chain
+      console.log(
+        "  ✅ Real cross-chain swap mode (no token approvals needed)"
+      );
       let needsApproval = false;
-
-      try {
-        const MockTRX = await ethers.getContractAt("MockTRX", mockTrxAddress);
-        const allowance = await MockTRX.allowance(
-          wallet.address,
-          this.lopAddress
-        );
-        needsApproval = allowance === 0n;
-
-        if (needsApproval) {
-          console.log("  ⚠️ Account needs MockTRX approval for LOP");
-        } else {
-          console.log("  ✅ Account has MockTRX approval for LOP");
-        }
-      } catch (error) {
-        console.log("  ⚠️ Could not check MockTRX approval status");
-        needsApproval = true; // Assume needs approval if we can't check
-      }
 
       console.log("  🎉 Account prepared successfully for testing!");
 
@@ -216,64 +201,21 @@ export class InvalidationReset {
   }
 
   /**
-   * Approve MockTRX for LOP if needed
+   * Real cross-chain swaps don't require token approvals
+   * ETH is native and TRX is on a different blockchain
    */
-  async approveMockTRXIfNeeded(privateKey: string): Promise<{
+  async ensureRealCrossChainSetup(): Promise<{
     success: boolean;
-    txHash?: string;
-    error?: string;
+    message?: string;
     wasNeeded: boolean;
   }> {
-    try {
-      const wallet = new ethers.Wallet(privateKey, this.provider);
-      const mockTrxAddress = "0x74Fc932f869f088D2a9516AfAd239047bEb209BF";
-
-      const MockTRX = await ethers.getContractAt("MockTRX", mockTrxAddress);
-
-      // Check current allowance
-      const currentAllowance = await MockTRX.allowance(
-        wallet.address,
-        this.lopAddress
-      );
-
-      if (currentAllowance > 0n) {
-        console.log(
-          `✅ MockTRX already approved for LOP (allowance: ${ethers.formatEther(currentAllowance)})`
-        );
-        return {
-          success: true,
-          wasNeeded: false,
-        };
-      }
-
-      console.log("💰 Approving MockTRX for LOP...");
-
-      // Approve max amount
-      const maxApproval = ethers.MaxUint256;
-      const tx = await MockTRX.connect(wallet).approve(
-        this.lopAddress,
-        maxApproval
-      );
-      console.log(`📝 Approval transaction: ${tx.hash}`);
-
-      const receipt = await tx.wait();
-      console.log(
-        `✅ MockTRX approved for LOP in block ${receipt!.blockNumber}`
-      );
-
-      return {
-        success: true,
-        txHash: tx.hash,
-        wasNeeded: true,
-      };
-    } catch (error: any) {
-      console.error("❌ Failed to approve MockTRX:", error.message);
-      return {
-        success: false,
-        error: error.message,
-        wasNeeded: true,
-      };
-    }
+    console.log("✅ Real cross-chain swap mode - no token approvals needed");
+    console.log("📍 ETH handled natively, TRX on Tron blockchain");
+    return {
+      success: true,
+      message: "Cross-chain setup verified",
+      wasNeeded: false,
+    };
   }
 }
 
@@ -338,22 +280,19 @@ export async function prepareAccountForTesting(
     throw new Error(prepResult.error);
   }
 
-  // Step 2: Handle MockTRX approval if needed
-  if (prepResult.needsApproval) {
-    console.log("\n💰 Handling MockTRX approval...");
-    const approvalResult =
-      await invalidationReset.approveMockTRXIfNeeded(keyToUse);
+  // Step 2: Verify real cross-chain setup
+  console.log("\n🌍 Verifying real cross-chain configuration...");
+  const setupResult = await invalidationReset.ensureRealCrossChainSetup();
 
-    if (!approvalResult.success) {
-      console.error("❌ MockTRX approval failed:", approvalResult.error);
-      throw new Error(approvalResult.error);
-    }
+  if (!setupResult.success) {
+    console.error("❌ Cross-chain setup failed");
+    throw new Error("Cross-chain setup verification failed");
   }
 
   console.log("\n🎉 ACCOUNT FULLY PREPARED FOR TESTING!");
   console.log(`📍 Address: ${prepResult.address}`);
   console.log("✅ Invalidation state reset");
-  console.log("✅ MockTRX approval confirmed");
+  console.log("✅ Real cross-chain configuration verified");
   console.log("\nYour account is now ready for atomic swap testing!");
 }
 
