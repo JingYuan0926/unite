@@ -1,11 +1,26 @@
 import { useState } from 'react';
 import DashboardHeader from "@/components/DashboardHeader";
 import APISelectionModal from "@/components/APISelectionModal";
+import PortfolioConfigModal from "@/components/PortfolioConfigModal";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer } from "recharts";
 
 export default function Dashboard() {
   const [apis, setApis] = useState([]);
-
   const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [showPortfolioConfig, setShowPortfolioConfig] = useState(false);
+  const [portfolioConfigs, setPortfolioConfigs] = useState([
+    // Temporary fake data for testing - will be replaced by user configuration
+    {
+      trackedWallets: ['0x987cff8...b5ca8f1'],
+      includeCurrentWallet: false,
+      selectedNetworks: ['Ethereum', 'BNB Chain']
+    },
+    {
+      trackedWallets: ['0x123abc7...d4ef9g2'],
+      includeCurrentWallet: true,
+      selectedNetworks: ['Polygon', 'Arbitrum', 'Optimism']
+    }
+  ]);
 
   const handleAddAPI = () => {
     setShowSelectionModal(true);
@@ -13,22 +28,39 @@ export default function Dashboard() {
 
   const handleSaveChanges = (selectedAPIs) => {
     setApis(selectedAPIs);
+    
+    // Extract portfolio configurations from the Portfolio API
+    const portfolioAPI = selectedAPIs.find(api => api.name === "Portfolio API");
+    if (portfolioAPI && portfolioAPI.config) {
+      // If it's a single config object, wrap it in an array
+      if (Array.isArray(portfolioAPI.config)) {
+        setPortfolioConfigs(portfolioAPI.config);
+      } else {
+        setPortfolioConfigs([portfolioAPI.config]);
+      }
+    }
+  };
+
+  const handleConfigurePortfolio = () => {
+    setShowPortfolioConfig(true);
+  };
+
+  const handlePortfolioConfigSave = (config) => {
+    // Add the new config to the list
+    setPortfolioConfigs(prev => [...prev, config]);
+    setShowPortfolioConfig(false);
   };
 
   const getConfigStatusText = (api) => {
+    if (api.name === "Portfolio API") {
+      return portfolioConfigs.length > 0 ? `✓ ${portfolioConfigs.length} wallet(s) configured` : "⚙️ Configure Wallets";
+    }
     if (!api.requiresConfig) return null;
     return api.config ? "✓ Configured" : "⚙️ Needs Configuration";
   };
 
   const getConfigSummary = (api) => {
-    if (!api.config) return null;
-    
-    if (api.name === "Portfolio API") {
-      const config = api.config;
-      const walletCount = config.trackedWallets.length + (config.includeCurrentWallet ? 1 : 0);
-      const networkCount = config.selectedNetworks.length;
-      return `${walletCount} wallet(s), ${networkCount} network(s)`;
-    }
+    if (!api.config && api.name !== "Portfolio API") return null;
     
     if (api.name === "Gas Price API") {
       const config = api.config;
@@ -37,6 +69,89 @@ export default function Dashboard() {
     }
     
     return null;
+  };
+
+  // Mock portfolio data generator for demonstration
+  const generateMockPortfolioData = (walletConfig, walletIndex) => {
+    const chains = walletConfig.selectedNetworks;
+    const baseAmounts = [
+      [5200, 3800], // Wallet 1 amounts
+      [7100, 4500, 2300], // Wallet 2 amounts
+      [6800, 5200, 3100] // Wallet 3 amounts
+    ];
+    
+    const mockData = chains.map((chain, index) => ({
+      chain,
+      amount: baseAmounts[walletIndex] ? baseAmounts[walletIndex][index] || Math.floor(Math.random() * 5000) + 2000 : Math.floor(Math.random() * 5000) + 2000,
+    }));
+    return mockData;
+  };
+
+  // Chart colors for different chains
+  const chainColors = {
+    'Ethereum': '#627EEA',
+    'Polygon': '#8247E5',
+    'BNB Chain': '#F3BA2F',
+    'Arbitrum': '#28A0F0',
+    'Optimism': '#FF0420',
+    'Avalanche': '#E84142',
+    'Fantom': '#1969FF',
+    'Gnosis': '#04795B',
+  };
+
+  const PortfolioChart = ({ walletConfig, walletIndex }) => {
+    const chartData = generateMockPortfolioData(walletConfig, walletIndex);
+    const walletLabel = walletConfig.trackedWallets[0] || `Connected Wallet`;
+    
+    return (
+      <div className="flex-1 min-w-0">
+        <div className="mb-3">
+          <p className="text-xs text-gray-500 font-mono">{walletLabel.slice(0, 10)}...{walletLabel.slice(-8)}</p>
+        </div>
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              layout="horizontal"
+              margin={{ top: 10, right: 10, left: 60, bottom: 10 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                type="number"
+                tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
+                fontSize={10}
+              />
+              <YAxis 
+                dataKey="chain" 
+                type="category"
+                width={55}
+                tickFormatter={(value) => value.slice(0, 6)}
+                fontSize={10}
+              />
+              <Bar 
+                dataKey="amount" 
+                radius={[0, 3, 3, 0]}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={chainColors[entry.chain] || '#8884d8'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {walletConfig.selectedNetworks.map(network => (
+            <div key={network} className="flex items-center gap-1 text-xs">
+              <div 
+                className="w-2 h-2 rounded-full" 
+                style={{ backgroundColor: chainColors[network] || '#8884d8' }}
+              ></div>
+              <span className="text-gray-600">{network.slice(0, 8)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -76,15 +191,57 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {apis.map((api, index) => {
               const configStatusText = getConfigStatusText(api);
               const configSummary = getConfigSummary(api);
               
+              // Special handling for Portfolio API
+              if (api.name === "Portfolio API") {
+                return (
+                  <div 
+                    key={index}
+                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                    onClick={handleConfigurePortfolio}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{api.name}</h3>
+                        <p className="text-sm text-gray-600">{api.description}</p>
+                      </div>
+                      {configStatusText && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          portfolioConfigs.length > 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {configStatusText}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Portfolio Charts */}
+                    {portfolioConfigs.length > 0 ? (
+                      <div className={`flex gap-6 ${portfolioConfigs.length > 1 ? 'overflow-x-auto' : ''}`}>
+                        {portfolioConfigs.map((config, configIndex) => (
+                          <PortfolioChart key={configIndex} walletConfig={config} walletIndex={configIndex} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                        <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <p className="mt-2 text-sm text-gray-500">Click to configure wallets and view portfolio</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              
+              // Regular API cards
               return (
                 <div 
                   key={index}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">{api.name}</h3>
@@ -98,7 +255,7 @@ export default function Dashboard() {
                   </div>
                   <p className="text-sm text-gray-600 mb-3">{api.description}</p>
                   {configSummary && (
-                    <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded mb-3">
                       {configSummary}
                     </div>
                   )}
@@ -115,6 +272,13 @@ export default function Dashboard() {
         onClose={() => setShowSelectionModal(false)}
         onSaveChanges={handleSaveChanges}
         existingAPIs={apis}
+      />
+
+      {/* Portfolio Configuration Modal */}
+      <PortfolioConfigModal
+        isOpen={showPortfolioConfig}
+        onClose={() => setShowPortfolioConfig(false)}
+        onSave={handlePortfolioConfigSave}
       />
     </div>
   );
