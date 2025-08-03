@@ -8,6 +8,8 @@ An open-source toolkit for connecting AI agents to 1inch protocols and DeFi oper
 
 Deployed frontend link of 1inch Agent Platform: 👉 [Click here to try it out](https://agentkit-omega.vercel.app/)
 
+For full API reference, guides and examples, see our GitBook: 👉 [1inch Agent Platform Docs](https://agentkit-omega.vercel.app/)
+
 ## 🚀 Quick Start
 
 ### Core Installation
