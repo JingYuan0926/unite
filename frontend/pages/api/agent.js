@@ -291,9 +291,24 @@ const handleDirectFunction = async (req, res, agentInstance, functionCall, param
         result = await transactionAPI(functionCall.parameters || {});
         break;
         
+      case 'tron':
+        try {
+          console.log('🚀 Attempting to import tron function...');
+          const { tron } = await import('1inch-agent-kit');
+          console.log('✅ tron function imported successfully');
+          console.log('📋 Parameters:', functionCall.parameters);
+          
+          result = await tron(functionCall.parameters || {});
+          console.log('✅ tron function executed successfully:', result);
+        } catch (importError) {
+          console.error('❌ Error with tron function:', importError);
+          throw new Error(`Tron swap error: ${importError.message}`);
+        }
+        break;
+        
       default:
         return res.status(404).json({ 
-          error: `Function '${functionCall.name}' not found. Available functions: portfolioAPI, gasAPI, rpcAPI, swapAPI, getQuote, swap, healthCheck, chartsAPI, tokenDetailsAPI, historyAPI, tracesAPI, spotPriceAPI, fusionPlusAPI, orderbookAPI, nftAPI, domainAPI, balanceAPI, transactionAPI` 
+          error: `Function '${functionCall.name}' not found. Available functions: portfolioAPI, gasAPI, rpcAPI, swapAPI, getQuote, swap, healthCheck, chartsAPI, tokenDetailsAPI, historyAPI, tracesAPI, spotPriceAPI, fusionPlusAPI, orderbookAPI, nftAPI, domainAPI, balanceAPI, transactionAPI, tron` 
         });
     }
 
