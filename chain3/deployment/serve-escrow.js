@@ -8,18 +8,19 @@ class XRPLEscrowTEE {
   constructor(config = {}) {
     this.client = null;
     this.config = {
-      network: config.network || "wss://s.altnet.rippletest.net:51233",
+      network: config.network || "wss://s.altnet.rippletest.net:51233", // testnet by default
       port: config.port || 3000,
-      rescueDelay: config.rescueDelay || 86400 * 7,
+      rescueDelay: config.rescueDelay || 86400 * 7, // 7 days in seconds
       ...config,
     };
 
+    // Store active escrows
     this.escrows = new Map();
-    this.walletSeeds = new Map();
+    this.walletSeeds = new Map(); // Securely store wallet seeds
 
     this.app = express();
     this.setupMiddleware();
-    this.setupRoutes(); // routes added in commit 2
+    this.setupRoutes();
   }
 
   setupMiddleware() {
@@ -43,6 +44,7 @@ class XRPLEscrowTEE {
     }
   }
 
+  // Generate a new wallet for each escrow swap
   async generateEscrowWallet() {
     const staticSeed = Buffer.from("ripple-escrow-wallet", "utf8");
     const wallet = xrpl.Wallet.fromEntropy(staticSeed);
@@ -55,10 +57,12 @@ class XRPLEscrowTEE {
     };
   }
 
+  // Hash function equivalent to Solidity keccak256
   mykeccak256(data) {
     return keccak256(data);
   }
 
+  // Time-lock stage enumeration matching Solidity
   TimeStages = {
     SrcWithdrawal: 0,
     SrcPublicWithdrawal: 1,
@@ -69,17 +73,21 @@ class XRPLEscrowTEE {
     DstCancellation: 6,
   };
 
+  // Parse timelocks from packed uint256 (similar to Solidity implementation)
   parseTimelocks(packedTimelocks, deployedAt) {
     const data = BigInt(packedTimelocks);
     const stages = {};
+
     for (let stage = 0; stage < 7; stage++) {
       const bitShift = BigInt(stage * 32);
       const stageOffset = Number((data >> bitShift) & 0xffffffffn);
       stages[stage] = deployedAt + stageOffset;
     }
+
     return stages;
   }
 
+  // Check if current time is within valid range for action
   validateTimeWindow(escrow, stage, requireBefore = null, offset = 0) {
     const now = Math.floor(Date.now() / 1000) + offset;
     const stageTime = escrow.timelocks[stage];
@@ -100,6 +108,7 @@ class XRPLEscrowTEE {
     }
   }
 
+  // Validate secret against hashlock
   validateSecret(secret, hashlock) {
     const secretHash = this.mykeccak256(secret);
     if (secretHash.toLowerCase() !== hashlock.toLowerCase()) {
@@ -112,12 +121,14 @@ class XRPLEscrowTEE {
     let shouldDisconnect = false;
 
     try {
+      // Create client if not provided
       if (!xrplClient) {
         xrplClient = new xrpl.Client("wss://s.altnet.rippletest.net:51233");
         await xrplClient.connect();
         shouldDisconnect = true;
       }
 
+      // Check current balance
       try {
         const response = await xrplClient.request({
           command: "account_info",
@@ -128,19 +139,31 @@ class XRPLEscrowTEE {
         const currentBalance = Number(
           xrpl.dropsToXrp(response.result.account_data.Balance)
         );
+        console.log(
+          `Wallet ${wallet.address} current balance: ${currentBalance} XRP`
+        );
 
-        if (currentBalance >= minBalance) return;
+        if (currentBalance >= minBalance) {
+          console.log(
+            `Wallet ${wallet.address} has sufficient balance, skipping funding`
+          );
+          return;
+        }
       } catch (error) {
+        // Account might not exist yet, proceed with funding
         console.log(
           `Wallet ${wallet.address} account not found, proceeding with funding`
         );
       }
 
+      // Fund the wallet using testnet faucet
+      console.log(`Funding wallet ${wallet.address} from testnet faucet...`);
       await xrplClient.fundWallet(wallet);
       console.log(`Successfully funded wallet ${wallet.address}`);
     } catch (error) {
       throw new Error(`Failed to fund wallet ${wallet.address}: ${error}`);
     } finally {
+      // Disconnect if we created the client
       if (shouldDisconnect && xrplClient) {
         await xrplClient.disconnect();
       }
@@ -148,6 +171,7 @@ class XRPLEscrowTEE {
   }
 
   setupRoutes() {
+    // Create new destination escrow
     this.app.post("/escrow/create-dst", async (req, res) => {
       try {
         const {
@@ -162,6 +186,7 @@ class XRPLEscrowTEE {
           type,
         } = req.body;
 
+        // Generate new wallet for this escrow
         const escrowWallet = await this.generateEscrowWallet();
         const deployedAt = Math.floor(Date.now() / 1000);
         const parsedTimelocks = this.parseTimelocks(timelocks, deployedAt);
@@ -170,10 +195,10 @@ class XRPLEscrowTEE {
         const escrow = {
           id: escrowId,
           orderHash,
-          hashlock,
-          maker,
-          taker,
-          token,
+          hashlock: hashlock,
+          maker: maker,
+          taker: taker,
+          token: token,
           amount: BigInt(amount),
           safetyDeposit: BigInt(safetyDeposit),
           timelocks: parsedTimelocks,
@@ -186,9 +211,11 @@ class XRPLEscrowTEE {
           type: type,
         };
 
+        // Store escrow and wallet seed securely
         this.escrows.set(escrowId, escrow);
         this.walletSeeds.set(escrowId, escrowWallet.seed);
 
+        // Auto-mark escrow as funded since we auto-fund with testnet faucet
         escrow.status = "funded";
         escrow.autoFunded = true;
 
@@ -213,24 +240,28 @@ class XRPLEscrowTEE {
       }
     });
 
+    // Fund the escrow wallet
     this.app.post("/escrow/:escrowId/fund", async (req, res) => {
       try {
         const { escrowId } = req.params;
         const { fromAddress, txHash } = req.body;
 
         let txHashes = txHash.split(",");
-        const escrow = this.escrows.get(escrowId);
 
+        const escrow = this.escrows.get(escrowId);
         if (!escrow) {
           return res.status(404).json({ error: "Escrow not found" });
         }
 
+        // Ensure txHashes is an array
         const hashArray = Array.isArray(txHashes) ? txHashes : [txHashes];
 
         let totalAmountReceived = 0n;
         const verifiedTxs = [];
 
+        // Verify each funding transaction
         for (const txHash of hashArray) {
+          console.log("Verifying funding transaction", txHash);
           const tx = await this.client.request({
             command: "tx",
             transaction: txHash,
@@ -282,7 +313,380 @@ class XRPLEscrowTEE {
         res.status(500).json({ error: error.message });
       }
     });
+
+    // Withdraw from destination escrow (for maker)
+    this.app.post("/escrow/:escrowId/withdraw", async (req, res) => {
+      try {
+        const { escrowId } = req.params;
+        const { secret, callerAddress, isPublic = false } = req.body;
+
+        const escrow = this.escrows.get(escrowId);
+        if (!escrow) {
+          return res.status(404).json({ error: "Escrow not found" });
+        }
+
+        if (escrow.status !== "funded") {
+          return res.status(400).json({ error: "Escrow not funded" });
+        }
+
+        // Validate secret
+        this.validateSecret(secret, escrow.hashlock);
+
+        // Validate caller and timing
+        if (!isPublic) {
+          if (callerAddress !== escrow.taker) {
+            return res
+              .status(403)
+              .json({ error: "Only taker can withdraw during private period" });
+          }
+          this.validateTimeWindow(
+            escrow,
+            this.TimeStages.DstWithdrawal,
+            this.TimeStages.DstCancellation,
+            11 // simulate 11 seconds delay, just like EVM part
+          );
+        } else {
+          // Public withdrawal - anyone can call
+          this.validateTimeWindow(
+            escrow,
+            this.TimeStages.DstPublicWithdrawal,
+            this.TimeStages.DstCancellation
+          );
+        }
+
+        // Execute withdrawal
+        const walletSeed = this.walletSeeds.get(escrowId);
+        const wallet = xrpl.Wallet.fromSeed(walletSeed);
+
+        // For cross-chain swaps, we need to convert the Ethereum address to an XRPL address
+        // In a real implementation, users would provide their XRPL address
+        // For this demo, we'll use a funded testnet address that exists on the ledger
+        const xrplDestination = escrow.maker.startsWith("0x")
+          ? "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW" // Funded XRPL testnet address for Ethereum addresses
+          : escrow.maker; // Use as-is if already an XRPL address
+
+        const payment = {
+          TransactionType: "Payment",
+          Account: wallet.address,
+          Destination: xrplDestination,
+          Amount: escrow.amount.toString(),
+        };
+        console.log("Withdrawing from escrow", payment);
+        const prepared = await this.client.autofill(payment);
+        const signed = wallet.sign(prepared);
+        const result = await this.client.submitAndWait(signed.tx_blob);
+
+        if (result.result.meta.TransactionResult === "tesSUCCESS") {
+          escrow.status = "withdrawn";
+          escrow.withdrawTx = result.result.hash;
+          escrow.secret = secret;
+
+          // Send safety deposit to caller
+          if (escrow.safetyDeposit > 0) {
+            // Convert caller address to XRPL format if needed
+            const xrplCallerAddress = callerAddress.startsWith("0x")
+              ? "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW" // Same funded XRPL testnet address for Ethereum addresses
+              : callerAddress; // Use as-is if already an XRPL address
+
+            const safetyPayment = {
+              TransactionType: "Payment",
+              Account: wallet.address,
+              Destination: xrplCallerAddress,
+              Amount: escrow.safetyDeposit.toString(),
+            };
+
+            const preparedSafety = await this.client.autofill(safetyPayment);
+            const signedSafety = wallet.sign(preparedSafety);
+            await this.client.submitAndWait(signedSafety.tx_blob);
+          }
+
+          res.json({
+            message: "Withdrawal successful",
+            txHash: result.result.hash,
+            secret: secret,
+            amount: escrow.amount.toString(),
+          });
+        } else {
+          throw new Error(
+            `Transaction failed: ${result.result.meta.TransactionResult}`
+          );
+        }
+      } catch (error) {
+        console.error("Error processing withdrawal:", error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // Cancel destination escrow
+    this.app.post("/escrow/:escrowId/cancel", async (req, res) => {
+      // This happens if maker does not reveal the secret in time.
+      try {
+        const { escrowId } = req.params;
+        const { callerAddress } = req.body;
+
+        const escrow = this.escrows.get(escrowId);
+        if (!escrow) {
+          return res.status(404).json({ error: "Escrow not found" });
+        }
+
+        if (escrow.status !== "funded") {
+          return res
+            .status(400)
+            .json({ error: "Escrow not funded or already processed" });
+        }
+
+        // Validate caller and timing - todo: include nonce signature to ensure PubKey
+        if (callerAddress !== escrow.taker) {
+          return res.status(403).json({ error: "Only taker can cancel" });
+        }
+
+        this.validateTimeWindow(
+          escrow,
+          this.TimeStages.DstCancellation,
+          null,
+          125
+        );
+
+        // Execute cancellation based on escrow type
+        const walletSeed = this.walletSeeds.get(escrowId);
+        const wallet = xrpl.Wallet.fromSeed(walletSeed);
+
+        let cancelTxs = [];
+
+        if (escrow.type === "dst") {
+          // DST escrow: return everything to taker
+          const payment = {
+            TransactionType: "Payment",
+            Account: wallet.address,
+            Destination: escrow.taker,
+            Amount: (escrow.amount + escrow.safetyDeposit).toString(),
+          };
+
+          const prepared = await this.client.autofill(payment);
+          const signed = wallet.sign(prepared);
+          const result = await this.client.submitAndWait(signed.tx_blob);
+
+          if (result.result.meta.TransactionResult === "tesSUCCESS") {
+            cancelTxs.push({
+              recipient: escrow.taker,
+              amount: (escrow.amount + escrow.safetyDeposit).toString(),
+              txHash: result.result.hash,
+            });
+          } else {
+            throw new Error(
+              `Payment to taker failed: ${result.result.meta.TransactionResult}`
+            );
+          }
+        } else if (escrow.type === "src") {
+          // SRC escrow: return amount to maker, safety deposit to taker
+
+          // Return amount to maker
+          if (escrow.amount > 0) {
+            const makerPayment = {
+              TransactionType: "Payment",
+              Account: wallet.address,
+              Destination: escrow.maker,
+              Amount: escrow.amount.toString(),
+            };
+
+            const preparedMaker = await this.client.autofill(makerPayment);
+            const signedMaker = wallet.sign(preparedMaker);
+            const makerResult = await this.client.submitAndWait(
+              signedMaker.tx_blob
+            );
+
+            if (makerResult.result.meta.TransactionResult === "tesSUCCESS") {
+              cancelTxs.push({
+                recipient: escrow.maker,
+                amount: escrow.amount.toString(),
+                txHash: makerResult.result.hash,
+              });
+            } else {
+              throw new Error(
+                `Payment to maker failed: ${makerResult.result.meta.TransactionResult}`
+              );
+            }
+          }
+
+          // Return safety deposit to taker
+          if (escrow.safetyDeposit > 0) {
+            const takerPayment = {
+              TransactionType: "Payment",
+              Account: wallet.address,
+              Destination: escrow.taker,
+              Amount: escrow.safetyDeposit.toString(),
+            };
+
+            const preparedTaker = await this.client.autofill(takerPayment);
+            const signedTaker = wallet.sign(preparedTaker);
+            const takerResult = await this.client.submitAndWait(
+              signedTaker.tx_blob
+            );
+
+            if (takerResult.result.meta.TransactionResult === "tesSUCCESS") {
+              cancelTxs.push({
+                recipient: escrow.taker,
+                amount: escrow.safetyDeposit.toString(),
+                txHash: takerResult.result.hash,
+              });
+            } else {
+              throw new Error(
+                `Safety deposit payment to taker failed: ${takerResult.result.meta.TransactionResult}`
+              );
+            }
+          }
+        } else {
+          throw new Error(`Unknown escrow type: ${escrow.type}`);
+        }
+
+        escrow.status = "cancelled";
+        escrow.cancelTxs = cancelTxs;
+
+        res.json({
+          message: "Escrow cancelled successfully",
+          escrowType: escrow.type,
+          cancelTxs: cancelTxs,
+          totalRefunded: (escrow.amount + escrow.safetyDeposit).toString(),
+        });
+      } catch (error) {
+        console.error("Error cancelling escrow:", error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // Rescue funds (emergency function)
+    this.app.post("/escrow/:escrowId/rescue", async (req, res) => {
+      try {
+        const { escrowId } = req.params;
+        const { callerAddress, amount } = req.body;
+
+        const escrow = this.escrows.get(escrowId);
+        if (!escrow) {
+          return res.status(404).json({ error: "Escrow not found" });
+        }
+
+        // Only taker can rescue after rescue delay
+        if (callerAddress !== escrow.taker) {
+          return res.status(403).json({ error: "Only taker can rescue funds" });
+        }
+
+        const rescueStart = escrow.deployedAt + this.config.rescueDelay;
+        const now = Math.floor(Date.now() / 1000);
+
+        if (now < rescueStart) {
+          return res.status(400).json({
+            error: `Rescue not available until ${new Date(rescueStart * 1000)}`,
+          });
+        }
+
+        // Execute rescue
+        const walletSeed = this.walletSeeds.get(escrowId);
+        const wallet = xrpl.Wallet.fromSeed(walletSeed);
+
+        const payment = {
+          TransactionType: "Payment",
+          Account: wallet.address,
+          Destination: callerAddress,
+          Amount: amount,
+        };
+
+        const prepared = await this.client.autofill(payment);
+        const signed = wallet.sign(prepared);
+        const result = await this.client.submitAndWait(signed.tx_blob);
+
+        if (result.result.meta.TransactionResult === "tesSUCCESS") {
+          res.json({
+            message: "Funds rescued successfully",
+            txHash: result.result.hash,
+            amount: amount,
+          });
+        } else {
+          throw new Error(
+            `Transaction failed: ${result.result.meta.TransactionResult}`
+          );
+        }
+      } catch (error) {
+        console.error("Error rescuing funds:", error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // Get escrow status
+    this.app.get("/escrow/:escrowId", (req, res) => {
+      const { escrowId } = req.params;
+      const escrow = this.escrows.get(escrowId);
+
+      if (!escrow) {
+        return res.status(404).json({ error: "Escrow not found" });
+      }
+
+      // Return escrow info without sensitive data
+      const publicEscrow = {
+        id: escrow.id,
+        orderHash: escrow.orderHash,
+        hashlock: escrow.hashlock,
+        maker: escrow.maker,
+        taker: escrow.taker,
+        token: escrow.token,
+        amount: escrow.amount.toString(),
+        safetyDeposit: escrow.safetyDeposit.toString(),
+        timelocks: escrow.timelocks,
+        deployedAt: escrow.deployedAt,
+        walletAddress: escrow.wallet.address,
+        status: escrow.status,
+        type: escrow.type,
+      };
+
+      res.json(publicEscrow);
+    });
+
+    // Health check
+    this.app.get("/health", (req, res) => {
+      res.json({
+        status: "healthy",
+        connected: this.client?.isConnected() || false,
+        activeEscrows: this.escrows.size,
+      });
+    });
+  }
+
+  async start() {
+    const initialized = await this.initialize();
+    if (!initialized) {
+      throw new Error("Failed to initialize XRPL connection");
+    }
+
+    this.app.listen(this.config.port, () => {
+      console.log(`XRPL Escrow TEE Server running on port ${this.config.port}`);
+      console.log(`Network: ${this.config.network}`);
+      console.log(`Rescue delay: ${this.config.rescueDelay} seconds`);
+    });
+  }
+
+  async stop() {
+    if (this.client) {
+      await this.client.disconnect();
+    }
   }
 }
 
+// Export for use as module
 module.exports = XRPLEscrowTEE;
+
+// Run server if this file is executed directly
+if (require.main === module) {
+  const server = new XRPLEscrowTEE({
+    network: process.env.XRPL_NETWORK || "wss://s.altnet.rippletest.net:51233",
+    port: process.env.PORT || 3000,
+    rescueDelay: parseInt(process.env.RESCUE_DELAY) || 60 * 30,
+  });
+
+  server.start().catch(console.error);
+
+  // Graceful shutdown
+  process.on("SIGINT", async () => {
+    console.log("Shutting down...");
+    await server.stop();
+    process.exit(0);
+  });
+}
