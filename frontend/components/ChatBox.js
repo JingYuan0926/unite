@@ -3,6 +3,165 @@ import { useAccount, useSignTypedData } from 'wagmi';
 import { Spinner } from '@heroui/react';
 import CandleChart from './CandleChart';
 
+// Icon components
+const ChatIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+  </svg>
+);
+
+const UserIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </svg>
+);
+
+const WalletIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zM12 16h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+  </svg>
+);
+
+const PortfolioIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+);
+
+const ChartIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>
+  </svg>
+);
+
+const GasIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v14h10v-2.5h1.5v3.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77z"/>
+  </svg>
+);
+
+const TokenIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="12" cy="12" r="8"/>
+    <path d="M12 6v6l4 2"/>
+  </svg>
+);
+
+const EthereumIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+  </svg>
+);
+
+const UsdcIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="12" cy="12" r="10" fill="#2775CA"/>
+    <path d="M12 4C7.58 4 4 7.58 4 12s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" fill="white"/>
+    <path d="M15.5 10.5c0-1.93-1.57-3.5-3.5-3.5S8.5 8.57 8.5 10.5h1.75c0-.97.78-1.75 1.75-1.75s1.75.78 1.75 1.75-.78 1.75-1.75 1.75h-1v1.5h1c.97 0 1.75.78 1.75 1.75s-.78 1.75-1.75 1.75-1.75-.78-1.75-1.75H8.5c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5c0-.97-.4-1.85-1.04-2.5.64-.65 1.04-1.53 1.04-2.5z" fill="white"/>
+  </svg>
+);
+
+const SettingsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+  </svg>
+);
+
+const SpeedIcon = ({ type }) => {
+  if (type === 'slow') return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
+    </svg>
+  );
+  if (type === 'medium') return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.56-.89-1.68-1.25-2.65-.84L6 8.3V13h2V9.6l1.8-.7"/>
+    </svg>
+  );
+  if (type === 'fast') return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.56-.89-1.68-1.25-2.65-.84L6 8.3V13h2V9.6l1.8-.7"/>
+    </svg>
+  );
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+    </svg>
+  );
+};
+
+const LocationIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+  </svg>
+);
+
+const LightningIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+  </svg>
+);
+
+const BuildingIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/>
+  </svg>
+);
+
+const TrendUpIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+  </svg>
+);
+
+const TrendDownIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z"/>
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.7L16.2,16.2Z"/>
+  </svg>
+);
+
+const RulerIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M1 6v2h5v2h2V8h2v2h2V8h2v2h2V8h5V6H1zm0 12h5v-2h2v2h2v-2h2v2h2v-2h2v2h5v-2H1v2z"/>
+  </svg>
+);
+
+const ListIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+  </svg>
+);
+
+const RocketIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2.81 14.12L5.64 11.29L8.17 10.79C11.39 6.41 16.8 4.34 19.78 4.07C19.93 6.04 18.45 10.5 14.07 13.72L13.57 16.25L10.74 19.08C10.35 19.47 9.72 19.47 9.33 19.08L9.19 18.94L7.63 17.38L6.07 15.82L5.93 15.68C5.54 15.29 5.54 14.66 5.93 14.27L2.81 14.12M9.5 10.5C10.33 10.5 11 11.17 11 12S10.33 13.5 9.5 13.5 8 12.83 8 12 8.67 10.5 9.5 10.5M2.92 16.78L3.42 17.28C3.81 17.67 4.44 17.67 4.83 17.28L7.4 14.71C7.02 14.16 6.84 13.84 6.84 13.84S6.52 14.02 5.97 14.4L2.92 16.78Z"/>
+  </svg>
+);
+
+const ToolIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>
+  </svg>
+);
+
+const DiamondIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6,2L2,8L12,22L22,8L18,2H6M6.5,4H8.5L7,7L6.5,4M9.5,4H14.5L15,7L12,10L9,7L9.5,4M16.5,4H17.5L17,7L15.5,4M4.5,9L7,7.5L8.5,9L6,18L4.5,9M10.5,9L12,7.5L13.5,9L12,18L10.5,9M18,18L15.5,9L17,7.5L19.5,9L18,18Z"/>
+  </svg>
+);
+
 const ChatBox = () => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -30,7 +189,7 @@ const ChatBox = () => {
       {
         id: 1,
         type: 'bot',
-        content: 'Hello! I\'m your 1inch DeFi chat assistant. I can help you with:\n\n• General DeFi questions and discussions\n• Token information and market data\n• Protocol explanations and comparisons\n• Trading strategies and insights\n• Portfolio discussions\n• Complex multi-part queries\n• And much more!\n\n💡 Connect your wallet using the button in the header to access personalized features.\n\n🔧 Try complex queries like: "Show me my wallet overview on Arbitrum, get my top 2 assets, show their price charts, and estimate gas fees"',
+        content: 'Hello! I\'m your 1inch DeFi chat assistant. I can help you with:\n\n• General DeFi questions and discussions\n• Token information and market data\n• Protocol explanations and comparisons\n• Trading strategies and insights\n• Portfolio discussions\n• Complex multi-part queries\n• And much more!\n\nConnect your wallet using the button in the header to access personalized features.\n\nTry complex queries like: "Show me my wallet overview on Arbitrum, get my top 2 assets, show their price charts, and estimate gas fees"',
         timestamp: new Date()
       }
     ]);
@@ -146,7 +305,7 @@ const ChatBox = () => {
       }
     } catch (error) {
       console.error('Error:', error);
-      addMessage('bot', `❌ Sorry, I encountered an error: ${error.message}`);
+      addMessage('bot', `Sorry, I encountered an error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +381,7 @@ const ChatBox = () => {
 
     } catch (error) {
       console.error('Complex query error:', error);
-      addMessage('bot', `❌ Failed to process complex query: ${error.message}`);
+      addMessage('bot', `Failed to process complex query: ${error.message}`);
     } finally {
       setProcessingComplexQuery(false);
       setQueryProgress(null);
@@ -504,7 +663,7 @@ const ChatBox = () => {
   };
 
   const formatComplexQueryResults = (data) => {
-    let response = `🔧 **Complex Query Results**\n\n`;
+    let response = `**Complex Query Results**\n\n`;
     response += `**Original Query:** ${data.originalQuery}\n\n`;
     response += `**Query Parts:** ${data.queryParts.length}\n\n`;
 
@@ -513,7 +672,7 @@ const ChatBox = () => {
       response += `Query: "${result.query}"\n`;
       
       if (result.error) {
-        response += `❌ Error: ${result.error}\n\n`;
+        response += `Error: ${result.error}\n\n`;
       } else {
         response += formatResultData(result.results, result.function);
         response += `\n`;
@@ -524,19 +683,19 @@ const ChatBox = () => {
   };
 
   const formatWalletOverviewResults = (data) => {
-    let response = `💰 **Wallet Overview**\n\n`;
+    let response = `**Wallet Overview**\n\n`;
     response += `**Original Query:** ${data.originalQuery}\n\n`;
 
     // Process each result and show the original AI response
     data.results.forEach((result, index) => {
       if (result.error) {
-        response += `**${result.id}: ${result.description}**\n❌ Error: ${result.error}\n\n`;
+        response += `**${result.id}: ${result.description}**\nError: ${result.error}\n\n`;
       } else {
         response += `**${result.id}: ${result.description}**\n`;
         response += `Query: "${result.query}"\n`;
-        response += `📋 Response:\n${result.results.response}\n\n`;
+        response += `Response:\n${result.results.response}\n\n`;
         if (result.results.functionCalls && result.results.functionCalls.length > 0) {
-          response += `🔧 Function Calls: ${result.results.functionCalls.length}\n\n`;
+          response += `Function Calls: ${result.results.functionCalls.length}\n\n`;
         }
       }
     });
@@ -571,7 +730,7 @@ const ChatBox = () => {
       const portfolioData = functionData.result;
       
       if (portfolioData.total) {
-        formatted += `💰 **Total Portfolio Value:** $${parseFloat(portfolioData.total).toFixed(2)}\n\n`;
+        formatted += `**Total Portfolio Value:** $${parseFloat(portfolioData.total).toFixed(2)}\n\n`;
       }
       
       formatted += '**Breakdown:**\n';
@@ -579,11 +738,11 @@ const ChatBox = () => {
       if (portfolioData.by_category && Array.isArray(portfolioData.by_category)) {
         portfolioData.by_category.forEach(category => {
           if (category.category === 'tokens') {
-            formatted += `• 🪙 Tokens: $${parseFloat(category.value).toFixed(2)}\n`;
+            formatted += `• Tokens: $${parseFloat(category.value).toFixed(2)}\n`;
           } else if (category.category === 'native') {
-            formatted += `• ⚡ Native: $${parseFloat(category.value).toFixed(2)}\n`;
+            formatted += `• Native: $${parseFloat(category.value).toFixed(2)}\n`;
           } else if (category.category === 'protocols') {
-            formatted += `• 🏛️ Protocols: $${parseFloat(category.value).toFixed(2)}\n`;
+            formatted += `• Protocols: $${parseFloat(category.value).toFixed(2)}\n`;
           }
         });
       }
@@ -595,13 +754,13 @@ const ChatBox = () => {
       const protocolsMatch = response.match(/Protocols[:\s]*\$([\d,]+\.?\d*)/);
 
       if (portfolioMatch) {
-        formatted += `💰 **Total Portfolio Value:** $${portfolioMatch[1]}\n\n`;
+        formatted += `**Total Portfolio Value:** $${portfolioMatch[1]}\n\n`;
       }
       
       formatted += '**Breakdown:**\n';
-      if (tokensMatch) formatted += `• 🪙 Tokens: $${tokensMatch[1]}\n`;
-      if (nativeMatch) formatted += `• ⚡ Native: $${nativeMatch[1]}\n`;
-      if (protocolsMatch) formatted += `• 🏛️ Protocols: $${protocolsMatch[1]}\n`;
+      if (tokensMatch) formatted += `• Tokens: $${tokensMatch[1]}\n`;
+      if (nativeMatch) formatted += `• Native: $${nativeMatch[1]}\n`;
+      if (protocolsMatch) formatted += `• Protocols: $${protocolsMatch[1]}\n`;
     }
     
     formatted += '\n';
@@ -982,7 +1141,7 @@ const ChatBox = () => {
     return (
       <div className="function-calls">
         <div className="function-calls-header">
-          🔧 Function Calls ({functionCalls.length})
+          <ToolIcon /> Function Calls ({functionCalls.length})
         </div>
         {functionCalls.map((call, index) => (
           <div key={index} className="function-call">
@@ -1112,65 +1271,59 @@ const ChatBox = () => {
   };
 
   const formatWalletOverviewBeautifully = (data) => {
-    let response = `💰 **Wallet Overview**\n\n`;
+    let response = `**Wallet Overview**\n\n`;
     
     // Header section
-    response += `**📍 Wallet Details**\n`;
+    response += `**Wallet Details**\n`;
     response += `Address: \`${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}\`\n`;
     response += `Chain: **${data.chainName}** (${data.chainId})\n\n`;
     
     // Portfolio section with enhanced formatting
-    response += `📊 **Portfolio Summary**\n\n`;
-    response += `💎 **Total Value:** $${data.portfolio.totalValue.toFixed(2)}\n\n`;
-    response += `**📈 Breakdown:**\n`;
-    response += `┌─ 🪙 **Tokens:** $${data.portfolio.breakdown.tokens.toFixed(2)}\n`;
-    response += `├─ ⚡ **Native Assets:** $${data.portfolio.breakdown.nativeAssets.toFixed(2)}\n`;
-    response += `└─ 🏛️ **Protocols:** $${data.portfolio.breakdown.protocols.toFixed(2)}\n\n`;
+    response += `**Portfolio Summary**\n\n`;
+    response += `**Total Value:** $${data.portfolio.totalValue.toFixed(2)}\n\n`;
+    response += `**Breakdown:**\n`;
+    response += `┌─ **Tokens:** $${data.portfolio.breakdown.tokens.toFixed(2)}\n`;
+    response += `├─ **Native Assets:** $${data.portfolio.breakdown.nativeAssets.toFixed(2)}\n`;
+    response += `└─ **Protocols:** $${data.portfolio.breakdown.protocols.toFixed(2)}\n\n`;
     
     // Balances section with enhanced formatting
-    response += `💰 **Token Balances**\n\n`;
+    response += `**Token Balances**\n\n`;
     data.balances.tokens.forEach((token, index) => {
-      const icon = token.symbol === 'USDC' ? '💵' : '🔷';
       const prefix = index === data.balances.tokens.length - 1 ? '└─' : '├─';
-      response += `${prefix} ${icon} **${token.symbol}:** ${token.balanceInUnits.toFixed(6)}\n`;
-      response += `   📍 Address: \`${token.address.slice(0, 10)}...${token.address.slice(-8)}\`\n\n`;
+      response += `${prefix} **${token.symbol}:** ${token.balanceInUnits.toFixed(6)}\n`;
+      response += `   Address: \`${token.address.slice(0, 10)}...${token.address.slice(-8)}\`\n\n`;
     });
     
     // Price Charts section with enhanced formatting
-    response += `📈 **Price Analytics**\n\n`;
-    response += `**📊 Trading Pair:** ${data.priceCharts.pair}\n`;
-    response += `**⏰ Timeframe:** ${data.priceCharts.timeframe}\n`;
-    response += `**💹 Current Price:** $${data.priceCharts.summary.currentPrice.toFixed(6)}\n`;
-    response += `**📏 Price Range:** $${data.priceCharts.summary.priceRange.min.toFixed(6)} - $${data.priceCharts.summary.priceRange.max.toFixed(6)}\n`;
-    const changeIcon = data.priceCharts.summary.changePercentage > 0 ? '📈' : '📉';
+    response += `**Price Analytics**\n\n`;
+    response += `**Trading Pair:** ${data.priceCharts.pair}\n`;
+    response += `**Timeframe:** ${data.priceCharts.timeframe}\n`;
+    response += `**Current Price:** $${data.priceCharts.summary.currentPrice.toFixed(6)}\n`;
+    response += `**Price Range:** $${data.priceCharts.summary.priceRange.min.toFixed(6)} - $${data.priceCharts.summary.priceRange.max.toFixed(6)}\n`;
     const changeColor = data.priceCharts.summary.changePercentage > 0 ? '+' : '';
-    response += `**${changeIcon} Change:** ${changeColor}${data.priceCharts.summary.changePercentage.toFixed(2)}%\n\n`;
+    response += `**Change:** ${changeColor}${data.priceCharts.summary.changePercentage.toFixed(2)}%\n\n`;
     
     // Gas Estimates section with enhanced formatting
-    response += `⛽ **Gas Fee Estimates**\n\n`;
-    response += `**⚡ Base Fee:** ${(data.gasEstimates.baseFee.value / 1000000000).toFixed(2)} ${data.gasEstimates.baseFee.unit}\n\n`;
-    response += `**🚀 Priority Fee Options:**\n`;
+    response += `**Gas Fee Estimates**\n\n`;
+    response += `**Base Fee:** ${(data.gasEstimates.baseFee.value / 1000000000).toFixed(2)} ${data.gasEstimates.baseFee.unit}\n\n`;
+    response += `**Priority Fee Options:**\n`;
     Object.entries(data.gasEstimates.priorityFees).forEach(([priority, fee], index, arr) => {
-      const icon = priority === 'low' ? '🐌' : 
-                  priority === 'medium' ? '🚶' : 
-                  priority === 'high' ? '🏃' : 
-                  priority === 'instant' ? '🚀' : '⛽';
       const label = priority.charAt(0).toUpperCase() + priority.slice(1);
       const maxFeeGwei = (fee.maxFee / 1000000000).toFixed(2);
       const prefix = index === arr.length - 1 ? '└─' : '├─';
-      response += `${prefix} ${icon} **${label}:** ${maxFeeGwei} ${fee.unit}\n`;
+      response += `${prefix} **${label}:** ${maxFeeGwei} ${fee.unit}\n`;
     });
     response += '\n';
     
     // Metadata section with enhanced formatting
-    response += `🔧 **Processing Summary**\n\n`;
-    response += `**⚙️ Total Function Calls:** ${data.metadata.totalFunctionCalls}\n`;
-    response += `**✅ Status:** ${data.metadata.processingTime}\n\n`;
+    response += `**Processing Summary**\n\n`;
+    response += `**Total Function Calls:** ${data.metadata.totalFunctionCalls}\n`;
+    response += `**Status:** ${data.metadata.processingTime}\n\n`;
     
-    response += `**📋 Execution Steps:**\n`;
+    response += `**Execution Steps:**\n`;
     data.metadata.queryParts.forEach((part, index, arr) => {
       const prefix = index === arr.length - 1 ? '└─' : '├─';
-      response += `${prefix} **${part.id}:** ${part.description} ✅\n`;
+      response += `${prefix} **${part.id}:** ${part.description}\n`;
     });
     
     return response;
@@ -1189,10 +1342,10 @@ const ChatBox = () => {
       .replace(/┌─/g, '<span class="tree-branch">┌─</span>')
       .replace(/├─/g, '<span class="tree-branch">├─</span>')
       .replace(/└─/g, '<span class="tree-branch">└─</span>')
-      // Section headers (lines starting with emoji and **text**)
-      .replace(/^([🔧💰📊📈⛽🚀💎📍⚡🏛️🪙💵🔷📏💹📉🐌🚶🏃⚙️✅📋])\s\*\*(.*?)\*\*$/gm, '<div class="section-header">$1 <strong>$2</strong></div>')
-      // Subsection formatting
-      .replace(/^\*\*([🔧💰📊📈⛽🚀💎📍⚡🏛️🪙💵🔷📏💹📉🐌🚶🏃⚙️✅📋].*?)\*\*$/gm, '<div class="subsection-header"><strong>$1</strong></div>');
+      // Section headers (detect by **text** at start of line)
+      .replace(/^\*\*(Wallet Overview|Wallet Details|Portfolio Summary|Token Balances|Price Analytics|Gas Fee Estimates|Processing Summary|Execution Steps|Priority Fee Options|Breakdown)\*\*$/gm, '<div class="section-header"><strong>$1</strong></div>')
+      // Value highlighting for dollar amounts
+      .replace(/(\$[\d,]+\.?\d*)/g, '<span class="value-highlight">$1</span>');
   };
 
   // Component to render formatted text
@@ -1208,39 +1361,13 @@ const ChatBox = () => {
 
   return (
     <div className="chat-box-container">
-      <div className="chat-header">
-        <div className="header-content">
-          <div className="chat-info">
-            <div className="chat-avatar">💬</div>
-            <div className="chat-details">
-              <h1>DeFi Chat</h1>
-              <div className="connection-status">
-                <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
-                {isConnected ? 'Connected' : 'Disconnected'}
-              </div>
-              {walletConnected && address && (
-                <div className="wallet-info">
-                  <span className="wallet-address">
-                    💼 {address.slice(0, 6)}...{address.slice(-4)} (Chain: {chainId})
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="header-actions">
-            <button onClick={clearChat} className="clear-button">
-              Clear Chat
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="chat-body">
+      {/* Main Chat Section */}
+      <main className="chat-body">
         <div className="messages-container">
           {messages.map((message) => (
             <div key={message.id} className={`message ${message.type}`}>
               <div className="message-avatar">
-                {message.type === 'user' ? '👤' : '💬'}
+                {message.type === 'user' ? <UserIcon /> : <ChatIcon />}
               </div>
               <div className="message-content">
                 <div className="message-text">
@@ -1261,7 +1388,7 @@ const ChatBox = () => {
           ))}
           {isLoading && (
             <div className="message bot">
-              <div className="message-avatar">💬</div>
+              <div className="message-avatar"><ChatIcon /></div>
               <div className="message-content">
                 <div className="loading-indicator">
                   <div className="typing-dots">
@@ -1283,7 +1410,7 @@ const ChatBox = () => {
                         <div key={step.id} className={`loading-step ${index < currentLoadingStep ? 'completed' : 'pending'}`}>
                           <div className="step-content">
                             {index < currentLoadingStep ? (
-                              <div className="step-completed">✅</div>
+                              <div className="step-completed"><CheckIcon /></div>
                             ) : (
                               <div className="step-spinner"></div>
                             )}
@@ -1300,7 +1427,7 @@ const ChatBox = () => {
           )}
           <div ref={messagesEndRef} />
         </div>
-      </div>
+      </main>
 
       <form onSubmit={handleSubmit} className="chat-input-form">
         <div className="input-container">
@@ -1317,7 +1444,7 @@ const ChatBox = () => {
             disabled={isLoading || !inputMessage.trim() || !isConnected}
             className="send-button"
           >
-            {isLoading ? '⏳' : '💬'}
+            {isLoading ? <Spinner size="sm" /> : <ChatIcon />}
           </button>
         </div>
       </form>
@@ -1325,16 +1452,42 @@ const ChatBox = () => {
       <style jsx>{`
         .chat-box-container {
           max-width: 1200px;
+          width: 90%;
+          height: 80vh;
           margin: 0 auto;
-          height: calc(100vh - 80px);
           display: flex;
           flex-direction: column;
           background: white;
           border-radius: 12px;
+          border: 1px solid rgba(0, 0, 0, 0.43);
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-          margin-top: 1rem;
-          margin-bottom: 1rem;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+        }
+
+        /* Prevent main page scrolling */
+        html, body {
+          overflow: hidden;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Ensure parent containers don't scroll */
+        #__next, .main-container {
+          overflow: hidden;
+          height: 90vh;
+        }
+
+        .chat-body {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          min-height: 0;
         }
 
         .chat-header {
@@ -1424,20 +1577,16 @@ const ChatBox = () => {
           background: #c53030;
         }
 
-        .chat-body {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-
         .messages-container {
           flex: 1;
           overflow-y: auto;
+          overflow-x: hidden;
           padding: 1rem;
           display: flex;
           flex-direction: column;
           gap: 1rem;
+          min-height: 0;
+          max-height: 100%;
         }
 
         .message {
@@ -2213,6 +2362,15 @@ const ChatBox = () => {
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
+        .formatted-text .section-header::before {
+          content: '';
+          width: 16px;
+          height: 16px;
+          background: #667eea;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
         .formatted-text .subsection-header {
           font-size: 1rem;
           font-weight: 600;
@@ -2246,6 +2404,14 @@ const ChatBox = () => {
           margin-right: 0.5rem;
         }
 
+        .formatted-text .value-highlight {
+          color: #059669;
+          background: rgba(5, 150, 105, 0.1);
+          padding: 0.125rem 0.25rem;
+          border-radius: 0.25rem;
+          font-weight: 600;
+        }
+
         /* Enhanced emoji styling */
         .formatted-text {
           font-variant-emoji: emoji;
@@ -2258,14 +2424,6 @@ const ChatBox = () => {
 
         .formatted-text div {
           margin: 0.5rem 0;
-        }
-
-        /* Special styling for value displays */
-        .formatted-text strong:contains('$') {
-          color: #059669;
-          background: rgba(5, 150, 105, 0.1);
-          padding: 0.125rem 0.25rem;
-          border-radius: 0.25rem;
         }
       `}</style>
     </div>
