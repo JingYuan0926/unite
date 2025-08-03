@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const { keccak256 } = require("ethers");
+require("dotenv/config");
 
 class XRPLEscrowTEE {
   constructor(config = {}) {
@@ -211,6 +212,12 @@ class XRPLEscrowTEE {
           type: type,
         };
 
+        console.log(`🔧 Creating escrow with:`);
+        console.log(`  Type: ${type}`);
+        console.log(`  Maker: ${maker}`);
+        console.log(`  Taker: ${taker}`);
+        console.log(`  Escrow ID: ${escrowId}`);
+
         // Store escrow and wallet seed securely
         this.escrows.set(escrowId, escrow);
         this.walletSeeds.set(escrowId, escrowWallet.seed);
@@ -334,6 +341,13 @@ class XRPLEscrowTEE {
 
         // Validate caller and timing
         if (!isPublic) {
+          console.log(`🔧 Caller validation:`);
+          console.log(`  Caller Address: ${callerAddress}`);
+          console.log(`  Escrow Taker: ${escrow.taker}`);
+          console.log(`  Addresses match: ${callerAddress === escrow.taker}`);
+          console.log(`  Caller type: ${typeof callerAddress}`);
+          console.log(`  Taker type: ${typeof escrow.taker}`);
+
           if (callerAddress !== escrow.taker) {
             return res
               .status(403)
@@ -358,12 +372,46 @@ class XRPLEscrowTEE {
         const walletSeed = this.walletSeeds.get(escrowId);
         const wallet = xrpl.Wallet.fromSeed(walletSeed);
 
-        // For cross-chain swaps, we need to convert the Ethereum address to an XRPL address
-        // In a real implementation, users would provide their XRPL address
-        // For this demo, we'll use a funded testnet address that exists on the ledger
-        const xrplDestination = escrow.maker.startsWith("0x")
-          ? "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW" // Funded XRPL testnet address for Ethereum addresses
-          : escrow.maker; // Use as-is if already an XRPL address
+        // For cross-chain swaps, determine destination based on escrow type
+        let xrplDestination;
+
+        if (escrow.type === "src") {
+          // Source escrow (XRP->ETH): XRP should go to the ETH holder (taker)
+          // Since taker is an ETH address and we need an XRPL address,
+          // in a real swap this would be the ETH holder's XRPL address
+          // For demo purposes, we'll use a different XRPL address than the maker
+          if (escrow.taker.startsWith("0x")) {
+            // This should be the ETH holder's XRPL address, but for demo we'll use fallback
+            xrplDestination = "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW"; // Fallback testnet address (not user's wallet)
+          } else {
+            xrplDestination = escrow.taker;
+          }
+        } else {
+          // Destination escrow (ETH->XRP): XRP goes to the maker (ETH holder requesting XRP)
+          // Use user's XRPL address from environment variables
+          xrplDestination =
+            process.env.XRPL_ADD || escrow.maker.startsWith("0x")
+              ? process.env.XRPL_ADD || "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW"
+              : escrow.maker;
+        }
+
+        console.log(`🎯 XRP Destination Address: ${xrplDestination}`);
+        console.log(`🔧 Escrow Type: ${escrow.type}`);
+        console.log(
+          `🔧 XRPL_ADD from env: ${process.env.XRPL_ADD || "NOT SET"}`
+        );
+        console.log(`🔧 Original escrow maker: ${escrow.maker}`);
+        console.log(`🔧 Original escrow taker: ${escrow.taker}`);
+        console.log(
+          `💡 Logic: ${escrow.type === "src" ? "XRP goes to ETH holder (fallback address)" : "XRP goes to user's XRPL address"}`
+        );
+        console.log(`🔍 Debugging destination logic:`);
+        console.log(`  escrow.type === "src": ${escrow.type === "src"}`);
+        console.log(`  escrow.taker: ${escrow.taker}`);
+        console.log(
+          `  escrow.taker.startsWith("0x"): ${escrow.taker.startsWith("0x")}`
+        );
+        console.log(`  Final xrplDestination: ${xrplDestination}`);
 
         const payment = {
           TransactionType: "Payment",
@@ -371,7 +419,7 @@ class XRPLEscrowTEE {
           Destination: xrplDestination,
           Amount: escrow.amount.toString(),
         };
-        console.log("Withdrawing from escrow", payment);
+        console.log("🚀 Main withdrawal payment:", payment);
         const prepared = await this.client.autofill(payment);
         const signed = wallet.sign(prepared);
         const result = await this.client.submitAndWait(signed.tx_blob);
@@ -384,9 +432,10 @@ class XRPLEscrowTEE {
           // Send safety deposit to caller
           if (escrow.safetyDeposit > 0) {
             // Convert caller address to XRPL format if needed
+            // Safety deposit always goes to the caller (person who revealed the secret)
             const xrplCallerAddress = callerAddress.startsWith("0x")
-              ? "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW" // Same funded XRPL testnet address for Ethereum addresses
-              : callerAddress; // Use as-is if already an XRPL address
+              ? process.env.XRPL_ADD || "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW"
+              : callerAddress;
 
             const safetyPayment = {
               TransactionType: "Payment",

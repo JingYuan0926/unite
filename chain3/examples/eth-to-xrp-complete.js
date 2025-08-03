@@ -444,7 +444,7 @@ class EthXrpCrossChainOrder {
 
         // XRP escrow data
         xrpl: {
-          maker: "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW", // Funded XRPL testnet address for receiving XRP
+          maker: process.env.XRPL_ADD || "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW", // User's XRPL address for receiving XRP
           taker: this.ethWallet.address, // ETH wallet will receive XRP
           token: "0x0000000000000000000000000000000000000000", // XRP native
           totalAmount: BigInt(config.swap.dstAmount), // Total order amount in drops
