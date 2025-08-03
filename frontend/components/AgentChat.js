@@ -6,6 +6,7 @@ const AgentChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [wallet, setWallet] = useState(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Check connection status on mount
@@ -17,7 +18,7 @@ const AgentChat = () => {
       {
         id: 1,
         type: 'bot',
-        content: 'Hello! I\'m your 1inch DeFi assistant. I can help you with:\n\n• Getting token quotes and swaps\n• Checking gas prices and balances\n• Exploring DeFi protocols\n• Portfolio analysis\n• NFT and domain lookups\n• And much more!\n\nWhat would you like to know about DeFi?',
+        content: 'Hello! I\'m your 1inch DeFi assistant. I can help you with:\n\n• Getting token quotes and swaps\n• Checking gas prices and balances\n• Exploring DeFi protocols\n• Portfolio analysis\n• NFT and domain lookups\n• And much more!\n\n💡 Connect your wallet to access personalized features like balance checks and portfolio analysis.',
         timestamp: new Date()
       }
     ]);
@@ -41,6 +42,7 @@ const AgentChat = () => {
 
   const connectWallet = async () => {
     if (typeof window.ethereum !== 'undefined') {
+      setIsConnecting(true);
       try {
         // Request account access
         const accounts = await window.ethereum.request({ 
@@ -73,17 +75,24 @@ const AgentChat = () => {
         if (response.ok) {
           const result = await response.json();
           setWallet(walletData);
-          addMessage('bot', `✅ Wallet connected: ${account.slice(0, 6)}...${account.slice(-4)} on chain ${walletData.chainId}`);
+          addMessage('bot', `✅ Wallet connected: ${account.slice(0, 6)}...${account.slice(-4)} on chain ${walletData.chainId}\n\nYou can now ask me about your balances, portfolio, or execute transactions!`);
         } else {
-          addMessage('bot', '❌ Failed to connect wallet');
+          addMessage('bot', '❌ Failed to connect wallet to the agent');
         }
       } catch (error) {
         console.error('Wallet connection error:', error);
         addMessage('bot', '❌ Failed to connect wallet. Please make sure MetaMask is installed and unlocked.');
+      } finally {
+        setIsConnecting(false);
       }
     } else {
       addMessage('bot', '❌ MetaMask not found. Please install MetaMask to connect your wallet.');
     }
+  };
+
+  const disconnectWallet = () => {
+    setWallet(null);
+    addMessage('bot', '🔌 Wallet disconnected. You can still ask me general DeFi questions!');
   };
 
   const handleSubmit = async (e) => {
@@ -104,13 +113,11 @@ const AgentChat = () => {
     try {
       const response = await fetch('/api/agent', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'chat',
           message: inputMessage,
-          wallet: wallet
+          wallet: wallet // Send wallet data with chat request
         }),
       });
 
@@ -119,7 +126,7 @@ const AgentChat = () => {
       if (!response.ok) {
         // Handle specific error cases
         if (response.status === 401) {
-          throw new Error('API keys are invalid or missing. Please check your OpenAI and 1inch API keys in .env.local');
+          throw new Error('API keys are invalid or missing. Please check your OpenAI and 1inch API keys in .env');
         } else if (response.status === 429) {
           throw new Error('Rate limit exceeded. Please try again in a few minutes.');
         } else if (response.status === 500) {
@@ -132,18 +139,17 @@ const AgentChat = () => {
       const botMessage = {
         id: Date.now() + 1,
         type: 'bot',
-        content: data.content,
+        content: data.content || 'No response received',
         functionCalls: data.functionCalls || [],
         timestamp: new Date()
       };
-
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Chat error:', error);
       const errorMessage = {
         id: Date.now() + 1,
         type: 'bot',
-        content: `❌ Error: ${error.message}\n\n💡 Make sure you have:\n• Valid OpenAI API key in .env.local\n• Valid 1inch API key in .env.local\n• Restarted the development server after updating .env.local`,
+        content: `❌ Error: ${error.message}\n\n💡 Make sure you have:\n• Valid OpenAI API key in .env\n• Valid 1inch API key in .env\n• Restarted the development server after updating .env`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -178,7 +184,7 @@ const AgentChat = () => {
   };
 
   const formatTimestamp = (timestamp) => {
-    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(timestamp).toLocaleTimeString();
   };
 
   const renderFunctionCalls = (functionCalls) => {
@@ -187,13 +193,13 @@ const AgentChat = () => {
     return (
       <div className="function-calls">
         <div className="function-calls-header">
-          <span className="function-calls-icon">🔧</span>
-          <span>Function Calls ({functionCalls.length})</span>
+          🔧 Function Calls ({functionCalls.length})
         </div>
         {functionCalls.map((call, index) => (
           <div key={index} className="function-call">
             <div className="function-name">{call.name}</div>
             <div className="function-params">
+              <div className="params-label">Parameters:</div>
               <pre>{JSON.stringify(call.arguments, null, 2)}</pre>
             </div>
             {call.result && (
@@ -241,9 +247,20 @@ const AgentChat = () => {
             </div>
           </div>
           <div className="header-actions">
-            {!wallet && (
-              <button onClick={connectWallet} className="connect-wallet-button">
-                Connect Wallet
+            {!wallet ? (
+              <button 
+                onClick={connectWallet} 
+                className="connect-wallet-button"
+                disabled={isConnecting}
+              >
+                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+              </button>
+            ) : (
+              <button 
+                onClick={disconnectWallet} 
+                className="disconnect-wallet-button"
+              >
+                Disconnect Wallet
               </button>
             )}
             <button onClick={clearChat} className="clear-button">
@@ -312,7 +329,7 @@ const AgentChat = () => {
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Ask me about DeFi, swaps, gas prices, or anything else..."
+            placeholder={wallet ? "Ask me about DeFi, your balances, or execute transactions..." : "Ask me about DeFi, swaps, gas prices, or anything else..."}
             disabled={isLoading || !isConnected}
             className="chat-input"
           />
@@ -419,7 +436,28 @@ const AgentChat = () => {
           font-weight: 600;
         }
 
-        .connect-wallet-button:hover {
+        .connect-wallet-button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .connect-wallet-button:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .disconnect-wallet-button {
+          background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+          border: none;
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-weight: 600;
+        }
+
+        .disconnect-wallet-button:hover {
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
@@ -544,6 +582,7 @@ const AgentChat = () => {
           color: #e0e0e0;
         }
 
+        .params-label,
         .result-label {
           color: #2ed573;
           font-weight: 600;
@@ -696,6 +735,7 @@ const AgentChat = () => {
           }
 
           .connect-wallet-button,
+          .disconnect-wallet-button,
           .clear-button {
             font-size: 0.8rem;
             padding: 0.4rem 0.8rem;
