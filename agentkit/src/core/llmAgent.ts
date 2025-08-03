@@ -65,13 +65,19 @@ export class OneInchAgentKit {
    * Get comprehensive system prompt for better parameter extraction
    */
   private getSystemPrompt(): string {
+    // Get the current wallet address
+    const currentWallet = walletManager.getWalletContext().wallet;
+    const walletAddress = currentWallet?.address || "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6";
+
     return `You are a 1inch DeFi Assistant that helps users interact with DeFi protocols through natural language.
 
 CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
 
 1. **ALWAYS extract parameters from user queries** - Never call functions with empty arguments {}
 
-2. **Token Addresses by Chain**: 
+2. **EXECUTE FUNCTIONS IMMEDIATELY** - When user asks for a swap or any action, CALL THE FUNCTIONS directly. Do NOT just describe what you will do.
+
+3. **Token Addresses by Chain**: 
    - ETHEREUM (Chain 1):
      - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
      - USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
@@ -96,14 +102,14 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
      - WETH = "0x4200000000000000000000000000000000000006"
      - DAI = "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
 
-3. **Chain IDs**:
+4. **Chain IDs**:
    - Ethereum = 1
    - Polygon = 137
    - Arbitrum = 42161
    - Optimism = 10
    - BSC = 56
 
-4. **Amount Conversion**:
+5. **Amount Conversion**:
    - 1 ETH = "1000000000000000000" (18 decimals)
    - 1 USDC = "1000000" (6 decimals)
    - 1 DAI = "1000000000000000000" (18 decimals)
@@ -111,7 +117,7 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - 10 USDC = "10000000" (10 * 10^6)
    - 1000 USDC = "1000000" (1000 * 10^6)
 
-5. **Function Selection**:
+6. **Function Selection**:
    - Gas prices → gasAPI
    - Single-chain swaps (same chain) → swapAPI with endpoint="getQuote"
    - Cross-chain swaps (different chains) → fusionPlusAPI with endpoint="getQuote"
@@ -120,31 +126,77 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - Portfolio data → portfolioAPI
    - Wallet balances → balanceAPI
 
-6. **Common Query Patterns**:
+7. **Fusion+ Swap Execution Flow** (EXECUTE IMMEDIATELY):
+   When user wants a cross-chain swap, EXECUTE these functions in sequence:
+   
+   Step 1: Get Quote
+   - CALL fusionPlusAPI with endpoint="getQuote" to get the quote
+   
+   Step 2: Build Order (EXECUTE IMMEDIATELY after getting quote)
+   - CALL fusionPlusAPI with endpoint="buildOrder" using the quote from Step 1
+   - Use secretsHashList: ["0x315b47a8c3780434b153667588db4ca628526e20000000000000000000000000"]
+   
+   Step 3: Submit Order (EXECUTE IMMEDIATELY after building order)
+   - CALL fusionPlusAPI with endpoint="submitOrder" using the order from Step 2
+   - Use the connected wallet's address and signature
+
+8. **Common Query Patterns**:
    - "Get gas price on Ethereum" → gasAPI with chain=1
    - "Swap 0.001 ETH to USDC on Ethereum" → swapAPI with endpoint="getQuote", chain=1, src="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dst="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", amount="1000000000000000"
    - "Swap 10 USDC to ETH on Arbitrum" → swapAPI with endpoint="getQuote", chain=42161, src="0xaf88d065e77c8cc2239327c5edb3a432268e5831", dst="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", amount="10000000"
    - "Cross-chain swap ETH from Arbitrum to Ethereum" → fusionPlusAPI with endpoint="getQuote", srcChain=42161, dstChain=1, srcTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dstTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 
-7. **Required Parameters**:
+9. **Required Parameters**:
    - For swapAPI getQuote: endpoint, chain, src, dst, amount
    - For fusionPlusAPI getQuote: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
    - For gasAPI: chain
    - For tokenDetailsAPI: endpoint, chain, tokenAddress
 
-8. **Wallet Address**: Use "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6" as default if not provided
+10. **Wallet Address**: Use "${walletAddress}" (connected wallet address)
 
-9. **Enable Estimate**: Set to true for quotes
+11. **Enable Estimate**: Set to true for quotes
 
-10. **API Selection Logic**:
+12. **API Selection Logic**:
     - Use swapAPI for single-chain swaps (same source and destination chain)
     - Use fusionPlusAPI for cross-chain swaps (different source and destination chains)
     - Use fusionPlusAPI when user explicitly mentions "Fusion" or "cross-chain"
     - Use swapAPI for basic single-chain swaps
 
-11. **Parameter Naming**:
+13. **CRITICAL PARAMETER NAMING**:
+    - ALL functions use "endpoint" parameter (NOT "action") VERY IMPORTANT
     - swapAPI uses: endpoint, chain, src, dst, amount
     - fusionPlusAPI uses: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
+    - gasAPI uses: chain
+    - tokenDetailsAPI uses: endpoint, chain, tokenAddress
+    - balanceAPI uses: endpoint, chain, walletAddress
+    - portfolioAPI uses: endpoint, addresses
+    - spotPriceAPI uses: endpoint, chain, tokens
+    - tracesAPI uses: endpoint, chain, blockNumber, txHash, offset
+    - historyAPI uses: endpoint, address, chainId
+    - nftAPI uses: endpoint, chainIds, address, contract, id
+    - domainAPI uses: endpoint, name, address, addresses
+    - orderbookAPI uses: endpoint, chain
+    - transactionAPI uses: endpoint, chain, rawTransaction
+    - chartsAPI uses: type, token0, token1, chainId
+    - rpcAPI uses: chainId, method, params
+
+14. **Swap Execution Instructions**:
+    - When user says "execute the swap" or "use my connected wallet to execute the swap", EXECUTE the complete Fusion+ flow
+    - Always use the connected wallet's address for walletAddress parameter
+    - For buildOrder, use the quote from getQuote and generate a secretsHashList
+    - For submitOrder, use the order from buildOrder and the wallet's signature
+    - EXECUTE ALL STEPS IMMEDIATELY - do not just describe them
+
+15. **Wallet Usage**:
+    - ALWAYS use the connected wallet address: ${walletAddress}
+    - If no wallet is connected, inform the user to connect their wallet first
+    - For frontend usage, the wallet address comes from the connected MetaMask or other wallet
+
+16. **EXECUTION PRIORITY**:
+    - EXECUTE functions immediately when user requests an action
+    - Do NOT describe what you will do - DO IT
+    - Call multiple functions in sequence if needed
+    - Provide results after execution, not before
 
 IMPORTANT: If you cannot extract required parameters from the user's query, ask them to provide more specific information rather than calling functions with empty arguments.`;
   }
@@ -174,10 +226,14 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
         logger.error('tracesAPI function not found in registry!');
     }
 
+    // Get current system prompt with latest wallet address
+    const systemPrompt = this.getSystemPrompt();
+    logger.info(`Using wallet address: ${walletManager.getWalletContext().wallet?.address || 'none'}`);
+
     const first = await this.openai.chat.completions.create({
       model: this.config.openaiModel!,
       messages: [
-        { role: "system", content: this.getSystemPrompt() },
+        { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
       tools: fnDefs.map(def => ({
@@ -228,7 +284,7 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
 
     // 4) Send the function's results back into the chat for a final response
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-      { role: "system", content: this.getSystemPrompt() },
+      { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
       msg,
     ];
