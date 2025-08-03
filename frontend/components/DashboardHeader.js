@@ -27,7 +27,7 @@ export default function DashboardHeader() {
             onClick={goToHome}
             className="text-2xl font-bold text-gray-900 italic cursor-pointer hover:text-gray-700 transition-colors duration-200"
           >
-            1inch Agent Kit
+            1inch Agent Platform
           </span>
         </div>
 

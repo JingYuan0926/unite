@@ -24,7 +24,7 @@ export default function Header() {
         {/* Left side - Logo and text */}
         <div className="flex items-center">
           <span className="text-2xl font-bold text-gray-900 italic">
-            1inch Agent Kit
+            1inch Agent Platform
           </span>
         </div>
 

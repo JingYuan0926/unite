@@ -81,7 +81,9 @@ export default function Features() {
 
               {/* Learn More Link */}
               <a
-                href="#"
+                href="https://1inch-agent-kit.gitbook.io/1inch-agent-kit-docs/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-purple-600 hover:text-purple-700 font-medium text-sm transition-colors"
               >
                 {feature.link}
