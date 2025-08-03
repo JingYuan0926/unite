@@ -71,7 +71,7 @@ export default function HowItWorks() {
                             </TypingAnimation>
 
                             <TypingAnimation delay={7500} className="text-muted-foreground">
-                                Try: "Get me a quote for swapping 1 ETH to USDC"
+                                Try: &quot;Get me a quote for swapping 1 ETH to USDC&quot;
                             </TypingAnimation>
                         </Terminal>
                     </div>
@@ -82,6 +82,9 @@ export default function HowItWorks() {
                             Easily integrate the <span className="font-bold italic">1inch</span> Agent Kit into your project
                         </h2>
 
+                        <p className="text-gray-600">
+                            Select from our comprehensive suite of APIs including Portfolio tracking, Gas prices, Swap execution, and more. Each API can be configured to match your specific needs and trading strategy.
+                        </p>
 
                         {/* Take me to the docs button */}
                         <button 

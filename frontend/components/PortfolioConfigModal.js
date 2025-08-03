@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Image from 'next/image';
 import chainData from '../data/chains.json';
 import { validateWalletAddress } from '../lib/portfolioAPI';
 
@@ -205,9 +206,11 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
                     onChange={() => handleToggleNetwork(network)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <img 
+                  <Image 
                     src={networkLogos[network]} 
                     alt={`${network} logo`}
+                    width={24}
+                    height={24}
                     className="w-6 h-6 rounded-full"
                     onError={(e) => {
                       e.target.style.display = 'none';
