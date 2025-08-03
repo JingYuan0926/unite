@@ -3,8 +3,6 @@
 ![1inch Agent Kit Cover](https://raw.githubusercontent.com/JingYuan0926/unite/main/frontend/public/landingpage.png)
 
 [![NPM Downloads](https://img.shields.io/npm/dm/1inch-agent-kit)](https://www.npmjs.com/package/1inch-agent-kit)
-[![GitHub forks](https://img.shields.io/github/forks/your-org/1inch-agent-kit)](https://github.com/your-org/1inch-agent-kit/network)
-[![GitHub License](https://img.shields.io/github/license/your-org/1inch-agent-kit)](https://github.com/your-org/1inch-agent-kit/blob/main/LICENSE)
 
 An open-source toolkit for connecting AI agents to 1inch protocols and DeFi operations. Connect any LLM to 1inch DeFi protocols using natural language, powered by OpenAI's GPT models. Get quotes, execute swaps, check gas prices, perform RPC calls, and monitor protocol health through simple chat interactions.
 
