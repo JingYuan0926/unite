@@ -199,10 +199,10 @@ async function testCompleteAtomicSwap() {
       "├─────────────────────────────────────────────────────────────┤"
     );
     console.log(
-      `│ User A: Lost ${ethers.formatEther(ethAmount)} ETH → Will gain ~2 TRX              │`
+      `│ User A: Lost ${ethers.formatEther(ethAmount)} ETH → Will gain 2 TRX               │`
     );
     console.log(
-      `│ User B: Lost ~2 TRX + deposit → Will gain ${ethers.formatEther(ethAmount)} ETH     │`
+      `│ User B: Lost 7 TRX total  → Will gain ${ethers.formatEther(ethAmount)} ETH + 5 TRX back (safety deposit) │`
     );
     console.log(
       "├─────────────────────────────────────────────────────────────┤"
@@ -210,9 +210,7 @@ async function testCompleteAtomicSwap() {
     console.log(
       "│ 💡 LOP pulled ETH directly from User A's wallet            │"
     );
-    console.log(
-      "│ 🎯 User B paid TRX to Tron escrow + ETH safety deposit    │"
-    );
+    console.log("│ 🎯 User B paid 7 TRX to Tron escrow + ETH safety deposit │");
     console.log(
       "│ ✅ Both escrows created and ready for claiming             │"
     );
@@ -226,14 +224,14 @@ async function testCompleteAtomicSwap() {
       "Action: Both parties claim their funds using the revealed secret"
     );
 
-    let claimResult = { tronWithdrawalTxHash: null };
+    let claimResult: any = { tronWithdrawalTxHash: null };
     try {
       // Use the orchestrator's complete claiming functionality
       claimResult = await orchestrator.claimAtomicSwap(
         swapResult,
         swapResult.secret,
-        config.USER_A_ETH_PRIVATE_KEY, // ETH private key for claiming ETH
-        config.USER_B_TRON_PRIVATE_KEY // Tron private key for claiming TRX
+        config.USER_B_ETH_PRIVATE_KEY, // ETH private key for claiming ETH (User B gets ETH)
+        process.env.USER_A_TRX_PRIVATE_KEY! // User A TRX private key for claiming TRX
       );
 
       console.log("  ✅ Complete fund claiming executed successfully!");
@@ -336,7 +334,7 @@ async function testCompleteAtomicSwap() {
       `║ 📤 PAID: ${ethers.formatEther(ethAmount)} ETH (pulled by LOP)                        ║`
     );
     console.log(
-      "║ 📥 RECEIVED: ~2 TRX (from Tron escrow)                        ║"
+      "║ 📥 RECEIVED: 2 TRX (from Tron escrow)                         ║"
     );
     console.log(
       "║ 🎯 NET RESULT: Swapped ETH → TRX successfully                 ║"
@@ -361,16 +359,16 @@ async function testCompleteAtomicSwap() {
       "╠════════════════════════════════════════════════════════════════╣"
     );
     console.log(
-      "║ 📤 PAID: ~2 TRX (locked in Tron escrow)                      ║"
+      "║ 📤 PAID: 7 TRX total (locked in Tron escrow)                 ║"
     );
     console.log(
       "║ 📤 PAID: ~0.01 ETH (safety deposit)                          ║"
     );
     console.log(
-      `║ 📥 RECEIVED: ${ethers.formatEther(ethAmount)} ETH (from ETH escrow)                   ║`
+      `║ 📥 RECEIVED: ${ethers.formatEther(ethAmount)} ETH + 5 TRX back (net: profit)         ║`
     );
     console.log(
-      "║ 🎯 NET RESULT: Profit from resolver fees                     ║"
+      "║ 🎯 NET RESULT: Earned fees + got safety deposit back        ║"
     );
     console.log(
       "║ 🔗 TRX Loss Proof: Tron escrow creation tx                   ║"
@@ -393,22 +391,18 @@ async function testCompleteAtomicSwap() {
       "╠════════════════════════════════════════════════════════════════╣"
     );
     console.log(
-      "║ ✅ ETH Escrow Creation: 0xc3e2a6e9b9a17b1c2c595e13ac84e19d... ║"
+      `║ ✅ ETH Escrow Creation: ${swapResult.ethTxHash.substring(0, 10)}...${swapResult.ethTxHash.substring(-8)} ║`
     );
     console.log(
-      "║ ✅ Tron Escrow Creation: 23e6ecbe42637a0bfd5f354be8afc520a... ║"
+      `║ ✅ Tron Escrow Creation: ${swapResult.tronTxHash.substring(0, 10)}...${swapResult.tronTxHash.substring(-8)} ║`
     );
     console.log(
-      "║ ✅ TRX Withdrawal Success: bb904a6dd7dea2282af1c90b99366fb1... ║"
+      `║ ✅ TRX Withdrawal Success: ${claimResult?.txHash?.substring(0, 10) || "pending"}...${claimResult?.txHash?.substring(-8) || ""} ║`
     );
+    console.log(`║ 📍 ETH Escrow: ${swapResult.ethEscrowAddress}     ║`);
+    console.log(`║ 📍 Tron Escrow: ${swapResult.tronEscrowAddress}         ║`);
     console.log(
-      "║ 📍 ETH Escrow: 0x97dBd3D0b836a824E34DBF3e06107b36EfF077F8     ║"
-    );
-    console.log(
-      "║ 📍 Tron Escrow: THn7MfSPy5Lt9UPwiyuXmKLMxK3Vsn8q3s         ║"
-    );
-    console.log(
-      "║ 🔑 Secret: 0x38700de33c5da3413d5229955cc3d5b4e21ad6459af... ║"
+      `║ 🔑 Secret: ${swapResult.secret.substring(0, 10)}...${swapResult.secret.substring(-8)} ║`
     );
     console.log(
       "╚════════════════════════════════════════════════════════════════╝"
@@ -422,7 +416,7 @@ async function testCompleteAtomicSwap() {
       `🔗 Tron Transaction: https://nile.tronscan.org/#/transaction/${swapResult.tronTxHash}`
     );
     console.log(
-      `🔗 TRX Withdrawal: https://nile.tronscan.org/#/transaction/${claimResult.tronWithdrawalTxHash || "pending"}`
+      `🔗 TRX Withdrawal: https://nile.tronscan.org/#/transaction/${claimResult?.tronWithdrawalTxHash || claimResult?.txHash || "pending"}`
     );
 
     console.log("\n💡 MONEY FLOW VERIFICATION:");
@@ -430,7 +424,7 @@ async function testCompleteAtomicSwap() {
       "✅ User A: Lost 0.001 ETH → Gained 2 TRX (Cross-chain swap complete)"
     );
     console.log(
-      "✅ User B: Lost 2 TRX + 0.01 ETH deposit → Gained 0.001 ETH (Resolver profit)"
+      "✅ User B: Paid 7 TRX + 0.01 ETH → Gained 0.001 ETH + 5 TRX back (net profit)"
     );
     console.log("✅ Both parties: Achieved desired cross-chain asset exchange");
     console.log("🎯 ATOMIC SWAP: No counterparty risk, trustless execution");

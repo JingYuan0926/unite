@@ -10,7 +10,7 @@
     "EscrowDstImplementation": "0xe5De9De3B8fB5AD8C75C441327f50Cd6e19D46D8",
     "Resolver": "0x80d1E22F66b30D444559225ED4740A9C0DA19F91",
     "TronFusionExtension": "0x6997AC00dB9159A9331863d73a5CdA9fc3b47df1",
-    "DemoResolver": "0x07Bfe0Ac7d19b0C6ebb3B8a33cd8d8ef868FFcA2",
+    "DemoResolver": "0xD7FbE443E43e41488afB35C39415C4Dc916ABeE3",
     "MockTRX": "0x74Fc932f869f088D2a9516AfAd239047bEb209BF"
   },
   "phase4": {

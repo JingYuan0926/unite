@@ -859,6 +859,11 @@ class CrossChainOrchestrator {
       );
       // Step 2: Withdraw from Tron escrow (releases TRX to claimer)
       this.logger.info("Claiming TRX from Tron escrow...");
+      this.logger.info("Debug TRX withdrawal", {
+        tronEscrowAddress: swapResult.tronEscrowAddress,
+        tronPrivateKeyProvided: !!tronPrivateKey,
+        tronPrivateKeyLength: tronPrivateKey ? tronPrivateKey.length : 0,
+      });
       if (swapResult.tronEscrowAddress && tronPrivateKey) {
         await this.withdrawFromTronEscrow(
           swapResult.tronEscrowAddress,
@@ -915,17 +920,17 @@ class CrossChainOrchestrator {
         escrowAddress,
       });
       if (escrowBalance > 0) {
-        // Prepare immutables for withdrawal (we need to reconstruct these from the swap result)
-        const immutables = {
-          orderHash: swapResult.orderHash,
-          hashlock: swapResult.secretHash,
-          maker: swapResult.ethMaker || signer.address, // fallback to signer
-          taker: signer.address, // User B is the taker
-          token: ethers_1.ethers.ZeroAddress, // ETH
-          amount: swapResult.ethAmount || ethers_1.ethers.parseEther("0.001"),
-          safetyDeposit: ethers_1.ethers.parseEther("0.01"), // standard safety deposit
-          timelocks: 0, // simplified for demo
-        };
+        // Prepare immutables for withdrawal using correct 1inch escrow format (tuple, not object)
+        const immutables = [
+          swapResult.orderHash,
+          swapResult.secretHash,
+          "0x7DAf99E5d4b52A9b37A31eC1feD22B5114337d27", // maker (User A)
+          "0xAe7C6fDB1d03E8bc73A32D2C8B7BafA057d30437", // taker (User B)
+          ethers_1.ethers.ZeroAddress, // token (Native ETH)
+          swapResult.ethAmount || ethers_1.ethers.parseEther("0.001"), // amount
+          escrowBalance, // safetyDeposit (use actual balance)
+          0, // timelocks (simplified for demo)
+        ];
 
         // Withdraw using the correct official escrow method with fast gas
         const fastGas = {
@@ -945,7 +950,7 @@ class CrossChainOrchestrator {
         const receipt = await withdrawTx.wait();
         this.logger.success("ETH withdrawn successfully", {
           txHash: withdrawTx.hash,
-          amount: ethers_1.ethers.formatEther(lockedBalance),
+          amount: ethers_1.ethers.formatEther(escrowBalance),
           gasUsed: receipt?.gasUsed?.toString(),
         });
       } else {
