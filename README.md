@@ -1,6 +1,6 @@
 # 1inch Agent Kit
 
-![1inch Agent Kit Cover](https://via.placeholder.com/800x400/667eea/ffffff?text=1inch+Agent+Kit)
+![1inch Agent Kit Cover](https://github.com/JingYuan0926/unite/blob/main/public/landingpage.png?raw=true)
 
 [![NPM Downloads](https://img.shields.io/npm/dm/1inch-agent-kit)](https://www.npmjs.com/package/1inch-agent-kit)
 [![GitHub forks](https://img.shields.io/github/forks/your-org/1inch-agent-kit)](https://github.com/your-org/1inch-agent-kit/network)
