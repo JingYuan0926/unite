@@ -1,183 +1,312 @@
-// Portfolio API utility functions for frontend
-// Using Next.js API routes to avoid CORS issues
+import chainData from '../data/chains.json';
 
-// Helper function to make API calls to our Next.js API routes
-async function makeAPICall(endpoint, method = 'GET', body = null) {
+// Create a mapping from network names to chain IDs
+const networkToChainId = chainData.networks.reduce((acc, network) => {
+  acc[network.name] = network.chainId;
+  return acc;
+}, {});
+
+// Create a mapping from chain IDs to network names
+const chainIdToNetwork = chainData.networks.reduce((acc, network) => {
+  acc[network.chainId] = network.name;
+  return acc;
+}, {});
+
+// Validate wallet address format
+export function validateWalletAddress(address) {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
+// Get chain ID from network name
+function getChainId(networkName) {
+  return networkToChainId[networkName];
+}
+
+// Get network name from chain ID
+function getNetworkName(chainId) {
+  return chainIdToNetwork[chainId];
+}
+
+// Call the portfolio API through the backend
+async function callPortfolioAPI(params) {
   try {
-    const options = {
-      method,
+    console.log('📡 Calling Portfolio API with params:', params);
+    
+    const response = await fetch('/api/agent', {
+      method: 'POST',
       headers: {
-        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-    };
-
-    if (body && method !== 'GET') {
-      options.body = JSON.stringify(body);
-    }
-
-    const response = await fetch(`/api/portfolio${endpoint}`, options);
+      body: JSON.stringify({
+        action: 'function',
+        functionCall: {
+          name: 'portfolioAPI',
+          parameters: params
+        }
+      })
+    });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `API call failed: ${response.status} ${response.statusText}`);
+      // Try to get the error message from the response
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        console.error('❌ Backend API Error:', errorData);
+      } catch (parseError) {
+        console.error('❌ Could not parse error response:', parseError);
+      }
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log('✅ Portfolio API Response:', data);
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return data.result;
   } catch (error) {
-    console.error('Portfolio API call failed:', error);
+    console.error('❌ Portfolio API call failed:', error);
     throw error;
   }
 }
 
-// Portfolio API functions
-export const portfolioAPI = {
-  // Check if portfolio service is available
-  async checkStatus() {
-    return await makeAPICall('/status');
-  },
-
-  // Get supported chains
-  async getSupportedChains() {
-    return await makeAPICall('/supported-chains');
-  },
-
-  // Get supported protocols
-  async getSupportedProtocols() {
-    // Note: This endpoint would need to be implemented in the API routes
-    throw new Error('getSupportedProtocols not yet implemented');
-  },
-
-  // Check addresses compliance
-  async checkAddressesCompliance(addresses, chainId, useCache) {
-    return await makeAPICall('/address-check', 'POST', {
-      addresses,
-      chain_id: chainId,
-      use_cache: useCache
-    });
-  },
-
-  // Get current portfolio value
-  async getCurrentPortfolioValue(addresses, chainId, useCache) {
-    return await makeAPICall('/current-value', 'POST', {
-      addresses,
-      chain_id: chainId,
-      use_cache: useCache
-    });
-  },
-
-  // Get portfolio value chart
-  async getValueChart(addresses, chainId, timerange, useCache) {
-    // Note: This endpoint would need to be implemented in the API routes
-    throw new Error('getValueChart not yet implemented');
-  },
-
-  // Get overview report
-  async getOverviewReport(addresses, chainId) {
-    // Note: This endpoint would need to be implemented in the API routes
-    throw new Error('getOverviewReport not yet implemented');
-  },
-
-  // Get protocols snapshot
-  async getProtocolsSnapshot(addresses, chainId, timestamp) {
-    // Note: This endpoint would need to be implemented in the API routes
-    throw new Error('getProtocolsSnapshot not yet implemented');
-  },
-
-  // Get protocols metrics
-  async getProtocolsMetrics(addresses, chainId, protocolGroupId, contractAddress, tokenId, useCache) {
-    // Note: This endpoint would need to be implemented in the API routes
-    throw new Error('getProtocolsMetrics not yet implemented');
-  },
-
-  // Get tokens snapshot
-  async getTokensSnapshot(addresses, chainId, timestamp) {
-    // Note: This endpoint would need to be implemented in the API routes
-    throw new Error('getTokensSnapshot not yet implemented');
-  },
-
-  // Get tokens metrics
-  async getTokensMetrics(addresses, chainId, timerange, useCache) {
-    // Note: This endpoint would need to be implemented in the API routes
-    throw new Error('getTokensMetrics not yet implemented');
-  }
-};
-
-// Helper function to validate wallet addresses
-export function validateWalletAddress(address) {
-  // Basic Ethereum address validation
-  const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-  return ethereumAddressRegex.test(address);
-}
-
-// Helper function to get chain ID from network name
-export function getChainIdFromNetworkName(networkName) {
-  const chainMap = {
-    'Ethereum Mainnet': 1,
-    'Ethereum': 1, // Keep both for compatibility
-    'Polygon': 137,
-    'BNB Chain': 56,
-    'Arbitrum': 42161,
-    'Arbitrum One': 42161, // Keep for compatibility
-    'Optimism': 10,
-    'Avalanche': 43114,
-    'Avalanche C-Chain': 43114, // Keep for compatibility
-    'Base': 8453,
-    'ZKsync Era': 324,
-    'zkSync Era': 324, // Keep for compatibility
-    'Gnosis': 100,
-    'Linea': 59144,
-    'Sonic': 1001,
-    'Unichain': 1002
-  };
-  return chainMap[networkName] || null;
-}
-
-// Helper function to test portfolio configuration
-export async function testPortfolioConfiguration(config) {
+// Get portfolio value for multiple wallets and networks
+export async function getPortfolioValue(walletAddresses, selectedNetworks) {
   try {
-    const { trackedWallets, includeCurrentWallet, selectedNetworks } = config;
+    console.log('🚀 Starting portfolio fetch for:', { walletAddresses, selectedNetworks });
     
-    // Get all addresses to test
-    const addresses = [...trackedWallets];
-    if (includeCurrentWallet) {
-      // Note: In a real implementation, you'd get the current wallet address
-      // For now, we'll just add a placeholder
-      addresses.push('0x0000000000000000000000000000000000000000');
-    }
-
-    if (addresses.length === 0) {
-      throw new Error('No wallet addresses provided');
-    }
-
-    // Test with the first network
-    const firstNetwork = selectedNetworks[0];
-    const chainId = getChainIdFromNetworkName(firstNetwork);
-
-    // Test portfolio status
-    const status = await portfolioAPI.checkStatus();
-    if (!status.result?.is_available) {
-      throw new Error('Portfolio service is not available');
-    }
-
-    // Test address compliance
-    const compliance = await portfolioAPI.checkAddressesCompliance(addresses, chainId, true);
+    // Get the total portfolio value (single API call, no chain restrictions)
+    const portfolioResponse = await callPortfolioAPI({
+      endpoint: 'getCurrentPortfolioValue',
+      addresses: walletAddresses,
+      use_cache: true
+    });
     
-    // Test current portfolio value
-    const portfolioValue = await portfolioAPI.getCurrentPortfolioValue(addresses, chainId, true);
-
-    return {
-      success: true,
-      status: status.result,
-      compliance: compliance.result,
-      portfolioValue: portfolioValue.result,
-      message: 'Portfolio configuration test successful'
-    };
+    console.log('📊 Portfolio API Response:', portfolioResponse);
+    
+    // Extract the total value safely
+    let totalValue = 0;
+    if (portfolioResponse && portfolioResponse.result && typeof portfolioResponse.result.total === 'number') {
+      totalValue = portfolioResponse.result.total;
+      console.log(`✅ Total portfolio value: $${totalValue}`);
+    }
+    
+    // Create portfolio data for each selected network
+    // For simplicity, show the total value divided by number of networks, or show full value for first network
+    const portfolioData = {};
+    
+    selectedNetworks.forEach((networkName, index) => {
+      const chainId = getChainId(networkName) || 0;
+      
+      // Show full portfolio value for the first network, 0 for others (to avoid duplication)
+      const networkValue = index === 0 ? totalValue : 0;
+      
+      portfolioData[networkName] = {
+        chainId,
+        totalValue: networkValue,
+        byAddress: portfolioResponse?.result?.by_address || [],
+        byCategory: portfolioResponse?.result?.by_category || [],
+        byProtocolGroup: portfolioResponse?.result?.by_protocol_group || []
+      };
+      
+      console.log(`📋 ${networkName}: $${networkValue}`);
+    });
+    
+    console.log('✅ Final portfolio data:', portfolioData);
+    return portfolioData;
+    
   } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-      message: 'Portfolio configuration test failed'
-    };
+    console.error('❌ Error in getPortfolioValue:', error);
+    
+    // Return safe fallback data
+    const portfolioData = {};
+    selectedNetworks.forEach(networkName => {
+      portfolioData[networkName] = {
+        chainId: getChainId(networkName) || 0,
+        totalValue: 0,
+        byAddress: [],
+        byCategory: [],
+        byProtfolioGroup: [],
+        error: error.message
+      };
+    });
+    
+    return portfolioData;
   }
+}
+
+// Get portfolio value chart data
+export async function getPortfolioChart(walletAddresses, selectedNetworks, timerange = '1year') {
+  try {
+    const chartData = {};
+    
+    for (const networkName of selectedNetworks) {
+      const chainId = getChainId(networkName);
+      
+      if (!chainId) {
+        console.warn(`Unknown network: ${networkName}`);
+        continue;
+      }
+
+      try {
+        const response = await callPortfolioAPI({
+          endpoint: 'getGeneralValueChart',
+          addresses: walletAddresses,
+          chain_id: chainId,
+          timerange,
+          use_cache: true
+        });
+
+        chartData[networkName] = {
+          chainId,
+          data: response.result || []
+        };
+      } catch (error) {
+        console.error(`Error fetching chart for ${networkName}:`, error);
+        chartData[networkName] = {
+          chainId,
+          data: [],
+          error: error.message
+        };
+      }
+    }
+
+    return chartData;
+  } catch (error) {
+    console.error('Error in getPortfolioChart:', error);
+    throw error;
+  }
+}
+
+// Get tokens snapshot
+export async function getTokensSnapshot(walletAddresses, selectedNetworks) {
+  try {
+    const tokensData = {};
+    
+    for (const networkName of selectedNetworks) {
+      const chainId = getChainId(networkName);
+      
+      if (!chainId) {
+        console.warn(`Unknown network: ${networkName}`);
+        continue;
+      }
+
+      try {
+        const response = await callPortfolioAPI({
+          endpoint: 'getTokensSnapshot',
+          addresses: walletAddresses,
+          chain_id: chainId
+        });
+
+        tokensData[networkName] = {
+          chainId,
+          tokens: response || []
+        };
+      } catch (error) {
+        console.error(`Error fetching tokens for ${networkName}:`, error);
+        tokensData[networkName] = {
+          chainId,
+          tokens: [],
+          error: error.message
+        };
+      }
+    }
+
+    return tokensData;
+  } catch (error) {
+    console.error('Error in getTokensSnapshot:', error);
+    throw error;
+  }
+}
+
+// Get protocols snapshot
+export async function getProtocolsSnapshot(walletAddresses, selectedNetworks) {
+  try {
+    const protocolsData = {};
+    
+    for (const networkName of selectedNetworks) {
+      const chainId = getChainId(networkName);
+      
+      if (!chainId) {
+        console.warn(`Unknown network: ${networkName}`);
+        continue;
+      }
+
+      try {
+        const response = await callPortfolioAPI({
+          endpoint: 'getProtocolsSnapshot',
+          addresses: walletAddresses,
+          chain_id: chainId
+        });
+
+        protocolsData[networkName] = {
+          chainId,
+          protocols: response.result || []
+        };
+      } catch (error) {
+        console.error(`Error fetching protocols for ${networkName}:`, error);
+        protocolsData[networkName] = {
+          chainId,
+          protocols: [],
+          error: error.message
+        };
+      }
+    }
+
+    return protocolsData;
+  } catch (error) {
+    console.error('Error in getProtocolsSnapshot:', error);
+    throw error;
+  }
+}
+
+// Check if portfolio service is available
+export async function checkPortfolioStatus() {
+  try {
+    const response = await callPortfolioAPI({
+      endpoint: 'checkPortfolioStatus'
+    });
+    
+    return response.result?.is_available || false;
+  } catch (error) {
+    console.error('Error checking portfolio status:', error);
+    
+    // Fallback: try the direct portfolio API endpoint
+    try {
+      console.log('🔄 Trying fallback portfolio status check...');
+      const fallbackResponse = await fetch('/api/portfolio/status');
+      if (fallbackResponse.ok) {
+        const data = await fallbackResponse.json();
+        return data.result?.is_available || false;
+      }
+    } catch (fallbackError) {
+      console.error('Fallback portfolio status check failed:', fallbackError);
+    }
+    
+    return false;
+  }
+}
+
+// Get supported chains from the API
+export async function getSupportedChains() {
+  try {
+    const response = await callPortfolioAPI({
+      endpoint: 'getSupportedChains'
+    });
+    
+    return response || [];
+  } catch (error) {
+    console.error('Error getting supported chains:', error);
+    return [];
+  }
+}
+
+// Helper function to get chain ID from network name (for backwards compatibility)
+export function getChainIdFromNetworkName(networkName) {
+  return getChainId(networkName);
 } 

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardHeader from "@/components/DashboardHeader";
 import APISelectionModal from "@/components/APISelectionModal";
 import PortfolioConfigModal from "@/components/PortfolioConfigModal";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer } from "recharts";
+import { getPortfolioValue, checkPortfolioStatus } from '../lib/portfolioAPI';
 import chainData from '../data/chains.json';
 
 export default function Dashboard() {
@@ -10,6 +11,9 @@ export default function Dashboard() {
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [showPortfolioConfig, setShowPortfolioConfig] = useState(false);
   const [portfolioConfigs, setPortfolioConfigs] = useState([]);
+  const [portfolioData, setPortfolioData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleAddAPI = () => {
     setShowSelectionModal(true);
@@ -39,9 +43,62 @@ export default function Dashboard() {
 
   const handlePortfolioConfigSave = (config) => {
     // Add the new config to the list
-    setPortfolioConfigs(prev => [...prev, config]);
+    const newConfigs = [...portfolioConfigs, config];
+    setPortfolioConfigs(newConfigs);
     setShowPortfolioConfig(false);
+    
+    // Fetch portfolio data for the new configuration
+    fetchPortfolioData(newConfigs);
   };
+
+  // Fetch real portfolio data
+  const fetchPortfolioData = async (configs = portfolioConfigs) => {
+    if (configs.length === 0) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Check if portfolio service is available first
+      const isAvailable = await checkPortfolioStatus();
+      if (!isAvailable) {
+        throw new Error('Portfolio service is currently unavailable');
+      }
+
+      const newPortfolioData = {};
+      
+      for (let i = 0; i < configs.length; i++) {
+        const config = configs[i];
+        const { trackedWallets, selectedNetworks } = config;
+        
+        if (trackedWallets.length === 0 || selectedNetworks.length === 0) {
+          continue;
+        }
+
+        try {
+          const data = await getPortfolioValue(trackedWallets, selectedNetworks);
+          newPortfolioData[i] = data;
+        } catch (configError) {
+          console.error(`Error fetching data for config ${i}:`, configError);
+          newPortfolioData[i] = { error: configError.message };
+        }
+      }
+      
+      setPortfolioData(newPortfolioData);
+    } catch (err) {
+      console.error('Error fetching portfolio data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch portfolio data when configs change
+  useEffect(() => {
+    if (portfolioConfigs.length > 0) {
+      fetchPortfolioData();
+    }
+  }, [portfolioConfigs]);
 
   const getConfigStatusText = (api) => {
     if (api.name === "Portfolio API") {
@@ -61,18 +118,6 @@ export default function Dashboard() {
     }
     
     return null;
-  };
-
-  // Mock portfolio data generator for demonstration - only amounts are fake
-  const generateMockPortfolioData = (walletConfig, walletIndex) => {
-    const chains = walletConfig.selectedNetworks;
-    
-    const mockData = chains.map((chain, index) => ({
-      chain,
-      // Only the amounts are fake/hardcoded for demonstration
-      amount: Math.floor(Math.random() * 8000) + 2000 + (walletIndex * 1000),
-    }));
-    return mockData;
   };
 
   // Generate chain colors dynamically from chain data
@@ -112,64 +157,130 @@ export default function Dashboard() {
   const chainColors = generateChainColors();
 
   const PortfolioChart = ({ walletConfig, walletIndex }) => {
-    const chartData = generateMockPortfolioData(walletConfig, walletIndex);
-    const walletLabel = walletConfig.trackedWallets.length > 0 
-      ? walletConfig.trackedWallets[0] 
-      : walletConfig.includeCurrentWallet 
-        ? 'Connected Wallet' 
-        : 'Wallet';
+    const configData = portfolioData[walletIndex];
+    
+    if (!configData) {
+      return (
+        <div className="flex-1 min-w-0">
+          <div className="mb-3">
+            <p className="text-xs text-gray-500 font-mono">Loading...</p>
+          </div>
+          <div className="h-48 flex items-center justify-center">
+            <div className="text-gray-500">Loading portfolio data...</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (configData.error) {
+      return (
+        <div className="flex-1 min-w-0">
+          <div className="mb-3">
+            <p className="text-xs text-gray-500 font-mono">Error</p>
+          </div>
+          <div className="h-48 flex items-center justify-center">
+            <div className="text-red-500 text-sm text-center">
+              <p>Error loading portfolio</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Simple chart data - just use the values directly
+    const chartData = [];
+    let totalValue = 0;
+    
+    walletConfig.selectedNetworks.forEach(networkName => {
+      const networkData = configData[networkName];
+      const value = networkData?.totalValue || 0;
+      
+      // Only add to chart if value > 0
+      if (value > 0) {
+        chartData.push({
+          chain: networkName,
+          amount: value
+        });
+        totalValue += value;
+      }
+    });
+
+    const walletLabel = walletConfig.trackedWallets[0] || 'Wallet';
     
     return (
       <div className="flex-1 min-w-0">
         <div className="mb-3">
           <p className="text-xs text-gray-500 font-mono">
-            {walletConfig.trackedWallets.length > 0 
-              ? `${walletLabel.slice(0, 10)}...${walletLabel.slice(-8)}`
-              : walletLabel
-            }
+            {walletLabel.slice(0, 10)}...{walletLabel.slice(-8)}
+          </p>
+          <p className="text-sm font-semibold text-gray-700">
+            Total: ${totalValue.toFixed(2)}
           </p>
         </div>
-        <div className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              layout="horizontal"
-              margin={{ top: 10, right: 10, left: 60, bottom: 10 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                type="number"
-                tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
-                fontSize={10}
-              />
-              <YAxis 
-                dataKey="chain" 
-                type="category"
-                width={55}
-                tickFormatter={(value) => value.slice(0, 6)}
-                fontSize={10}
-              />
-              <Bar 
-                dataKey="amount" 
-                radius={[0, 3, 3, 0]}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={chainColors[entry.chain] || '#8884d8'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {walletConfig.selectedNetworks.map(network => (
-            <div key={network} className="flex items-center gap-1 text-xs">
-              <div 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: chainColors[network] || '#8884d8' }}
-              ></div>
-              <span className="text-gray-600">{network.slice(0, 8)}</span>
+        
+        {chartData.length === 0 ? (
+          <div className="h-48 flex items-center justify-center border-2 border-dashed border-gray-200 rounded">
+            <div className="text-gray-500 text-sm text-center">
+              <p>No portfolio value found</p>
             </div>
-          ))}
+          </div>
+        ) : (
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                layout="horizontal"
+                margin={{ top: 10, right: 10, left: 60, bottom: 10 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  type="number"
+                  tickFormatter={(value) => `$${Math.round(value)}`}
+                  fontSize={10}
+                />
+                <YAxis 
+                  dataKey="chain" 
+                  type="category"
+                  width={55}
+                  tickFormatter={(value) => value.slice(0, 8)}
+                  fontSize={10}
+                />
+                <Bar 
+                  dataKey="amount" 
+                  radius={[0, 3, 3, 0]}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={chainColors[entry.chain] || '#8884d8'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        
+        <div className="mt-2 flex flex-wrap gap-1">
+          {walletConfig.selectedNetworks.map(network => {
+            const networkData = configData[network];
+            const value = networkData?.totalValue || 0;
+            const hasValue = value > 0;
+            
+            return (
+              <div key={network} className="flex items-center gap-1 text-xs">
+                <div 
+                  className="w-2 h-2 rounded-full" 
+                  style={{ backgroundColor: chainColors[network] || '#8884d8' }}
+                ></div>
+                <span className={`${hasValue ? 'text-gray-700' : 'text-gray-400'}`}>
+                  {network.slice(0, 8)}
+                  {hasValue && (
+                    <span className="ml-1 font-medium">
+                      ${Math.round(value)}
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -199,6 +310,18 @@ export default function Dashboard() {
             <span>Edit API</span>
           </button>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-red-700">{error}</p>
+            </div>
+          </div>
+        )}
         
         {/* API Cards Grid */}
         {apis.length === 0 ? (
@@ -230,13 +353,18 @@ export default function Dashboard() {
                         <h3 className="text-lg font-semibold text-gray-900">{api.name}</h3>
                         <p className="text-sm text-gray-600">{api.description}</p>
                       </div>
-                      {configStatusText && (
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          portfolioConfigs.length > 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {configStatusText}
-                        </span>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        {loading && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        )}
+                        {configStatusText && (
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            portfolioConfigs.length > 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {configStatusText}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Portfolio Charts */}

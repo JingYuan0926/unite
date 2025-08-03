@@ -69,10 +69,6 @@ export default function DashboardHeader() {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            <span className="font-medium">Chat</span>
-            {currentPath === '/chat' && (
-              <div className="absolute -inset-2 rounded-full border-2 border-gray-300 transition-all duration-300"></div>
-            )}
           </button>
         </nav>
 
