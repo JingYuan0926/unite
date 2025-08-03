@@ -2,12 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { Spinner } from '@heroui/react';
 import CandleChart from './CandleChart';
+import Image from 'next/image';
 
 // Icon components
 const ChatIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-  </svg>
+  <Image
+    src="/unicorn_standing.png"
+    alt="AI Assistant"
+    width={48}
+    height={48}
+    className="rounded-full"
+  />
 );
 
 const UserIcon = () => (
