@@ -113,16 +113,22 @@ export function validateWalletAddress(address) {
 // Helper function to get chain ID from network name
 export function getChainIdFromNetworkName(networkName) {
   const chainMap = {
-    'Ethereum': 1,
+    'Ethereum Mainnet': 1,
+    'Ethereum': 1, // Keep both for compatibility
     'Polygon': 137,
     'BNB Chain': 56,
-    'Arbitrum One': 42161,
+    'Arbitrum': 42161,
+    'Arbitrum One': 42161, // Keep for compatibility
     'Optimism': 10,
-    'Avalanche C-Chain': 43114,
+    'Avalanche': 43114,
+    'Avalanche C-Chain': 43114, // Keep for compatibility
     'Base': 8453,
-    'Polygon zkEVM': 1101,
-    'zkSync Era': 324,
-    'Gnosis': 100
+    'ZKsync Era': 324,
+    'zkSync Era': 324, // Keep for compatibility
+    'Gnosis': 100,
+    'Linea': 59144,
+    'Sonic': 1001,
+    'Unichain': 1002
   };
   return chainMap[networkName] || null;
 }

@@ -3,24 +3,13 @@ import DashboardHeader from "@/components/DashboardHeader";
 import APISelectionModal from "@/components/APISelectionModal";
 import PortfolioConfigModal from "@/components/PortfolioConfigModal";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer } from "recharts";
+import chainData from '../data/chains.json';
 
 export default function Dashboard() {
   const [apis, setApis] = useState([]);
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [showPortfolioConfig, setShowPortfolioConfig] = useState(false);
-  const [portfolioConfigs, setPortfolioConfigs] = useState([
-    // Temporary fake data for testing - will be replaced by user configuration
-    {
-      trackedWallets: ['0x987cff8...b5ca8f1'],
-      includeCurrentWallet: false,
-      selectedNetworks: ['Ethereum', 'BNB Chain']
-    },
-    {
-      trackedWallets: ['0x123abc7...d4ef9g2'],
-      includeCurrentWallet: true,
-      selectedNetworks: ['Polygon', 'Arbitrum', 'Optimism']
-    }
-  ]);
+  const [portfolioConfigs, setPortfolioConfigs] = useState([]);
 
   const handleAddAPI = () => {
     setShowSelectionModal(true);
@@ -38,6 +27,9 @@ export default function Dashboard() {
       } else {
         setPortfolioConfigs([portfolioAPI.config]);
       }
+    } else {
+      // Clear portfolio configs if Portfolio API is not selected or not configured
+      setPortfolioConfigs([]);
     }
   };
 
@@ -71,42 +63,71 @@ export default function Dashboard() {
     return null;
   };
 
-  // Mock portfolio data generator for demonstration
+  // Mock portfolio data generator for demonstration - only amounts are fake
   const generateMockPortfolioData = (walletConfig, walletIndex) => {
     const chains = walletConfig.selectedNetworks;
-    const baseAmounts = [
-      [5200, 3800], // Wallet 1 amounts
-      [7100, 4500, 2300], // Wallet 2 amounts
-      [6800, 5200, 3100] // Wallet 3 amounts
-    ];
     
     const mockData = chains.map((chain, index) => ({
       chain,
-      amount: baseAmounts[walletIndex] ? baseAmounts[walletIndex][index] || Math.floor(Math.random() * 5000) + 2000 : Math.floor(Math.random() * 5000) + 2000,
+      // Only the amounts are fake/hardcoded for demonstration
+      amount: Math.floor(Math.random() * 8000) + 2000 + (walletIndex * 1000),
     }));
     return mockData;
   };
 
-  // Chart colors for different chains
-  const chainColors = {
-    'Ethereum': '#627EEA',
-    'Polygon': '#8247E5',
-    'BNB Chain': '#F3BA2F',
-    'Arbitrum': '#28A0F0',
-    'Optimism': '#FF0420',
-    'Avalanche': '#E84142',
-    'Fantom': '#1969FF',
-    'Gnosis': '#04795B',
+  // Generate chain colors dynamically from chain data
+  const generateChainColors = () => {
+    const colors = {};
+    const defaultColors = [
+      '#627EEA', '#28A0F0', '#8247E5', '#F3BA2F', '#FF0420', 
+      '#E84142', '#1969FF', '#04795B', '#2775CA', '#8C4FE6',
+      '#FF6B00', '#000000'
+    ];
+    
+    chainData.networks.forEach((network, index) => {
+      // Use predefined colors for known chains, otherwise use default colors cycling
+      const knownColors = {
+        'Ethereum Mainnet': '#627EEA',
+        'Ethereum': '#627EEA',
+        'Polygon': '#8247E5',
+        'BNB Chain': '#F3BA2F',
+        'Arbitrum': '#28A0F0',
+        'Optimism': '#FF0420',
+        'Avalanche': '#E84142',
+        'Fantom': '#1969FF',
+        'Gnosis': '#04795B',
+        'Base': '#0052FF',
+        'ZKsync Era': '#4E529A',
+        'Linea': '#61DFFF',
+        'Sonic': '#643CDD',
+        'Unichain': '#FF007A'
+      };
+      
+      colors[network.name] = knownColors[network.name] || defaultColors[index % defaultColors.length];
+    });
+    
+    return colors;
   };
+
+  const chainColors = generateChainColors();
 
   const PortfolioChart = ({ walletConfig, walletIndex }) => {
     const chartData = generateMockPortfolioData(walletConfig, walletIndex);
-    const walletLabel = walletConfig.trackedWallets[0] || `Connected Wallet`;
+    const walletLabel = walletConfig.trackedWallets.length > 0 
+      ? walletConfig.trackedWallets[0] 
+      : walletConfig.includeCurrentWallet 
+        ? 'Connected Wallet' 
+        : 'Wallet';
     
     return (
       <div className="flex-1 min-w-0">
         <div className="mb-3">
-          <p className="text-xs text-gray-500 font-mono">{walletLabel.slice(0, 10)}...{walletLabel.slice(-8)}</p>
+          <p className="text-xs text-gray-500 font-mono">
+            {walletConfig.trackedWallets.length > 0 
+              ? `${walletLabel.slice(0, 10)}...${walletLabel.slice(-8)}`
+              : walletLabel
+            }
+          </p>
         </div>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">

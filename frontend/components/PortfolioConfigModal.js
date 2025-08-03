@@ -66,6 +66,12 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
       onSave(config);
       setSuccess('Portfolio configuration saved successfully!');
       
+      // Reset form state
+      setTrackedWallets([]);
+      setNewWalletAddress('');
+      setIncludeCurrentWallet(false);
+      setSelectedNetworks([]);
+      
       // Close modal after a short delay
       setTimeout(() => {
         onClose();
