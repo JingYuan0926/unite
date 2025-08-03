@@ -3,8 +3,8 @@
 pragma solidity 0.8.23;
 
 import { Script } from "forge-std/Script.sol";
-import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { EscrowFactory } from "contracts/EscrowFactory.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { EscrowFactory } from "cross-chain-swap/EscrowFactory.sol";
 
 // solhint-disable no-console
 import { console } from "forge-std/console.sol";
