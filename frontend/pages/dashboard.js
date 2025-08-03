@@ -24,21 +24,17 @@ export default function Dashboard() {
   const handleSaveChanges = (selectedAPIs) => {
     setApis(selectedAPIs);
     
-    // Extract portfolio configurations from the Portfolio API
     const portfolioAPI = selectedAPIs.find(api => api.name === "Portfolio API");
     if (portfolioAPI && portfolioAPI.config) {
-      // If it's a single config object, wrap it in an array
       if (Array.isArray(portfolioAPI.config)) {
         setPortfolioConfigs(portfolioAPI.config);
       } else {
         setPortfolioConfigs([portfolioAPI.config]);
       }
     } else {
-      // Clear portfolio configs if Portfolio API is not selected or not configured
       setPortfolioConfigs([]);
     }
 
-    // Fetch gas data if Gas Price API is selected
     const gasPriceAPI = selectedAPIs.find(api => api.name === "Gas Price API");
     if (gasPriceAPI && gasPriceAPI.config) {
       fetchGasData(gasPriceAPI.config.selectedNetworks);
@@ -50,32 +46,24 @@ export default function Dashboard() {
   };
 
   const handlePortfolioConfigSave = (config) => {
-    // Add the new config to the list
     const newConfigs = [...portfolioConfigs, config];
     setPortfolioConfigs(newConfigs);
     setShowPortfolioConfig(false);
-    
-    // Fetch portfolio data for the new configuration
     fetchPortfolioData(newConfigs);
   };
 
-  // Fetch real portfolio data
   const fetchPortfolioData = async (configs = portfolioConfigs) => {
     if (configs.length === 0) return;
     
-    console.log('🚀 Dashboard: Starting portfolio data fetch for configs:', configs);
     setLoading(true);
     setError(null);
     
     try {
-      // Check if portfolio service is available first (but don't block if it fails)
       let isAvailable = true;
       try {
         isAvailable = await checkPortfolioStatus();
-        console.log('📊 Portfolio service availability:', isAvailable);
       } catch (statusError) {
-        console.warn('⚠️ Portfolio status check failed, continuing anyway:', statusError.message);
-        // Continue anyway, individual calls will handle their own errors
+        console.warn('Portfolio status check failed, continuing anyway:', statusError.message);
       }
 
       const newPortfolioData = {};
@@ -85,17 +73,13 @@ export default function Dashboard() {
         const { trackedWallets, selectedNetworks } = config;
         
         if (trackedWallets.length === 0 || selectedNetworks.length === 0) {
-          console.log(`⚠️ Skipping config ${i}: missing wallets or networks`);
           continue;
         }
 
         try {
-          console.log(`📊 Fetching portfolio data for config ${i}:`, { trackedWallets, selectedNetworks });
           const data = await getPortfolioValue(trackedWallets, selectedNetworks);
           newPortfolioData[i] = data;
-          console.log(`✅ Portfolio data fetched for config ${i}:`, data);
         } catch (configError) {
-          console.error(`❌ Error fetching data for config ${i}:`, configError);
           newPortfolioData[i] = { 
             error: configError.message.includes('timeout') 
               ? 'Portfolio API is slow. Please try again later.' 
@@ -105,9 +89,7 @@ export default function Dashboard() {
       }
       
       setPortfolioData(newPortfolioData);
-      console.log('✅ All portfolio data processing complete:', newPortfolioData);
     } catch (err) {
-      console.error('❌ Dashboard: Error fetching portfolio data:', err);
       const errorMessage = err.message.includes('timeout') 
         ? 'Portfolio API is experiencing delays. Please try again later.' 
         : err.message;
@@ -117,45 +99,35 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch real gas data
   const fetchGasData = async (selectedNetworks) => {
     if (!selectedNetworks || selectedNetworks.length === 0) {
-      console.log('⚠️ No networks selected for gas data fetch');
       return;
     }
     
-    console.log('🚀 Dashboard: Starting gas data fetch for networks:', selectedNetworks);
     setLoading(true);
     setError(null);
     
     try {
-      console.log('🚀 Fetching gas data for networks:', selectedNetworks);
       const data = await getGasPrices(selectedNetworks);
-      console.log('📊 Dashboard: Received gas data:', data);
       setGasData(data);
-      console.log('✅ Gas data fetched successfully:', data);
     } catch (err) {
-      console.error('❌ Dashboard: Error fetching gas data:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch portfolio data when configs change
   useEffect(() => {
     if (portfolioConfigs.length > 0) {
       fetchPortfolioData();
     }
   }, [portfolioConfigs]);
 
-  // Fetch gas data when APIs change
   useEffect(() => {
     const gasPriceAPI = apis.find(api => api.name === "Gas Price API");
     if (gasPriceAPI && gasPriceAPI.config && gasPriceAPI.config.selectedNetworks) {
       fetchGasData(gasPriceAPI.config.selectedNetworks);
     } else {
-      // Clear gas data if Gas Price API is not configured
       setGasData({});
     }
   }, [apis]);
@@ -180,16 +152,10 @@ export default function Dashboard() {
     return null;
   };
 
-  // Real gas price chart component
   const GasPriceChart = ({ config }) => {
     const selectedNetworks = config.selectedNetworks;
     
-    console.log('📊 GasPriceChart: Rendering with config:', config);
-    console.log('📊 GasPriceChart: Selected networks:', selectedNetworks);
-    console.log('📊 GasPriceChart: Available gas data:', gasData);
-    
     if (!gasData || Object.keys(gasData).length === 0) {
-      console.log('⚠️ GasPriceChart: No gas data available');
       return (
         <div className="text-center py-6">
           <div className="text-gray-500">Loading gas prices...</div>
@@ -266,19 +232,6 @@ export default function Dashboard() {
     );
   };
 
-  // Mock portfolio data generator for demonstration - only amounts are fake
-  const generateMockPortfolioData = (walletConfig, walletIndex) => {
-    const chains = walletConfig.selectedNetworks;
-    
-    const mockData = chains.map((chain, index) => ({
-      chain,
-      // Only the amounts are fake/hardcoded for demonstration
-      amount: Math.floor(Math.random() * 8000) + 2000 + (walletIndex * 1000),
-    }));
-    return mockData;
-  };
-
-  // Generate chain colors dynamically from chain data
   const generateChainColors = () => {
     const colors = {};
     const defaultColors = [
@@ -288,7 +241,6 @@ export default function Dashboard() {
     ];
     
     chainData.networks.forEach((network, index) => {
-      // Use predefined colors for known chains, otherwise use default colors cycling
       const knownColors = {
         'Ethereum Mainnet': '#627EEA',
         'Ethereum': '#627EEA',
@@ -345,7 +297,6 @@ export default function Dashboard() {
       );
     }
 
-    // Simple chart data - just use the values directly
     const chartData = [];
     let totalValue = 0;
     
@@ -353,7 +304,6 @@ export default function Dashboard() {
       const networkData = configData[networkName];
       const value = networkData?.totalValue || 0;
       
-      // Only add to chart if value > 0
       if (value > 0) {
         chartData.push({
           chain: networkName,
@@ -446,10 +396,8 @@ export default function Dashboard() {
 
   return (
     <div className="font-sans bg-gray-50 min-h-screen">
-      {/* Dashboard Header */}
       <DashboardHeader />
       
-      {/* Dashboard Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8 flex justify-between items-start">
           <div>
@@ -457,7 +405,6 @@ export default function Dashboard() {
             <p className="text-gray-600">Manage and monitor your 1inch API integrations</p>
           </div>
           
-          {/* Edit API Button */}
           <button
             onClick={handleAddAPI}
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-sm"
@@ -469,7 +416,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center">
@@ -481,7 +427,6 @@ export default function Dashboard() {
           </div>
         )}
         
-        {/* API Cards Grid */}
         {apis.length === 0 ? (
           <div className="text-center py-12">
             <div className="max-w-md mx-auto">
@@ -498,7 +443,6 @@ export default function Dashboard() {
               const configStatusText = getConfigStatusText(api);
               const configSummary = getConfigSummary(api);
               
-              // Special handling for Portfolio API
               if (api.name === "Portfolio API") {
                 return (
                   <div 
@@ -525,7 +469,6 @@ export default function Dashboard() {
                       </div>
                     </div>
                     
-                    {/* Portfolio Charts */}
                     {portfolioConfigs.length > 0 ? (
                       <div className={`flex gap-6 ${portfolioConfigs.length > 1 ? 'overflow-x-auto' : ''}`}>
                         {portfolioConfigs.map((config, configIndex) => (
@@ -544,7 +487,6 @@ export default function Dashboard() {
                 );
               }
               
-              // Special handling for Gas Price API
               if (api.name === "Gas Price API") {
                 return (
                   <div 
@@ -571,7 +513,6 @@ export default function Dashboard() {
                       </div>
                     )}
                     
-                    {/* Gas Price Display */}
                     {api.config ? (
                       <div>
                         <div className="flex justify-between items-center mb-3">
@@ -592,7 +533,6 @@ export default function Dashboard() {
                 );
               }
               
-              // Regular API cards
               return (
                 <div 
                   key={index}
@@ -621,7 +561,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* API Selection Modal */}
       <APISelectionModal
         isOpen={showSelectionModal}
         onClose={() => setShowSelectionModal(false)}
@@ -629,7 +568,6 @@ export default function Dashboard() {
         existingAPIs={apis}
       />
 
-      {/* Portfolio Configuration Modal */}
       <PortfolioConfigModal
         isOpen={showPortfolioConfig}
         onClose={() => setShowPortfolioConfig(false)}

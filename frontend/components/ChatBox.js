@@ -293,22 +293,45 @@ const ChatBox = () => {
     setIsLoading(true);
 
     try {
-      // Check if this is the specific wallet overview query
-      if (isWalletOverviewQuery(inputMessage)) {
-        await handleWalletOverviewQuery(inputMessage);
-      }
-      // Check if this is a complex query
-      else if (isComplexQuery(inputMessage)) {
-        await handleComplexQuery(inputMessage);
-      } else {
-        await handleSimpleQuery(inputMessage);
-      }
+      await handleQuery(inputMessage);
     } catch (error) {
       console.error('Error:', error);
       addMessage('bot', `Sorry, I encountered an error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleQuery = async (query) => {
+    const walletData = walletConnected && address ? {
+      address: address,
+      chainId: chainId || 1,
+      walletType: 'rainbowkit'
+    } : null;
+
+    const response = await fetch('/api/agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'chat',
+        message: query,
+        wallet: walletData
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to get response');
+    }
+
+    if (data.requiresSignature && data.typedData) {
+      setPendingTypedData(data.typedData);
+      addMessage('bot', `🔐 I need your signature to execute this transaction. Please sign the message in your wallet.`);
+      return;
+    }
+
+    addMessage('bot', data.content, data.functionCalls);
   };
 
   const handleComplexQuery = async (query) => {
@@ -449,7 +472,7 @@ const ChatBox = () => {
     }
 
     // Add bot response
-    addMessage('bot', data.content, data.functionCalls);
+    addMessage('bot', data.response, data.functionCalls);
   };
 
   const handleWalletOverviewQuery = async (query) => {
@@ -1153,27 +1176,7 @@ const ChatBox = () => {
             {call.result && (
               <div className="function-result">
                 <div className="result-label">Result:</div>
-                {(call.name === 'tron' || call.name === 'xrp') && call.result.output ? (
-                  // Special handling for tron and xrp functions - display the rich output
-                  <div className="tron-output">
-                    <pre className="tron-logs">{call.result.output}</pre>
-                    {call.result.success && call.result.transactionDetails && (
-                      <div className="transaction-summary">
-                        <h4>✅ Transaction Summary:</h4>
-                        <p><strong>Status:</strong> {call.result.transactionDetails.status}</p>
-                        <p><strong>ETH Amount:</strong> {call.result.ethAmount} ETH</p>
-                        <p><strong>Target:</strong> {call.name === 'tron' ? 'TRON' : 'XRP'}</p>
-                        <p><strong>Action:</strong> {call.result.action}</p>
-                        {call.result.command && (
-                          <p><strong>Command:</strong> {call.result.command}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  // Default JSON display for other functions
-                  <pre>{JSON.stringify(call.result, null, 2)}</pre>
-                )}
+                <pre>{JSON.stringify(call.result, null, 2)}</pre>
               </div>
             )}
           </div>
@@ -1909,50 +1912,6 @@ const ChatBox = () => {
           overflow-x: auto;
           box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
           border: 1px solid #4a5568;
-        }
-
-        /* Tron function specific styles */
-        .tron-output {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-          border: 1px solid #334155;
-          border-radius: 0.75rem;
-          overflow: hidden;
-        }
-
-        .tron-logs {
-          background: #0f172a;
-          color: #e2e8f0;
-          padding: 1.5rem;
-          margin: 0;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-          font-size: 0.8rem;
-          line-height: 1.4;
-          overflow-x: auto;
-          max-height: 400px;
-          overflow-y: auto;
-          border-bottom: 1px solid #334155;
-        }
-
-        .transaction-summary {
-          background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
-          padding: 1rem;
-          color: #ecfdf5;
-        }
-
-        .transaction-summary h4 {
-          margin: 0 0 0.75rem 0;
-          color: #10b981;
-          font-size: 1rem;
-          font-weight: 600;
-        }
-
-        .transaction-summary p {
-          margin: 0.5rem 0;
-          font-size: 0.875rem;
-        }
-
-        .transaction-summary strong {
-          color: #6ee7b7;
         }
 
         .complex-query-results {
