@@ -14,12 +14,19 @@ export default function DashboardHeader() {
     router.push('/dashboard');
   };
 
+  const goToHome = () => {
+    router.push('/');
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Left side - Logo and text */}
         <div className="flex items-center flex-1">
-          <span className="text-2xl font-bold text-gray-900 italic">
+          <span 
+            onClick={goToHome}
+            className="text-2xl font-bold text-gray-900 italic cursor-pointer hover:text-gray-700 transition-colors duration-200"
+          >
             1inch Agent Kit
           </span>
         </div>
