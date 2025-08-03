@@ -31,10 +31,10 @@ class XRPLToETHEscrowServer {
     try {
       if (process.env.XRPL_SEC && process.env.XRPL_ADD) {
         console.log(
-          "🔧 Initializing preset XRP wallet for auto-funded XRP-to-ETH swaps..."
+          "🔧 Initializing user's XRP wallet for REAL XRP-to-ETH swaps..."
         );
 
-        // Create wallet from seed
+        // Create wallet from user's seed
         const wallet = xrpl.Wallet.fromSeed(process.env.XRPL_SEC);
 
         // Verify address matches
@@ -51,14 +51,15 @@ class XRPLToETHEscrowServer {
           publicKey: wallet.publicKey,
         };
 
-        console.log(`✅ Preset XRP wallet initialized: ${wallet.address}`);
-        console.log("💰 Auto-funding enabled for XRP-to-ETH swaps");
+        console.log(`✅ User's XRP wallet initialized: ${wallet.address}`);
+        console.log("💰 User's XRP will be DEDUCTED for swaps");
 
         return this.presetWallet;
       } else {
         console.log(
-          "⚠️  XRPL_SEC and XRPL_ADD not set, generating new wallets with auto-funding"
+          "⚠️  XRPL_SEC and XRPL_ADD not set - REAL swaps require user wallet"
         );
+        console.log("💡 Set XRPL_SEC and XRPL_ADD for real XRP-to-ETH swaps");
         return null;
       }
     } catch (error) {
@@ -96,15 +97,13 @@ class XRPLToETHEscrowServer {
   async getEscrowWallet(escrowType = "dst") {
     try {
       if (escrowType === "src" && this.presetWallet) {
-        // For source escrows in XRP-to-ETH, use preset wallet for auto-funding
+        // For source escrows in XRP-to-ETH, use user's wallet (XRP will be deducted)
         console.log(
-          `💰 Using preset XRP wallet for source escrow: ${this.presetWallet.address}`
+          `💰 Using user's XRP wallet for source escrow: ${this.presetWallet.address}`
         );
-        console.log(
-          `✅ Auto-funding enabled - system will handle XRP transactions`
-        );
+        console.log(`📉 User's XRP balance will be DEDUCTED for the swap`);
 
-        // Ensure wallet has sufficient balance
+        // Ensure user's wallet has sufficient balance
         await this.ensureWalletBalance(
           xrpl.Wallet.fromSeed(this.presetWallet.seed),
           5
@@ -345,10 +344,13 @@ class XRPLToETHEscrowServer {
           this.presetWallet &&
           escrowWallet.address === this.presetWallet.address
         ) {
-          console.log(`💰 Source escrow using preset wallet - auto-funded`);
+          console.log(
+            `💰 Source escrow using user's XRP wallet - XRP will be deducted`
+          );
           escrow.status = "funded";
           escrow.usingPresetWallet = true;
-          escrow.autoFunded = true;
+          escrow.autoFunded = false; // User's real XRP, not auto-funded
+          escrow.userFunded = true;
         } else {
           console.log(`💰 Destination escrow auto-funded by testnet faucet`);
           escrow.status = "funded";
