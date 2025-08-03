@@ -1,0 +1,25 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['lib']
+test = 'test'
+optimizer_runs = 200
+via_ir = true
+solc_version = '0.8.23'
+
+# Remappings for dependencies
+remappings = [
+    "@openzeppelin/contracts/=lib/cross-chain-swap/lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/cross-chain-swap/lib/forge-std/src/",
+    "solidity-utils/contracts/=lib/cross-chain-swap/lib/solidity-utils/contracts/",
+    "@1inch/solidity-utils/contracts/=lib/cross-chain-swap/lib/solidity-utils/contracts/",
+    "cross-chain-swap/=lib/cross-chain-swap/contracts/",
+    "limit-order-protocol/=lib/cross-chain-swap/lib/limit-order-protocol/"
+]
+
+fs_permissions = [
+    { access = "read", path = "./" },
+    { access = "read", path = "./lib" },
+    { access = "read", path = "./out" },
+    { access = "read", path = "./cache" }
+]
