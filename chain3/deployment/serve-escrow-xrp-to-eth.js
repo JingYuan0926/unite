@@ -817,7 +817,7 @@ module.exports = XRPLToETHEscrowServer;
 if (require.main === module) {
   const server = new XRPLToETHEscrowServer({
     network: process.env.XRPL_NETWORK || "wss://s.altnet.rippletest.net:51233",
-    port: process.env.PORT || 3002, // Different port from serve-escrow.js
+    port: process.env.PORT || 3002,
     rescueDelay: parseInt(process.env.RESCUE_DELAY) || 1800, // 30 minutes for testing
   });
 
