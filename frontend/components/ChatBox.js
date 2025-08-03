@@ -12,6 +12,7 @@ const ChatBox = () => {
   const [processingComplexQuery, setProcessingComplexQuery] = useState(false);
   const [queryProgress, setQueryProgress] = useState(null);
   const [chartData, setChartData] = useState(null);
+  const [currentLoadingStep, setCurrentLoadingStep] = useState(0);
   const messagesEndRef = useRef(null);
   
   // Use wagmi's useAccount hook to get wallet information
@@ -300,50 +301,22 @@ const ChatBox = () => {
 
     try {
       setProcessingComplexQuery(true);
+      setCurrentLoadingStep(0);
       
-      // Show initial loading message with 4 steps
-      const loadingMessage = {
-        id: Date.now(),
-        type: 'bot',
-        content: '🚀 Processing your wallet overview request...',
-        timestamp: new Date(),
-        isLoading: true,
-        loadingSteps: [
-          { id: 'step1', text: 'Getting portfolio using portfolioAPI', status: 'pending' },
-          { id: 'step2', text: 'Getting balance from balanceAPI', status: 'pending' },
-          { id: 'step3', text: 'Getting charts from chartsAPI', status: 'pending' },
-          { id: 'step4', text: 'Getting gas estimates from gasAPI', status: 'pending' }
-        ]
-      };
-      
-      setMessages(prev => [...prev, loadingMessage]);
-
       // Simulate step-by-step progress
       const steps = [
-        { id: 'step1', text: 'Getting portfolio using portfolioAPI', delay: 1000 },
-        { id: 'step2', text: 'Getting balance from balanceAPI', delay: 1500 },
+        { id: 'step1', text: 'Getting portfolio using portfolioAPI', delay: 2000 },
+        { id: 'step2', text: 'Getting balance from balanceAPI', delay: 2000 },
         { id: 'step3', text: 'Getting charts from chartsAPI', delay: 2000 },
-        { id: 'step4', text: 'Getting gas estimates from gasAPI', delay: 2500 }
+        { id: 'step4', text: 'Getting gas estimates from gasAPI', delay: 2000 }
       ];
 
       // Update each step with spinner
       for (let i = 0; i < steps.length; i++) {
         await new Promise(resolve => setTimeout(resolve, steps[i].delay));
         
-        setMessages(prev => prev.map(msg => {
-          if (msg.isLoading && msg.loadingSteps) {
-            return {
-              ...msg,
-              loadingSteps: msg.loadingSteps.map((step, index) => {
-                if (index <= i) {
-                  return { ...step, status: 'completed' };
-                }
-                return step;
-              })
-            };
-          }
-          return msg;
-        }));
+        // Update the current step
+        setCurrentLoadingStep(i + 1);
       }
 
       // Wait a bit more for final processing
@@ -515,9 +488,6 @@ const ChatBox = () => {
       // Format the response beautifully
       const formattedResponse = formatWalletOverviewBeautifully(hardcodedData.walletOverview);
       
-      // Remove the loading message and add the final result
-      setMessages(prev => prev.filter(msg => !msg.isLoading));
-      
       // Add the formatted response with metadata
       addMessage('bot', formattedResponse, null, {
         type: 'wallet-overview',
@@ -526,12 +496,10 @@ const ChatBox = () => {
 
     } catch (error) {
       console.error('Wallet overview query error:', error);
-      
-      // Remove loading message and show error
-      setMessages(prev => prev.filter(msg => !msg.isLoading));
       addMessage('bot', `Error: ${error.message}`);
     } finally {
       setProcessingComplexQuery(false);
+      setCurrentLoadingStep(0);
     }
   };
 
@@ -1075,20 +1043,12 @@ const ChatBox = () => {
 
     return (
       <div className="loading-steps">
-        <div className="loading-steps-header">
-          🚀 Processing your wallet overview request...
-        </div>
         <div className="loading-steps-container">
           {loadingSteps.map((step, index) => (
             <div key={step.id} className={`loading-step ${step.status}`}>
               <div className="step-content">
                 {step.status === 'pending' && (
-                  <Spinner 
-                    size="sm" 
-                    color="primary" 
-                    labelColor="primary"
-                    className="step-spinner"
-                  />
+                  <div className="step-spinner"></div>
                 )}
                 {step.status === 'completed' && (
                   <div className="step-completed">✅</div>
@@ -1271,6 +1231,29 @@ const ChatBox = () => {
                   </div>
                   <span>{processingComplexQuery ? 'Processing complex query...' : 'Thinking...'}</span>
                 </div>
+                {processingComplexQuery && (
+                  <div className="loading-steps">
+                    <div className="loading-steps-container">
+                      {[
+                        { id: 'step1', text: 'Getting portfolio using portfolioAPI' },
+                        { id: 'step2', text: 'Getting balance from balanceAPI' },
+                        { id: 'step3', text: 'Getting charts from chartsAPI' },
+                        { id: 'step4', text: 'Getting gas estimates from gasAPI' }
+                      ].map((step, index) => (
+                        <div key={step.id} className={`loading-step ${index < currentLoadingStep ? 'completed' : 'pending'}`}>
+                          <div className="step-content">
+                            {index < currentLoadingStep ? (
+                              <div className="step-completed">✅</div>
+                            ) : (
+                              <div className="step-spinner"></div>
+                            )}
+                            <span className="step-text">{step.text}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {processingComplexQuery && renderQueryProgress()}
               </div>
             </div>
@@ -1930,6 +1913,12 @@ const ChatBox = () => {
         }
 
         .step-spinner {
+          width: 20px;
+          height: 20px;
+          border: 2px solid #e2e8f0;
+          border-top: 2px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
           margin-bottom: 0.5rem;
         }
 
@@ -1944,6 +1933,11 @@ const ChatBox = () => {
           color: #4a5568;
           font-weight: 600;
           line-height: 1.3;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
 
         @keyframes bounce {
