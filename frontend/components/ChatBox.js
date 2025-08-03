@@ -211,24 +211,19 @@ const ChatBox = () => {
     }
   };
 
-  // Function to detect if a query is complex
   const isComplexQuery = (query) => {
-    const complexIndicators = [
-      /\.\s+/g,           // Period followed by space
-      /,\s+/g,            // Comma followed by space
-      /;\s+/g,            // Semicolon followed by space
-      /\s+and\s+/gi,      // "and" with spaces
-      /\s+then\s+/gi,     // "then" with spaces
-      /\s+also\s+/gi,     // "also" with spaces
+    const complexPatterns = [
+      /show.*wallet.*overview.*get.*top.*assets.*price.*charts.*gas/i,
+      /get.*portfolio.*balance.*chart.*gas/i,
+      /analyze.*wallet.*show.*assets.*charts.*fees/i,
+      /wallet.*overview.*assets.*charts.*gas/i
     ];
-
-    return complexIndicators.some(indicator => indicator.test(query));
+    
+    return complexPatterns.some(pattern => pattern.test(query));
   };
 
-  // Function to detect if this is the specific wallet overview query
   const isWalletOverviewQuery = (query) => {
-    const walletOverviewPattern = /show me my wallet overview on arbitrum.*get my top.*assets.*show their price charts.*estimate gas fees/i;
-    return walletOverviewPattern.test(query);
+    return /show.*wallet.*overview.*arbitrum.*top.*assets.*price.*charts.*gas/i.test(query);
   };
 
   // Handle EIP-712 signing for Fusion+ orders
@@ -236,7 +231,6 @@ const ChatBox = () => {
     try {
       console.log('🔐 Signing typed data with MetaMask...');
       
-      // Sign the typed data using MetaMask
       const signature = await signTypedDataAsync({
         domain: typedData.domain,
         types: typedData.types,
@@ -244,14 +238,7 @@ const ChatBox = () => {
         message: typedData.message,
       });
 
-      console.log('✅ Signature generated:', signature.substring(0, 10) + '...');
-
-      // Send the signature back to the API
-      const walletData = {
-        address: address,
-        chainId: chainId || 1,
-        walletType: 'rainbowkit'
-      };
+      console.log('✅ Signature obtained:', signature);
 
       const response = await fetch('/api/agent', {
         method: 'POST',
@@ -260,20 +247,27 @@ const ChatBox = () => {
           action: 'signTypedData',
           typedData: typedData,
           signature: signature,
-          wallet: walletData
+          wallet: {
+            address: address,
+            chainId: chainId || 1,
+            walletType: 'rainbowkit'
+          }
         }),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit signature');
+        throw new Error(data.error || 'Failed to process signature');
       }
 
-      return signature;
+      addMessage('bot', data.content || '✅ Transaction signed successfully!');
+      setPendingTypedData(null);
+
     } catch (error) {
-      console.error('❌ Failed to sign typed data:', error);
-      throw error;
+      console.error('❌ Signing error:', error);
+      addMessage('bot', `❌ Failed to sign transaction: ${error.message}`);
+      setPendingTypedData(null);
     }
   };
 
@@ -336,17 +330,15 @@ const ChatBox = () => {
 
   const handleComplexQuery = async (query) => {
     setProcessingComplexQuery(true);
-    setQueryProgress(null); // Clear previous progress
+    setQueryProgress(null);
     
     try {
-      // Prepare wallet data if connected
       const walletData = walletConnected && address ? {
         address: address,
         chainId: chainId || 1,
         walletType: 'rainbowkit'
       } : null;
 
-      // Split the query to show initial progress
       const queryParts = splitComplexQueryForProgress(query);
       setQueryProgress({
         status: 'processing',
@@ -356,7 +348,6 @@ const ChatBox = () => {
         totalParts: queryParts.length
       });
 
-      // Simulate progress updates
       const progressInterval = setInterval(() => {
         setQueryProgress(prev => {
           if (prev && prev.completedParts < prev.totalParts) {
@@ -367,14 +358,14 @@ const ChatBox = () => {
           }
           return prev;
         });
-      }, 2000); // Update every 2 seconds
+      }, 2000);
 
-      // Call the complex query API
-      const response = await fetch('/api/complex-query', {
+      const response = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: query,
+          action: 'chat',
+          message: query,
           wallet: walletData
         }),
       });
@@ -383,28 +374,24 @@ const ChatBox = () => {
 
       if (!response.ok) {
         clearInterval(progressInterval);
-        throw new Error(data.error || 'Failed to process complex query');
+        throw new Error(data.error || 'Failed to process query');
       }
 
-      // Clear the interval and update progress to completed
       clearInterval(progressInterval);
       setQueryProgress(prev => ({
         ...prev,
         status: 'completed',
-        completedParts: data.queryParts.length
+        completedParts: queryParts.length
       }));
 
-      // Format and display the final results
-      const formattedResponse = formatComplexQueryResults(data);
-      addMessage('bot', formattedResponse, null, {
+      addMessage('bot', data.content, data.functionCalls, {
         type: 'complex-query',
-        results: data.results,
-        queryParts: data.queryParts
+        queryParts: queryParts
       });
 
     } catch (error) {
-      console.error('Complex query error:', error);
-      addMessage('bot', `Failed to process complex query: ${error.message}`);
+      console.error('Query error:', error);
+      addMessage('bot', `Failed to process query: ${error.message}`);
     } finally {
       setProcessingComplexQuery(false);
       setQueryProgress(null);
@@ -485,7 +472,6 @@ const ChatBox = () => {
       setProcessingComplexQuery(true);
       setCurrentLoadingStep(0);
       
-      // Simulate step-by-step progress
       const steps = [
         { id: 'step1', text: 'Getting portfolio using portfolioAPI', delay: 2000 },
         { id: 'step2', text: 'Getting balance from balanceAPI', delay: 2000 },
@@ -493,187 +479,37 @@ const ChatBox = () => {
         { id: 'step4', text: 'Getting gas estimates from gasAPI', delay: 2000 }
       ];
 
-      // Update each step with spinner
       for (let i = 0; i < steps.length; i++) {
         await new Promise(resolve => setTimeout(resolve, steps[i].delay));
-        
-        // Update the current step
         setCurrentLoadingStep(i + 1);
       }
 
-      // Wait a bit more for final processing
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Use hardcoded data
-      const hardcodedData = {
-        "walletOverview": {
-          "originalQuery": "Show me my wallet overview on Arbitrum, get my top 2 assets, show their price charts, and estimate gas fees",
-          "walletAddress": "0x147151a144fEb00E1e173469B5f90C3B78ae210c",
-          "chainId": 42161,
-          "chainName": "Arbitrum",
-          "portfolio": {
-            "totalValue": 24.94,
-            "breakdown": {
-              "tokens": 12.58,
-              "nativeAssets": 12.35,
-              "protocols": 0.00
-            }
-          },
-          "balances": {
-            "tokens": [
-              {
-                "symbol": "USDC",
-                "balance": 12582510,
-                "balanceInUnits": 12.58,
-                "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
-                "decimals": 6
-              },
-              {
-                "symbol": "WETH",
-                "balance": 3558527.745,
-                "balanceInUnits": 0.003559,
-                "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-                "decimals": 18
-              }
-            ]
-          },
-          "priceCharts": {
-            "pair": "ETH/USDC",
-            "timeframe": "7-day",
-            "dataPoints": [
-              {
-                "timestamp": 1718236800,
-                "open": 0.000281085,
-                "high": 0.000298897,
-                "low": 0.000273390,
-                "close": 0.000280851
-              },
-              {
-                "timestamp": 1718841600,
-                "open": 0.000280851,
-                "high": 0.000310372,
-                "low": 0.000273230,
-                "close": 0.000296972
-              },
-              {
-                "timestamp": 1719446400,
-                "open": 0.000296972,
-                "high": 0.000308767,
-                "low": 0.000283694,
-                "close": 0.000303729
-              },
-              {
-                "timestamp": 1720051200,
-                "open": 0.000303729,
-                "high": 0.000382934,
-                "low": 0.000300768,
-                "close": 0.000322533
-              },
-              {
-                "timestamp": 1720656000,
-                "open": 0.000322533,
-                "high": 0.000328797,
-                "low": 0.000283932,
-                "close": 0.000295141
-              },
-              {
-                "timestamp": 1721260800,
-                "open": 0.000295141,
-                "high": 0.000302652,
-                "low": 0.000280426,
-                "close": 0.000299811
-              },
-              {
-                "timestamp": 1721865600,
-                "open": 0.000299811,
-                "high": 0.000324591,
-                "low": 0.000294031,
-                "close": 0.000309466
-              }
-            ],
-            "summary": {
-              "currentPrice": 0.000300,
-              "priceRange": {
-                "min": 0.000281,
-                "max": 0.000323
-              },
-              "changePercentage": 0.03
-            }
-          },
-          "gasEstimates": {
-            "chainId": 42161,
-            "chainName": "Arbitrum",
-            "baseFee": {
-              "value": 10000000,
-              "unit": "gwei"
-            },
-            "priorityFees": {
-              "low": {
-                "maxPriorityFee": 11400000,
-                "maxFee": 21400000,
-                "unit": "gwei"
-              },
-              "medium": {
-                "maxPriorityFee": 11500000,
-                "maxFee": 21500000,
-                "unit": "gwei"
-              },
-              "high": {
-                "maxPriorityFee": 11800000,
-                "maxFee": 21800000,
-                "unit": "gwei"
-              },
-              "instant": {
-                "maxPriorityFee": 12980000,
-                "maxFee": 23980000,
-                "unit": "gwei"
-              }
-            }
-          },
-          "metadata": {
-            "queryParts": [
-              {
-                "id": "p1",
-                "description": "Get wallet portfolio overview",
-                "function": "portfolioAPI",
-                "status": "completed",
-                "functionCalls": 1
-              },
-              {
-                "id": "p2", 
-                "description": "Get wallet balances",
-                "function": "balanceAPI",
-                "status": "completed",
-                "functionCalls": 1
-              },
-              {
-                "id": "p3",
-                "description": "Get price charts for USDC and ETH", 
-                "function": "chartsAPI",
-                "status": "completed",
-                "functionCalls": 1
-              },
-              {
-                "id": "p4",
-                "description": "Get gas fee estimates",
-                "function": "gasAPI", 
-                "status": "completed",
-                "functionCalls": 1
-              }
-            ],
-            "totalFunctionCalls": 4,
-            "processingTime": "completed"
-          }
-        }
+      const walletData = {
+        address: address,
+        chainId: chainId || 1,
+        walletType: 'rainbowkit'
       };
 
-      // Format the response beautifully
-      const formattedResponse = formatWalletOverviewBeautifully(hardcodedData.walletOverview);
-      
-      // Add the formatted response with metadata
-      addMessage('bot', formattedResponse, null, {
-        type: 'wallet-overview',
-        data: hardcodedData.walletOverview
+      const response = await fetch('/api/agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'chat',
+          message: query,
+          wallet: walletData
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process wallet overview');
+      }
+
+      addMessage('bot', data.content, data.functionCalls, {
+        type: 'wallet-overview'
       });
 
     } catch (error) {
@@ -709,7 +545,6 @@ const ChatBox = () => {
     let response = `**Wallet Overview**\n\n`;
     response += `**Original Query:** ${data.originalQuery}\n\n`;
 
-    // Process each result and show the original AI response
     data.results.forEach((result, index) => {
       if (result.error) {
         response += `**${result.id}: ${result.description}**\nError: ${result.error}\n\n`;
@@ -730,60 +565,56 @@ const ChatBox = () => {
     switch (functionType) {
       case 'portfolioAPI':
         return formatPortfolioResponse(aiResponse, partId, functionData);
-      
       case 'balanceAPI':
         return formatBalanceResponse(aiResponse, partId, functionData);
-      
       case 'chartsAPI':
         return formatChartsResponse(aiResponse, partId, functionData);
-      
       case 'gasAPI':
         return formatGasResponse(aiResponse, partId, functionData);
-      
       default:
-        return `**${partId}: ${functionType}**\n📋 Response:\n${aiResponse}\n\n`;
+        return `**${partId}:**\n${aiResponse}\n\n`;
     }
   };
 
   const formatPortfolioResponse = (response, partId, functionData = null) => {
-    let formatted = `**${partId}: Portfolio Value**\n\n`;
+    let formatted = `**${partId}: Portfolio Overview**\n\n`;
     
     if (functionData && functionData.result) {
-      // Extract data from function result
       const portfolioData = functionData.result;
       
       if (portfolioData.total) {
-        formatted += `**Total Portfolio Value:** $${parseFloat(portfolioData.total).toFixed(2)}\n\n`;
+        formatted += `💰 **Total Portfolio Value:** $${parseFloat(portfolioData.total).toFixed(2)}\n\n`;
       }
       
-      formatted += '**Breakdown:**\n';
-      
-      if (portfolioData.by_category && Array.isArray(portfolioData.by_category)) {
-        portfolioData.by_category.forEach(category => {
-          if (category.category === 'tokens') {
-            formatted += `• Tokens: $${parseFloat(category.value).toFixed(2)}\n`;
-          } else if (category.category === 'native') {
-            formatted += `• Native: $${parseFloat(category.value).toFixed(2)}\n`;
-          } else if (category.category === 'protocols') {
-            formatted += `• Protocols: $${parseFloat(category.value).toFixed(2)}\n`;
+      if (portfolioData.balances && Array.isArray(portfolioData.balances)) {
+        formatted += '**Token Balances:**\n';
+        portfolioData.balances.forEach(balance => {
+          if (balance.balance && parseFloat(balance.balance) > 0) {
+            formatted += `• ${balance.symbol || 'Unknown'}: ${parseFloat(balance.balance).toFixed(4)}`;
+            if (balance.value) {
+              formatted += ` ($${parseFloat(balance.value).toFixed(2)})`;
+            }
+            formatted += '\n';
           }
         });
       }
     } else {
-      // Fallback to AI response parsing
-      const portfolioMatch = response.match(/\$([\d,]+\.?\d*)/);
-      const tokensMatch = response.match(/Tokens[:\s]*\$([\d,]+\.?\d*)/);
-      const nativeMatch = response.match(/Native[:\s]*\$([\d,]+\.?\d*)/);
-      const protocolsMatch = response.match(/Protocols[:\s]*\$([\d,]+\.?\d*)/);
-
-      if (portfolioMatch) {
-        formatted += `**Total Portfolio Value:** $${portfolioMatch[1]}\n\n`;
+      const totalValueMatch = response.match(/Total Portfolio Value[:\s]*\$?([\d,]+\.?\d*)/i);
+      if (totalValueMatch) {
+        const totalValue = parseFloat(totalValueMatch[1].replace(/,/g, ''));
+        formatted += `💰 **Total Portfolio Value:** $${totalValue.toFixed(2)}\n\n`;
       }
       
-      formatted += '**Breakdown:**\n';
-      if (tokensMatch) formatted += `• Tokens: $${tokensMatch[1]}\n`;
-      if (nativeMatch) formatted += `• Native: $${nativeMatch[1]}\n`;
-      if (protocolsMatch) formatted += `• Protocols: $${protocolsMatch[1]}\n`;
+      const tokenMatches = response.match(/Token Balances?[:\s]*\n([\s\S]*?)(?=\n\n|\n$|$)/i);
+      if (tokenMatches) {
+        formatted += '**Token Balances:**\n';
+        const tokenLines = tokenMatches[1].split('\n').filter(line => line.trim());
+        tokenLines.forEach(line => {
+          if (line.includes(':')) {
+            formatted += `• ${line.trim()}\n`;
+          }
+        });
+      }
     }
     
     formatted += '\n';
@@ -791,37 +622,25 @@ const ChatBox = () => {
   };
 
   const formatBalanceResponse = (response, partId, functionData = null) => {
-    let formatted = `**${partId}: Wallet Balances**\n\n`;
+    let formatted = `**${partId}: Token Balances**\n\n`;
     
-    if (functionData && functionData.result) {
-      // Extract data from function result
-      const balanceData = functionData.result;
+    if (functionData && functionData.result && functionData.result.balances) {
+      const balances = functionData.result.balances;
       
-      if (balanceData.balances && Array.isArray(balanceData.balances)) {
-        balanceData.balances.forEach(balance => {
-          if (balance.balance && parseFloat(balance.balance) > 0) {
-            const symbol = balance.symbol || 'Unknown';
-            const balanceValue = parseFloat(balance.balance);
-            
-            if (symbol === 'USDC') {
-              // USDC has 6 decimals
-              const usdcInUnits = balanceValue / 1000000;
-              formatted += `💵 **USDC:** ${usdcInUnits.toFixed(2)}\n`;
-            } else if (symbol === 'WETH' || symbol === 'ETH') {
-              // ETH has 18 decimals
-              const ethInUnits = balanceValue / 1000000000000000000;
-              formatted += `🔷 **${symbol}:** ${ethInUnits.toFixed(6)} ETH\n`;
-            } else {
-              formatted += `💰 **${symbol}:** ${balanceValue.toFixed(4)}\n`;
-            }
-          }
-        });
-      }
+      balances.forEach(balance => {
+        if (balance.balance && parseFloat(balance.balance) > 0) {
+          const symbol = balance.symbol || 'Unknown';
+          const rawBalance = parseFloat(balance.balance);
+          const decimals = balance.decimals || 18;
+          const actualBalance = rawBalance / Math.pow(10, decimals);
+          
+          formatted += `• **${symbol}:** ${actualBalance.toFixed(6)}\n`;
+        }
+      });
     } else {
-      // Fallback to AI response parsing
-      const usdcMatch = response.match(/USDC.*?:\s*([\d,]+\.?\d*)/);
-      const wethMatch = response.match(/WETH.*?:\s*([\d,]+\.?\d*)/);
-      const ethMatch = response.match(/ETH.*?:\s*([\d,]+\.?\d*)/);
+      const usdcMatch = response.match(/USDC[:\s]+([\d,]+)/);
+      const wethMatch = response.match(/WETH[:\s]+([\d,]+)/);
+      const ethMatch = response.match(/ETH[:\s]+([\d,]+)/);
       
       if (usdcMatch) {
         const usdcAmount = parseFloat(usdcMatch[1].replace(/,/g, ''));
@@ -851,11 +670,9 @@ const ChatBox = () => {
     formatted += `the candle graph for ETH/USDC.\n\n`;
     
     if (functionData && functionData.result) {
-      // Extract data from function result
       const chartData = functionData.result;
       
       if (chartData && Array.isArray(chartData)) {
-        // Extract structured data for the chart
         const chartDataPoints = chartData.slice(-7).map(item => ({
           date: new Date(item.time * 1000).toLocaleDateString(),
           open: parseFloat(item.open),
@@ -864,11 +681,9 @@ const ChatBox = () => {
           close: parseFloat(item.close)
         }));
         
-        // Store chart data in state
         setChartData(chartDataPoints);
       }
     } else {
-      // Fallback to AI response parsing
       const jsonMatch = response.match(/```\s*\[(.*?)\]\s*```/s);
       if (jsonMatch) {
         try {
@@ -918,7 +733,6 @@ const ChatBox = () => {
     let formatted = `**${partId}: Gas Estimates**\n\n`;
     
     if (functionData && functionData.result) {
-      // Extract data from function result
       const gasData = functionData.result;
       
       if (gasData.baseFee) {
@@ -938,7 +752,6 @@ const ChatBox = () => {
         });
       }
     } else {
-      // Fallback to AI response parsing
       const baseMatch = response.match(/Base Fee[:\s]+([\d,]+)/);
       const lowMatch = response.match(/Low Priority Fee[:\s]*\n[^:]*Max Fee[:\s]+([\d,]+)/);
       const mediumMatch = response.match(/Medium Priority Fee[:\s]*\n[^:]*Max Fee[:\s]+([\d,]+)/);
