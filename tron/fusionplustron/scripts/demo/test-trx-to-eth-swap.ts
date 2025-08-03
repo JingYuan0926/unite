@@ -291,7 +291,7 @@ async function testTRXtoETHAtomicSwap() {
       claimResult = await orchestrator.claimAtomicSwap(
         swapResult,
         swapResult.secret,
-        config.USER_B_ETH_PRIVATE_KEY, // User B calls withdraw (taker), sends ETH to User A (maker)
+        process.env.USER_B_ETH_PRIVATE_KEY!, // User B calls withdraw (taker), sends ETH to User A (maker)
         userATronPrivateKey! // User A gets TRX using revealed secret
       );
 

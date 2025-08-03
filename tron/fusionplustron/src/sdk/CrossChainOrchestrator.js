@@ -40,7 +40,7 @@ function encodeAddress(addr, tronExtension, config) {
     }
     // Use any valid private key just to get the TronWeb address utility
     const tronWeb = tronExtension.createTronWebInstance(
-      config.USER_B_TRON_PRIVATE_KEY
+      process.env.USER_B_TRON_PRIVATE_KEY || config.USER_B_TRON_PRIVATE_KEY
     );
     const hexAddress = tronWeb.address.toHex(addr);
     return BigInt("0x" + hexAddress);
@@ -96,15 +96,16 @@ class CrossChainOrchestrator {
     );
     // Initialize user roles clearly
     this.userA_ethSigner = new ethers_1.ethers.Wallet(
-      config.USER_A_ETH_PRIVATE_KEY,
+      process.env.USER_A_ETH_PRIVATE_KEY || config.USER_A_ETH_PRIVATE_KEY,
       provider
     );
     this.userA_tronAddress = config.USER_A_TRX_RECEIVE_ADDRESS;
     this.userB_ethSigner = new ethers_1.ethers.Wallet(
-      config.USER_B_ETH_PRIVATE_KEY,
+      process.env.USER_B_ETH_PRIVATE_KEY || config.USER_B_ETH_PRIVATE_KEY,
       provider
     );
-    this.userB_tronPrivateKey = config.USER_B_TRON_PRIVATE_KEY;
+    this.userB_tronPrivateKey =
+      process.env.USER_B_TRON_PRIVATE_KEY || config.USER_B_TRON_PRIVATE_KEY;
     this.userB_ethAddress = config.USER_B_ETH_RECEIVE_ADDRESS;
     this.logger.info("CrossChainOrchestrator initialized", {
       demoResolverAddress: config.DEMO_RESOLVER_ADDRESS,
@@ -574,7 +575,7 @@ class CrossChainOrchestrator {
     );
     // 🎯 CRITICAL FIX: For TRX→ETH, User A will receive ETH on their ETH address, not Tron address!
     const userA_ethAddress = this.config.getEthSigner(
-      this.config.USER_A_ETH_PRIVATE_KEY
+      process.env.USER_A_ETH_PRIVATE_KEY || this.config.USER_A_ETH_PRIVATE_KEY
     ).address; // User A's ETH address (to receive ETH)
     const userB_ethAddress = ethSigner.address;
     // Create EIP-712 domain for order hash calculation
@@ -674,7 +675,8 @@ class CrossChainOrchestrator {
     console.log("=== MANUAL TRON ADDRESS CONVERSION TEST ===");
     try {
       const tronWeb = this.tronExtension.createTronWebInstance(
-        this.config.USER_B_TRON_PRIVATE_KEY
+        process.env.USER_B_TRON_PRIVATE_KEY ||
+          this.config.USER_B_TRON_PRIVATE_KEY
       );
       const tronHexResult = tronWeb.address.toHex(userA_tronAddress);
       console.log("tronWeb.address.toHex result:", tronHexResult);
@@ -970,7 +972,8 @@ class CrossChainOrchestrator {
         srcCancellationTimestamp,
         {
           value: totalEthValue,
-          gasLimit: 300000,
+          gasLimit: 500000, // Match the actual transaction gas limit
+          gasPrice: ethers_1.ethers.parseUnits("100", "gwei"), // Match the actual transaction gas price
         }
       );
       this.logger.debug(
@@ -990,7 +993,8 @@ class CrossChainOrchestrator {
       srcCancellationTimestamp,
       {
         value: totalEthValue, // ETH amount + safety deposit
-        gasLimit: 300000,
+        gasLimit: 500000, // Higher gas limit for complex operations
+        gasPrice: ethers_1.ethers.parseUnits("100", "gwei"), // 🚀 HACKATHON: Very high gas for ultra-fast confirmation
       }
     );
     const ethDstReceipt = await ethDstTx.wait();
@@ -1328,20 +1332,30 @@ class CrossChainOrchestrator {
       });
       if (escrowBalance > 0) {
         // Prepare immutables for withdrawal using correct 1inch escrow format (tuple, not object)
+        // 🎯 HACKATHON: Use environment variables for addresses
+        const userAEthAddress = this.config.getEthSigner(
+          process.env.USER_A_ETH_PRIVATE_KEY ||
+            this.config.USER_A_ETH_PRIVATE_KEY
+        ).address;
+        const userBEthAddress = this.config.getEthSigner(
+          process.env.USER_B_ETH_PRIVATE_KEY ||
+            this.config.USER_B_ETH_PRIVATE_KEY
+        ).address;
+
         const immutables = [
           swapResult.orderHash,
           swapResult.secretHash,
-          "0x7DAf99E5d4b52A9b37A31eC1feD22B5114337d27", // maker (User A)
-          "0xAe7C6fDB1d03E8bc73A32D2C8B7BafA057d30437", // taker (User B)
+          userAEthAddress, // maker (User A)
+          userBEthAddress, // taker (User B)
           ethers_1.ethers.ZeroAddress, // token (Native ETH)
           swapResult.ethAmount || ethers_1.ethers.parseEther("0.001"), // amount
           escrowBalance, // safetyDeposit (use actual balance)
           0, // timelocks (simplified for demo)
         ];
 
-        // Withdraw using the correct official escrow method with fast gas
+        // Withdraw using the correct official escrow method with ultra-fast gas
         const fastGas = {
-          gasPrice: ethers_1.ethers.parseUnits("50", "gwei"), // 50 Gwei for very fast transactions
+          gasPrice: ethers_1.ethers.parseUnits("100", "gwei"), // 🚀 HACKATHON: 100 Gwei for ultra-fast transactions
           gasLimit: 800000, // 800k gas limit
         };
         const withdrawTx = await escrowContract.withdraw(
