@@ -50,11 +50,12 @@ async function testTRXtoETHAtomicSwap() {
     console.log("⏳ Waiting for blockchain state to settle...");
     await new Promise((resolve) => setTimeout(resolve, 3000)); // 3 second delay
 
-    const userATronPrivateKey = process.env.USER_A_TRON_PRIVATE_KEY;
+    const userATronPrivateKey = process.env.USER_A_TRX_PRIVATE_KEY;
+    const userBEthPrivateKey = process.env.USER_B_ETH_PRIVATE_KEY;
     const provider = ethers.provider;
-    const userA = new ethers.Wallet(userATronPrivateKey!, provider); // OPPOSITE: User A is TRX holder
+    const userB = new ethers.Wallet(userBEthPrivateKey!, provider); // User B is ETH holder (resolver)
     const [deployer] = await ethers.getSigners();
-    const userB = deployer; // User B = Resolver
+    // User A doesn't need ETH wallet since they only interact with Tron
 
     console.log("✅ User A account prepared with clean invalidation state");
 
@@ -62,17 +63,14 @@ async function testTRXtoETHAtomicSwap() {
     const LOP = LimitOrderProtocol__factory.connect(lopAddress, provider);
 
     // Check initial balances
-    const initialUserAEth = await provider.getBalance(userA.address);
     const initialUserBEth = await provider.getBalance(userB.address);
 
     console.log("\n💰 INITIAL BALANCES:");
-    console.log(
-      `  User A (TRX Holder): ${ethers.formatEther(initialUserAEth)} ETH`
-    );
+    console.log(`  User A (TRX Holder): Uses Tron network only`);
     console.log(
       `  User B (Resolver): ${ethers.formatEther(initialUserBEth)} ETH`
     );
-    console.log(`  User A Address: ${userA.address}`);
+    console.log(`  User A Tron Address: ${config.USER_A_TRX_RECEIVE_ADDRESS}`);
     console.log(`  User B Address: ${userB.address}`);
 
     // =================================================================
@@ -110,11 +108,18 @@ async function testTRXtoETHAtomicSwap() {
       ethAmount: ethAmount, // Amount of ETH User A wants to receive
       tronPrivateKey: userATronPrivateKey!, // User A's Tron private key (TRX holder)
       ethPrivateKey: process.env.USER_B_ETH_PRIVATE_KEY!, // User B's ETH private key (ETH provider)
-      tronRecipient: userA.address, // User A will receive ETH
+      tronRecipient: config.USER_A_TRX_RECEIVE_ADDRESS, // User A will receive ETH
       timelock: 3600, // 1 hour
     };
 
     console.log("  📤 Calling orchestrator.executeTRXtoETHSwap...");
+    console.log("  🔍 Debug swap params:", {
+      ethAmount: swapParams.ethAmount.toString(),
+      tronPrivateKey: swapParams.tronPrivateKey ? "SET" : "MISSING",
+      ethPrivateKey: swapParams.ethPrivateKey ? "SET" : "MISSING",
+      tronRecipient: swapParams.tronRecipient,
+      timelock: swapParams.timelock,
+    });
     const swapResult = await orchestrator.executeTRXtoETHSwap(swapParams);
 
     console.log(`  ✅ Complete TRX → ETH atomic swap executed successfully!`);
@@ -181,14 +186,12 @@ async function testTRXtoETHAtomicSwap() {
     await new Promise((resolve) => setTimeout(resolve, 20000)); // 20 seconds
 
     // Check balances after atomic execution
-    const afterUserAEth = await provider.getBalance(userA.address);
     const afterUserBEth = await provider.getBalance(userB.address);
 
     console.log("\n💰 Balances After Atomic Execution:");
-    console.log(`  User A ETH: ${ethers.formatEther(afterUserAEth)} ETH`);
+    console.log(`  User A: Uses Tron network only`);
     console.log(`  User B ETH: ${ethers.formatEther(afterUserBEth)} ETH`);
 
-    const userAEthChange = afterUserAEth - initialUserAEth;
     const userBEthChange = initialUserBEth - afterUserBEth;
 
     console.log("\n📈 Balance Changes Analysis:");
