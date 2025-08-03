@@ -4,6 +4,10 @@ import { CrossChainOrchestrator } from "../../src/sdk/CrossChainOrchestrator";
 import { prepareAccountForTesting } from "../utils/invalidation-reset";
 import { LimitOrderProtocol__factory } from "../../typechain-types";
 import { ethers } from "hardhat";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 /**
  * 🚀 COMPLETE ETH → TRX ATOMIC SWAP TEST
@@ -28,7 +32,41 @@ async function testCompleteAtomicSwap() {
   require("dotenv").config();
 
   try {
-    // Initialize components
+    // =================================================================
+    // DEPLOY FRESH RESOLVER (Prevents order replay attacks)
+    // =================================================================
+    console.log("\n🏭 Deploying fresh DemoResolver to prevent order replay...");
+
+    // Deploy using hardhat run command
+    const { stdout } = await execAsync(
+      "npx hardhat run scripts/deploy-resolver.ts --network sepolia"
+    );
+    console.log(stdout);
+
+    // Extract the deployed address from the output
+    const addressMatch = stdout.match(
+      /DemoResolver deployed to: (0x[a-fA-F0-9]{40})/
+    );
+    const demoResolverAddress = addressMatch ? addressMatch[1] : null;
+
+    if (!demoResolverAddress) {
+      throw new Error(
+        "Failed to extract DemoResolver address from deployment output"
+      );
+    }
+
+    console.log(`✅ Fresh DemoResolver deployed: ${demoResolverAddress}`);
+
+    // Small delay to ensure .env file is updated and contracts are ready
+    console.log("⏳ Waiting for deployment to settle...");
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
+
+    // ✅ CRITICAL: Reload environment variables after .env update
+    console.log("🔄 Reloading environment variables with updated DemoResolver address...");
+    delete require.cache[require.resolve('dotenv')];
+    require("dotenv").config();
+    
+    // Initialize components with fresh config
     const config = new ConfigManager();
     const baseLogger = Logger.getInstance();
     const logger = new ScopedLogger(baseLogger, "CompleteSwapTest");
@@ -37,7 +75,6 @@ async function testCompleteAtomicSwap() {
     // Contract addresses for real cross-chain swap
     const lopAddress = "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0";
     const escrowFactoryAddress = "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA";
-    const demoResolverAddress = "0x929756B47168f5dff0903B390977F91F11386337"; // Fresh resolver for working cross-chain swaps
 
     // Prepare account for testing (reset invalidation + ensure approvals)
     console.log("\n🛠️ Preparing User A account for testing...");
