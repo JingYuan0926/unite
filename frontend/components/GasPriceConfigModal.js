@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import chainData from '../data/chains.json';
 
 export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress }) {
   const [selectedNetworks, setSelectedNetworks] = useState([]);
@@ -8,20 +9,12 @@ export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress 
     alertThreshold: '50' // gwei
   });
 
-  const supportedNetworks = [
-    "Ethereum Mainnet",
-    "Arbitrum",
-    "BNB Chain",
-    "Gnosis",
-    "Optimism",
-    "Sonic",
-    "Polygon",
-    "Base",
-    "ZKsync Era",
-    "Linea",
-    "Avalanche",
-    "Unichain"
-  ];
+  const supportedNetworks = chainData.networks.map(network => network.name);
+
+  const networkLogos = chainData.networks.reduce((acc, network) => {
+    acc[network.name] = network.logo;
+    return acc;
+  }, {});
 
   const handleToggleNetwork = (network) => {
     setSelectedNetworks(prev => {
@@ -92,12 +85,20 @@ export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress 
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {supportedNetworks.map((network) => (
-                <label key={network} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
+                <label key={network} className="flex items-center space-x-3 p-3 rounded hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={selectedNetworks.includes(network)}
                     onChange={() => handleToggleNetwork(network)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <img 
+                    src={networkLogos[network]} 
+                    alt={`${network} logo`}
+                    className="w-6 h-6 rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
                   />
                   <span className="text-sm text-gray-700">{network}</span>
                 </label>
