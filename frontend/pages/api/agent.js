@@ -73,6 +73,12 @@ const handlePost = async (req, res) => {
       case 'wallet':
         return await handleWallet(req, res, agentInstance, wallet);
       
+      case 'signTypedData':
+        return await handleSignTypedData(req, res, agentInstance, wallet);
+      
+      case 'submitSignedOrder':
+        return await handleSubmitSignedOrder(req, res, agentInstance, wallet);
+      
       case 'function':
         return await handleDirectFunction(req, res, agentInstance, functionCall, params);
       
@@ -190,6 +196,113 @@ const handleDirectFunction = async (req, res, agentInstance, functionCall, param
     });
   } catch (error) {
     console.error('❌ Direct function call error:', error);
+    return handleError(res, error);
+  }
+};
+
+// Handle EIP-712 typed data signing for frontend wallets
+const handleSignTypedData = async (req, res, agentInstance, wallet) => {
+  const { typedData, signature } = req.body;
+  
+  if (!typedData) {
+    return res.status(400).json({ 
+      error: 'Typed data is required for signing' 
+    });
+  }
+
+  if (!wallet || !wallet.address) {
+    return res.status(400).json({ 
+      error: 'Wallet is required for signing' 
+    });
+  }
+
+  try {
+    console.log('🔐 Processing EIP-712 signature request for wallet:', wallet.address);
+    
+    // Set wallet in agent
+    if (agentInstance.setWallet) {
+      agentInstance.setWallet(wallet);
+    }
+
+    // If signature is provided, return it (frontend already signed)
+    if (signature) {
+      console.log('✅ Signature provided by frontend:', signature.substring(0, 10) + '...');
+      return res.status(200).json({
+        action: 'signTypedData',
+        success: true,
+        signature: signature,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // If no signature provided, return the typed data for frontend signing
+    console.log('📝 Returning typed data for frontend signing');
+    return res.status(200).json({
+      action: 'signTypedData',
+      success: false,
+      requiresFrontendSigning: true,
+      typedData: typedData,
+      message: 'Please sign this typed data with your wallet and resubmit with signature',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Sign typed data error:', error);
+    return handleError(res, error);
+  }
+};
+
+// Handle signed order submission
+const handleSubmitSignedOrder = async (req, res, agentInstance, wallet) => {
+  const { signedOrder } = req.body;
+  
+  if (!signedOrder || !signedOrder.typedData || !signedOrder.signature || !signedOrder.orderInput) {
+    return res.status(400).json({ 
+      error: 'Signed order data is required (typedData, signature, orderInput)' 
+    });
+  }
+
+  if (!wallet || !wallet.address) {
+    return res.status(400).json({ 
+      error: 'Wallet is required for order submission' 
+    });
+  }
+
+  try {
+    console.log('📝 Processing signed order submission for wallet:', wallet.address);
+    
+    // Set wallet in agent
+    if (agentInstance.setWallet) {
+      agentInstance.setWallet(wallet);
+    }
+
+    // Call the fusionPlusAPI directly with the signed order
+    const submitOrderArgs = {
+      endpoint: "submitOrder",
+      order: signedOrder.orderInput, // Use orderInput as the order parameter
+      srcChainId: signedOrder.srcChainId || 42161, // Use the source chain from signedOrder
+      signature: signedOrder.signature,
+      extension: signedOrder.extension || "0x", // Get extension from signedOrder
+      quoteId: signedOrder.quoteId || "",
+      secretHashes: signedOrder.secretHashes || [] // Include secretHashes
+    };
+
+    // Import the fusionPlusAPI function directly
+    const { fusionPlusAPI } = await import('1inch-agent-kit');
+    
+    // Execute the function
+    const result = await fusionPlusAPI(submitOrderArgs);
+
+    console.log('✅ Signed order submitted successfully');
+
+    return res.status(200).json({
+      action: 'submitSignedOrder',
+      success: true,
+      content: 'Order submitted successfully! Your cross-chain swap is now being processed.',
+      result: result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Signed order submission error:', error);
     return handleError(res, error);
   }
 };

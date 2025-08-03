@@ -98,6 +98,8 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - tokenDetailsAPI: endpoint, chain, tokenAddress
 
 5. **Token Addresses by Chain** (FUSION+ USES WETH, NOT NATIVE ETH): 
+   **CRITICAL: For fusionPlusAPI, ALWAYS use WETH addresses, NEVER use native ETH addresses (0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee)**
+   
    - ETHEREUM (Chain 1):
      - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" (for swapAPI only)
      - WETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" (for fusionPlusAPI)
@@ -147,18 +149,24 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - Wallet balances → balanceAPI
 
 9. **Fusion+ Swap Execution Flow** (EXECUTE IMMEDIATELY):
-   When user wants a cross-chain swap, EXECUTE these functions in sequence:
+   When user wants a cross-chain swap, EXECUTE this function:
    
-   Step 1: Get Quote
-   - CALL fusionPlusAPI with endpoint="getQuote" to get the quote
+   - CALL fusionPlusAPI with endpoint="executeCrossChainSwap" to complete the entire swap
+   - This function handles: getQuote + buildOrder + submitOrder automatically
+   - Use preset="fast" for quick execution
    
-   Step 2: Build Order (EXECUTE IMMEDIATELY after getting quote)
-   - CALL fusionPlusAPI with endpoint="buildOrder" using the quote from Step 1
-   - Use secretsHashList: ["0x315b47a8c3780434b153667588db4ca628526e20000000000000000000000000"]
-   
-   Step 3: Submit Order (EXECUTE IMMEDIATELY after building order)
-   - CALL fusionPlusAPI with endpoint="submitOrder" using the order from Step 2
-   - Use the connected wallet's address and signature
+   EXAMPLE:
+   "Cross-chain swap 0.001 ETH from Arbitrum to Ethereum" → fusionPlusAPI with:
+   {
+     "endpoint": "executeCrossChainSwap",
+     "srcChain": 42161,
+     "dstChain": 1,
+     "srcTokenAddress": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1", // WETH on Arbitrum
+     "dstTokenAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH on Ethereum
+     "amount": "1000000000000000",
+     "walletAddress": "${walletAddress}",
+     "preset": "fast"
+   }
 
 10. **EXACT EXAMPLES**:
     - "Cross-chain swap ETH from Arbitrum to Ethereum" → fusionPlusAPI with:
@@ -166,8 +174,8 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
         "endpoint": "getQuote",
         "srcChain": 42161,
         "dstChain": 1,
-        "srcTokenAddress": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-        "dstTokenAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "srcTokenAddress": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1", // WETH on Arbitrum
+        "dstTokenAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH on Ethereum
         "amount": "1000000000000000",
         "walletAddress": "${walletAddress}",
         "enableEstimate": true
@@ -177,7 +185,7 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
       {
         "endpoint": "getQuote",
         "chain": 1,
-        "src": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "src": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH for swapAPI
         "dst": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
         "amount": "1000000000000000000"
       }
@@ -199,7 +207,7 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
     - Use swapAPI for basic single-chain swaps
 
 15. **CRITICAL PARAMETER NAMING**:
-    - ALL functions use "endpoint" parameter (NOT "action") VERY IMPORTANT
+    - ALL functions use "endpoint" parameter (NOT "action") VERY IMPORTANT!! (PLEASE DO NOT IGNORE THIS)
     - fusionPlusAPI uses: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
     - swapAPI uses: endpoint, chain, src, dst, amount
     - gasAPI uses: chain
@@ -258,9 +266,9 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
 IMPORTANT: If you cannot extract required parameters from the user's query, ask them to provide more specific information rather than calling functions with empty arguments.`;
   }
 
-  /**
-   * Send a user prompt → let the model call your functions → return final answer.
-   */
+/**
+ * Send a user prompt → let the model call your functions → return final answer.
+ */
   async chat(userPrompt: string, wallet?: Wallet): Promise<AgentResponse> {
     // Set wallet if provided
     if (wallet) {
@@ -276,8 +284,8 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
       return this.continueAction(userPrompt);
     }
     
-    // 1) ask the model, giving it all your function definitions
-    const fnDefs: FunctionDefinition[] = registry.getFunctionDefinitions();
+  // 1) ask the model, giving it all your function definitions
+  const fnDefs: FunctionDefinition[] = registry.getFunctionDefinitions();
     logger.info(`Available functions: ${fnDefs.map(f => f.name).join(', ')}`);
     
     // Debug: Log the tracesAPI function definition
@@ -314,20 +322,20 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
       return {
         content: msg.content ?? "",
       };
-    }
+  }
 
-    // 3) Otherwise, parse arguments & invoke your handler
+  // 3) Otherwise, parse arguments & invoke your handler
     const functionCalls: AgentResponse['functionCalls'] = [];
     
     for (const toolCall of msg.tool_calls) {
       const { name, arguments: argStr } = toolCall.function;
       logger.info(`Raw function call - name: ${name}, arguments: ${argStr}`);
-      const args = JSON.parse(argStr || "{}");
+  const args = JSON.parse(argStr || "{}");
       
       logger.info(`Calling function: ${name} with args:`, args);
       
       try {
-        const result = await registry.callFunction(name, args);
+  const result = await registry.callFunction(name, args);
         functionCalls.push({
           name,
           arguments: args,
@@ -429,23 +437,13 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
       return { content: "No wallet connected. Please connect your wallet first." };
     }
 
-    // Use WETH addresses for Fusion+ API (it doesn't support native ETH)
-    const getWETHAddress = (chainId: number) => {
-      switch (chainId) {
-        case 1: return "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"; // Ethereum WETH
-        case 42161: return "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // Arbitrum WETH
-        case 10: return "0x4200000000000000000000000000000000000006"; // Optimism WETH
-        case 137: return "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"; // Polygon WETH
-        default: return "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-      }
-    };
-
+    // Use the correct WETH addresses directly for Fusion+ API
     const buildOrderArgs = {
       endpoint: "buildOrder",
-      srcChain: quote.srcChain || 42161,
-      dstChain: quote.dstChain || 1,
-      srcTokenAddress: getWETHAddress(quote.srcChain || 42161),
-      dstTokenAddress: getWETHAddress(quote.dstChain || 1),
+      srcChain: 42161, // Arbitrum
+      dstChain: 1, // Ethereum
+      srcTokenAddress: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1", // Arbitrum WETH
+      dstTokenAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // Ethereum WETH
       amount: quote.srcTokenAmount || "1000000000000000",
       walletAddress: walletAddress,
       quote: quote,
@@ -489,30 +487,55 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
       return { content: "No wallet connected. Please connect your wallet first." };
     }
 
-    // Extract the order data from typedData.message
-    const orderMessage = order.typedData.message;
+    // Debug: Log the order structure to understand the data
+    logger.info('Order structure:', JSON.stringify(order, null, 2));
+
+    // Extract the order data from the SDK response
     const orderInput = {
-      salt: orderMessage.salt,
-      makerAsset: orderMessage.makerAsset,
-      takerAsset: orderMessage.takerAsset,
-      maker: orderMessage.maker,
-      receiver: orderMessage.receiver,
-      makingAmount: orderMessage.makingAmount,
-      takingAmount: orderMessage.takingAmount,
-      makerTraits: orderMessage.makerTraits
+      salt: order.typedData.salt,
+      makerAsset: order.typedData.makerAsset,
+      takerAsset: order.typedData.takerAsset,
+      maker: order.typedData.maker,
+      receiver: order.typedData.receiver,
+      makingAmount: order.typedData.makingAmount,
+      takingAmount: order.typedData.takingAmount,
+      makerTraits: order.typedData.makerTraits
     };
+
+    logger.info('Extracted orderInput:', JSON.stringify(orderInput, null, 2));
 
     const submitOrderArgs = {
       endpoint: "submitOrder",
       order: orderInput,
       srcChainId: 42161, // Use the source chain from the original quote
-      signature: "0x", // This would need to be generated by the wallet
+      signature: "0x", // SDK handles signing internally
       extension: order.extension || "0x", // Use the extension from the built order
-      quoteId: quote.quoteId || "" // Use the quoteId from the original quote
+      quoteId: order.quoteId || "", // Use the quoteId from the built order
+      secretHashes: order.secretHashes || [] // Use the secretHashes from the built order
     };
 
     try {
       const result = await registry.callFunction('fusionPlusAPI', submitOrderArgs);
+      
+      // Check if frontend signing is required
+      if (result.requiresFrontendSigning) {
+        return {
+          content: `🔐 **Signature Required**\n\nYour wallet needs to sign this transaction to complete the Fusion+ swap. Please check your MetaMask for a signature request.`,
+          functionCalls: [{
+            name: 'fusionPlusAPI',
+            arguments: submitOrderArgs,
+            result: {
+              error: 'FRONTEND_SIGNING_REQUIRED: Order needs to be signed by frontend wallet',
+              order: orderInput,
+              srcChainId: 42161,
+              quoteId: order.quoteId || "",
+              secretHashes: order.secretHashes || [],
+              extension: order.extension || "0x"
+            }
+          }]
+        };
+      }
+      
       this.conversationState = null; // Reset after completion
       
       return {
@@ -601,4 +624,4 @@ export async function llmAgent(userPrompt: string, config?: AgentKitConfig): Pro
   const agent = new OneInchAgentKit(config);
   const response = await agent.chat(userPrompt);
   return response.content;
-} 
+}

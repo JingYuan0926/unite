@@ -1,15 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSignTypedData } from 'wagmi';
 
 const AgentChat = () => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [pendingTypedData, setPendingTypedData] = useState(null);
   const messagesEndRef = useRef(null);
   
   // Use wagmi's useAccount hook to get wallet information
   const { address, isConnected: walletConnected, chainId } = useAccount();
+
+  // Use wagmi's useSignTypedData hook for EIP-712 signing
+  const { signTypedDataAsync } = useSignTypedData();
 
   // Check connection status on mount
   useEffect(() => {
@@ -39,6 +43,52 @@ const AgentChat = () => {
     } catch (error) {
       console.error('Failed to check connection:', error);
       setIsConnected(false);
+    }
+  };
+
+  // Handle EIP-712 signing for Fusion+ orders
+  const handleSignTypedData = async (typedData) => {
+    try {
+      console.log('🔐 Signing typed data with MetaMask...');
+      
+      // Sign the typed data using MetaMask
+      const signature = await signTypedDataAsync({
+        domain: typedData.domain,
+        types: typedData.types,
+        primaryType: typedData.primaryType,
+        message: typedData.message,
+      });
+
+      console.log('✅ Signature generated:', signature.substring(0, 10) + '...');
+
+      // Send the signature back to the API
+      const walletData = {
+        address: address,
+        chainId: chainId || 1,
+        walletType: 'rainbowkit'
+      };
+
+      const response = await fetch('/api/agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'signTypedData',
+          typedData: typedData,
+          signature: signature,
+          wallet: walletData
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit signature');
+      }
+
+      return signature;
+    } catch (error) {
+      console.error('❌ Failed to sign typed data:', error);
+      throw error;
     }
   };
 
@@ -87,6 +137,146 @@ const AgentChat = () => {
           throw new Error('Server error. Please check your API keys and try again.');
         } else {
           throw new Error(`Server error (${response.status}): ${data.error || 'Unknown error'}`);
+        }
+      }
+
+      // Check if the response contains a signature request
+      if (data.functionCalls && data.functionCalls.length > 0) {
+        for (const functionCall of data.functionCalls) {
+          // Check for the new executeCrossChainSwap response format
+          if (functionCall.result && functionCall.result.requiresFrontendSigning) {
+            console.log('🔐 Signature required for Fusion+ order (executeCrossChainSwap)');
+            
+            // Add a message asking user to sign
+            const signatureMessage = {
+              id: Date.now() + 2,
+              type: 'bot',
+              content: '🔐 **Signature Required**\n\nYour wallet needs to sign this transaction to complete the Fusion+ swap. Please check your MetaMask for a signature request.',
+              timestamp: new Date()
+            };
+            setMessages(prev => [...prev, signatureMessage]);
+            
+            try {
+              // Trigger the signature request using the typedData from the result
+              const signature = await handleSignTypedData(functionCall.result.typedData);
+              
+              // After successful signing, continue with the order submission
+              const submitResponse = await fetch('/api/agent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'submitSignedOrder',
+                  wallet: walletData,
+                  signedOrder: {
+                    typedData: functionCall.result.typedData,
+                    signature: signature,
+                    orderInput: functionCall.result.order,
+                    quoteId: functionCall.result.quoteId || "",
+                    extension: "0x",
+                    secretHashes: functionCall.result.secretHashes || [],
+                    srcChainId: functionCall.result.srcChainId || 42161
+                  }
+                }),
+              });
+              
+              const submitData = await submitResponse.json();
+              
+              if (submitResponse.ok) {
+                const successMessage = {
+                  id: Date.now() + 3,
+                  type: 'bot',
+                  content: submitData.content || 'Order submitted successfully! Your cross-chain swap is now being processed.',
+                  functionCalls: submitData.functionCalls || [],
+                  timestamp: new Date()
+                };
+                setMessages(prev => [...prev, successMessage]);
+              } else {
+                throw new Error(submitData.error || 'Failed to submit signed order');
+              }
+            } catch (signError) {
+              console.error('❌ Signature error:', signError);
+              const errorMessage = {
+                id: Date.now() + 3,
+                type: 'bot',
+                content: `❌ **Signature Failed**\n\nFailed to sign the transaction: ${signError.message}\n\nPlease try again or check your MetaMask connection.`,
+                timestamp: new Date()
+              };
+              setMessages(prev => [...prev, errorMessage]);
+            }
+            
+            setIsLoading(false);
+            return;
+          }
+          
+          // Check for the old error format (backward compatibility)
+          if (functionCall.result && functionCall.result.error && 
+              functionCall.result.error.includes('FRONTEND_SIGNING_REQUIRED')) {
+            
+            // Extract typed data from the function call result
+            if (functionCall.result.typedData) {
+              console.log('🔐 Signature required for Fusion+ order (legacy format)');
+              
+              // Add a message asking user to sign
+              const signatureMessage = {
+                id: Date.now() + 2,
+                type: 'bot',
+                content: '🔐 **Signature Required**\n\nYour wallet needs to sign this transaction to complete the Fusion+ swap. Please check your MetaMask for a signature request.',
+                timestamp: new Date()
+              };
+              setMessages(prev => [...prev, signatureMessage]);
+              
+              try {
+                // Trigger the signature request
+                const signature = await handleSignTypedData(functionCall.result.typedData);
+                
+                // After successful signing, continue with the order submission
+                const submitResponse = await fetch('/api/agent', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'submitSignedOrder',
+                    wallet: walletData,
+                    signedOrder: {
+                      typedData: functionCall.result.typedData,
+                      signature: signature,
+                      orderInput: functionCall.result.orderInput,
+                      quoteId: functionCall.result.quoteId || functionCall.arguments?.quoteId || "",
+                      extension: functionCall.result.extension || functionCall.arguments?.extension || "0x",
+                      secretHashes: functionCall.result.secretHashes || [],
+                      srcChainId: functionCall.result.srcChainId || 42161
+                    }
+                  }),
+                });
+                
+                const submitData = await submitResponse.json();
+                
+                if (submitResponse.ok) {
+                  const successMessage = {
+                    id: Date.now() + 3,
+                    type: 'bot',
+                    content: submitData.content || 'Order submitted successfully! Your cross-chain swap is now being processed.',
+                    functionCalls: submitData.functionCalls || [],
+                    timestamp: new Date()
+                  };
+                  setMessages(prev => [...prev, successMessage]);
+                } else {
+                  throw new Error(submitData.error || 'Failed to submit signed order');
+                }
+              } catch (signError) {
+                console.error('❌ Signature error:', signError);
+                const errorMessage = {
+                  id: Date.now() + 3,
+                  type: 'bot',
+                  content: `❌ **Signature Failed**\n\nFailed to sign the transaction: ${signError.message}\n\nPlease try again or check your MetaMask connection.`,
+                  timestamp: new Date()
+                };
+                setMessages(prev => [...prev, errorMessage]);
+              }
+              
+              setIsLoading(false);
+              return;
+            }
+          }
         }
       }
       
