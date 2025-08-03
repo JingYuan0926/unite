@@ -5,6 +5,12 @@ import CandleChart from './CandleChart';
 import Image from 'next/image';
 
 // Icon components
+const SendIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+  </svg>
+);
+
 const ChatIcon = () => (
   <Image
     src="/unicorn_standing.png"
@@ -1469,7 +1475,7 @@ const ChatBox = () => {
             disabled={isLoading || !inputMessage.trim() || !isConnected}
             className="send-button"
           >
-            {isLoading ? <Spinner size="sm" /> : <ChatIcon />}
+            {isLoading ? <Spinner size="sm" /> : <SendIcon />}
           </button>
         </div>
       </form>
