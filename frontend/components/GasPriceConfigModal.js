@@ -3,11 +3,9 @@ import chainData from '../data/chains.json';
 
 export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress }) {
   const [selectedNetworks, setSelectedNetworks] = useState([]);
-  const [gasPricePreferences, setGasPricePreferences] = useState({
-    updateInterval: '30', // seconds
-    showHistorical: false,
-    alertThreshold: '50' // gwei
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const supportedNetworks = chainData.networks.map(network => network.name);
 
@@ -26,28 +24,42 @@ export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress 
     });
   };
 
-  const handlePreferenceChange = (key, value) => {
-    setGasPricePreferences(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
+  const handleSave = async () => {
+    if (selectedNetworks.length === 0) {
+      setError('Please select at least one network to monitor gas prices');
+      return;
+    }
 
-  const handleSave = () => {
-    const config = {
-      selectedNetworks,
-      gasPricePreferences
-    };
-    onSave(config);
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const config = {
+        selectedNetworks
+      };
+
+      onSave(config);
+      setSuccess('Gas Price configuration saved successfully!');
+      
+      // Reset form state
+      setSelectedNetworks([]);
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (err) {
+      setError(`Failed to save configuration: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
     setSelectedNetworks([]);
-    setGasPricePreferences({
-      updateInterval: '30',
-      showHistorical: false,
-      alertThreshold: '50'
-    });
+    setError('');
+    setSuccess('');
     onClose();
   };
 
@@ -72,11 +84,24 @@ export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress 
               </svg>
             </button>
           </div>
-          <p className="text-sm text-gray-600 mt-1">Configure gas price monitoring preferences</p>
+          <p className="text-sm text-gray-600 mt-1">Select which networks to monitor for gas prices</p>
         </div>
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[70vh] p-6">
+          
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+          
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-600">{success}</p>
+            </div>
+          )}
           
           {/* Network Configuration */}
           <div className="mb-6">
@@ -106,59 +131,6 @@ export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress 
             </div>
           </div>
 
-          {/* Gas Price Preferences */}
-          <div className="mb-6">
-            <h4 className="text-md font-medium text-gray-900 mb-3">Gas Price Preferences</h4>
-            
-            {/* Update Interval */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Update Interval (seconds)
-              </label>
-              <select
-                value={gasPricePreferences.updateInterval}
-                onChange={(e) => handlePreferenceChange('updateInterval', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="10">10 seconds</option>
-                <option value="30">30 seconds</option>
-                <option value="60">1 minute</option>
-                <option value="300">5 minutes</option>
-                <option value="600">10 minutes</option>
-              </select>
-            </div>
-
-            {/* Historical Data */}
-            <div className="mb-4">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={gasPricePreferences.showHistorical}
-                  onChange={(e) => handlePreferenceChange('showHistorical', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-sm text-gray-700">Show historical gas price trends</span>
-              </label>
-            </div>
-
-            {/* Alert Threshold */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Gas Price Alert Threshold (Gwei)
-              </label>
-              <input
-                type="number"
-                value={gasPricePreferences.alertThreshold}
-                onChange={(e) => handlePreferenceChange('alertThreshold', e.target.value)}
-                placeholder="50"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Receive alerts when gas prices exceed this threshold
-              </p>
-            </div>
-          </div>
-
         </div>
 
         {/* Footer */}
@@ -171,10 +143,10 @@ export default function GasPriceConfigModal({ isOpen, onClose, onSave, progress 
           </button>
           <button
             onClick={handleSave}
-            disabled={selectedNetworks.length === 0}
+            disabled={isLoading || selectedNetworks.length === 0}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            Save Configuration
+            {isLoading ? 'Saving...' : 'Save Configuration'}
           </button>
         </div>
 
