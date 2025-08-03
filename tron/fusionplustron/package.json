@@ -15,7 +15,7 @@
     "demo": "ts-node scripts/demo/hackathon-demo.ts",
     "demo:live": "ts-node scripts/demo/live-swap-demo.ts",
     "test:atomic": "ts-node scripts/demo/test-atomic-swap.ts",
-    "tron": "ts-node scripts/demo/test-complete-atomic-swap.ts",
+    "tron": "hardhat run scripts/demo/test-complete-atomic-swap.ts --network sepolia",
     "demo:help": "ts-node scripts/demo/hackathon-demo.ts --help",
     "validate:deployment": "ts-node scripts/utils/validate-deployment.ts",
     "test:phase5": "ts-node scripts/test/test-phase5-sdk.ts",
