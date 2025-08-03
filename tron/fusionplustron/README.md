@@ -20,7 +20,7 @@
 ### 🎯 **BREAKTHROUGH SOLUTIONS**
 
 - **✅ 0xa4f62a96 Error SOLVED**: Fixed PrivateOrder authorization with proper `makerTraits` encoding
-- **✅ Payment Flow CORRECTED**: User A pays main amount, User B pays only safety deposit
+- **✅ Payment Flow CORRECTED**: User A's ETH pulled by LOP, User B pays TRX + safety deposit
 - **✅ LOP Authorization FIXED**: DemoResolver properly authorized as `allowedSender`
 - **✅ Cross-Chain Coordination**: Perfect synchronization between Ethereum and Tron escrows
 
@@ -66,7 +66,7 @@ npx hardhat run scripts/demo/test-complete-atomic-swap.ts --network sepolia
 │   (Maker)       │    │   (Authorized)  │    │   (Resolver)    │
 │                 │    │                 │    │                 │
 │ • Signs LOP     │───▶│ • Fills Orders  │◀───│ • Calls Resolver│
-│ • Pays ETH      │    │ • Creates Escrow│    │ • Pays Deposit  │
+│ • LOP pulls ETH │    │ • Creates Escrow│    │ • Pays TRX+Dep  │
 │ • Gets TRX      │    │ • LOP Authorized│    │ • Gets ETH      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
@@ -115,7 +115,8 @@ const orderForSigning = {
 // ❌ WRONG: User B pays everything
 const totalValue = params.ethAmount + safetyDeposit;
 
-// ✅ CORRECT: User B pays only safety deposit, LOP pulls main amount from User A
+// ✅ CORRECT: User B pays only safety deposit on ETH side, LOP pulls main amount from User A
+// Note: User B also pays TRX on Tron side separately
 const totalValue = safetyDeposit;
 ```
 
@@ -137,8 +138,8 @@ require(msg.value == immutables.safetyDeposit, "Invalid ETH: must equal safetyDe
 # Ethereum Configuration
 ETH_NETWORK=sepolia
 ETH_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
-USER_A_ETH_PRIVATE_KEY=0x...  # Maker (pays ETH, gets TRX)
-USER_B_ETH_PRIVATE_KEY=0x...  # Resolver (pays safety deposit, gets ETH)
+USER_A_ETH_PRIVATE_KEY=0x...  # Maker (LOP pulls ETH, gets TRX)
+USER_B_ETH_PRIVATE_KEY=0x...  # Resolver (pays TRX + safety deposit, gets ETH)
 
 # Tron Configuration
 TRON_NETWORK=nile
