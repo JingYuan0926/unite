@@ -337,8 +337,9 @@ export class CrossChainOrchestrator {
       this.userB_ethSigner
     );
 
-    // Send the total value: swap amount + safety deposit in ONE atomic transaction
-    const totalValue = params.ethAmount + safetyDeposit;
+    // 🎯 CORRECTED FLOW: User B (resolver) only pays safety deposit
+    // The main swap amount will be pulled from User A's wallet by LOP
+    const totalValue = safetyDeposit;
 
     this.logger.debug("Calling deploySrc with detailed parameters", {
       caller: this.userB_ethSigner.address,
@@ -371,7 +372,7 @@ export class CrossChainOrchestrator {
       takerTraits: "0", // Default takerTraits
       args: "0x", // Empty args
       totalValue: totalValue.toString(),
-      note: "User B calls DemoResolver with User A's signed order - CORRECT FLOW",
+      note: "🎯 CORRECTED: User B pays only safety deposit, LOP pulls main amount from User A",
     });
 
     // Convert order object to array format for contract call (8-field Order struct)

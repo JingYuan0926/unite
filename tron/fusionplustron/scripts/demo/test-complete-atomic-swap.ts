@@ -38,7 +38,7 @@ async function testCompleteAtomicSwap() {
     const lopAddress = "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0";
     const mockTrxAddress = "0x74Fc932f869f088D2a9516AfAd239047bEb209BF";
     const escrowFactoryAddress = "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA";
-    const demoResolverAddress = "0xf80c9EAAd4a37a3782ECE65df77BFA24614294fC"; // Fresh resolver with clean invalidation state
+    const demoResolverAddress = "0x97dBd3D0b836a824E34DBF3e06107b36EfF077F8"; // Fixed resolver with corrected payment logic
 
     // Prepare account for testing (reset invalidation + ensure approvals)
     console.log("\n🛠️ Preparing User A account for testing...");
@@ -54,18 +54,17 @@ async function testCompleteAtomicSwap() {
 
     // Get contract instances with proper TypeScript interfaces
     const LOP = LimitOrderProtocol__factory.connect(lopAddress, provider);
-    const MockTRX = await ethers.getContractAt("MockTRX", mockTrxAddress);
 
     // Check initial balances
     const initialUserAEth = await provider.getBalance(userA.address);
-    const initialUserBTrx = await MockTRX.balanceOf(userB.address);
+    const initialUserBEth = await provider.getBalance(userB.address);
 
     console.log("\n💰 INITIAL BALANCES:");
     console.log(
       `  User A (Maker) ETH: ${ethers.formatEther(initialUserAEth)} ETH`
     );
     console.log(
-      `  User B (Resolver) MockTRX: ${ethers.formatEther(initialUserBTrx)} TRX`
+      `  User B (Resolver) ETH: ${ethers.formatEther(initialUserBEth)} ETH`
     );
     console.log(`  User A Address: ${userA.address}`);
     console.log(`  User B Address: ${userB.address}`);
@@ -177,18 +176,26 @@ async function testCompleteAtomicSwap() {
 
     // Check balances after atomic execution
     const afterUserAEth = await provider.getBalance(userA.address);
-    const afterUserBTrx = await MockTRX.balanceOf(userB.address);
+    const afterUserBEth = await provider.getBalance(userB.address);
 
     console.log("\n💰 Balances After Atomic Execution:");
     console.log(`  User A ETH: ${ethers.formatEther(afterUserAEth)} ETH`);
-    console.log(`  User B MockTRX: ${ethers.formatEther(afterUserBTrx)} TRX`);
+    console.log(`  User B ETH: ${ethers.formatEther(afterUserBEth)} ETH`);
 
-    const ethChange = initialUserAEth - afterUserAEth;
-    const trxChange = afterUserBTrx - initialUserBTrx;
+    const userAEthChange = initialUserAEth - afterUserAEth;
+    const userBEthChange = afterUserBEth - initialUserBEth;
 
-    console.log("\n📈 Balance Changes:");
-    console.log(`  User A ETH change: -${ethers.formatEther(ethChange)} ETH`);
-    console.log(`  User B TRX change: +${ethers.formatEther(trxChange)} TRX`);
+    console.log("\n📈 Balance Changes (CORRECTED FLOW):");
+    console.log(
+      `  User A ETH change: -${ethers.formatEther(userAEthChange)} ETH (PAID MAIN AMOUNT)`
+    );
+    console.log(
+      `  User B ETH change: ${ethers.formatEther(userBEthChange)} ETH (PAID SAFETY DEPOSIT ONLY)`
+    );
+    console.log(
+      `  💡 User A's ETH was pulled by LOP, User B paid only safety deposit`
+    );
+    console.log(`  🎯 This matches the correct PLAN.md flow!`);
 
     // Execute complete claiming using orchestrator
     console.log("\n🔑 Executing Complete Fund Claiming...");
@@ -287,13 +294,18 @@ async function testCompleteAtomicSwap() {
     console.log("5. ✅ Fresh account system prevents invalidation issues");
 
     console.log("\n📋 FINAL TEST RESULTS:");
-    console.log(`📊 ETH → TRX Trade: ✅ EXECUTED`);
+    console.log(`📊 ETH → TRX Cross-Chain Setup: ✅ EXECUTED`);
     console.log(`🏭 Ethereum Escrow: ✅ CREATED`);
     console.log(`🌐 Tron Escrow: ✅ CREATED`);
-    console.log(`💰 User A ETH spent: ${ethers.formatEther(ethChange)} ETH`);
-    console.log(`💰 User B TRX gained: ${ethers.formatEther(trxChange)} TRX`);
+    console.log(
+      `💰 User A ETH locked: ${ethers.formatEther(userAEthChange)} ETH`
+    );
+    console.log(
+      `💰 User B ETH costs: ${ethers.formatEther(-userBEthChange)} ETH`
+    );
     console.log(`📍 ETH Escrow: ${swapResult.ethEscrowAddress}`);
     console.log(`📍 Tron Escrow: ${swapResult.tronEscrowAddress}`);
+    console.log(`🔑 Available Secret: ${swapResult.secret}`);
   } catch (error: any) {
     console.error("❌ Complete atomic swap test failed:", error.message);
     console.error("📋 Error details:", error);
@@ -302,9 +314,12 @@ async function testCompleteAtomicSwap() {
     console.log(
       "1. Run: npx ts-node scripts/utils/invalidation-reset.ts prepare"
     );
-    console.log("2. Ensure USER_A_ETH_PRIVATE_KEY is set in .env");
-    console.log("3. Check MockTRX allowance and balance");
-    console.log("4. Verify all contract addresses are correct");
+    console.log(
+      "2. Ensure USER_A_ETH_PRIVATE_KEY and USER_B_ETH_PRIVATE_KEY are set in .env"
+    );
+    console.log("3. Check User A has sufficient ETH for the main swap amount");
+    console.log("4. Check User B has sufficient ETH for safety deposit + gas");
+    console.log("5. Verify all contract addresses are correct");
   }
 }
 

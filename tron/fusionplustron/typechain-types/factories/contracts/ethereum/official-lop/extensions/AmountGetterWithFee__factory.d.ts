@@ -1,0 +1,173 @@
+import { ContractFactory, ContractTransactionResponse } from "ethers";
+import type { Signer, ContractDeployTransaction, ContractRunner } from "ethers";
+import type { NonPayableOverrides } from "../../../../../common";
+import type { AmountGetterWithFee, AmountGetterWithFeeInterface } from "../../../../../contracts/ethereum/official-lop/extensions/AmountGetterWithFee";
+type AmountGetterWithFeeConstructorParams = [signer?: Signer] | ConstructorParameters<typeof ContractFactory>;
+export declare class AmountGetterWithFee__factory extends ContractFactory {
+    constructor(...args: AmountGetterWithFeeConstructorParams);
+    getDeployTransaction(overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<ContractDeployTransaction>;
+    deploy(overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<AmountGetterWithFee & {
+        deploymentTransaction(): ContractTransactionResponse;
+    }>;
+    connect(runner: ContractRunner | null): AmountGetterWithFee__factory;
+    static readonly bytecode = "0x60808060405234610016576107b4908161001c8239f35b600080fdfe6080604052600436101561001257600080fd5b6000803560e01c80631d9671c3146100a85763d7ff8a801461003357600080fd5b346100a5576100669061005861004836610118565b849394919b98999295979b610296565b99945097929c9150996106df565b92620186a09101810161007981856105eb565b93091515820180921161009157602082604051908152f35b634e487b7160e01b81526011600452602490fd5b80fd5b50346100a55760206100dd6100d4620186a06100c661004836610118565b99945097929c915099610489565b9201019061054b565b604051908152f35b9181601f840112156101135782359167ffffffffffffffff8311610113576020838186019501011161011357565b600080fd5b9060031982016101c0811261011357610100136101135760049167ffffffffffffffff90610104358281116101135781610154916004016100e5565b909390926101243592610144356001600160a01b03811681036101135792610164359261018435926101a43591821161011357610193916004016100e5565b9091565b9291909160009369ffffffffffffffffffff6000931690841561023657803560f81c90600a82600a029660019488860180871161023257821061022e5788840186019891829003600019019793849087015b8686106101fa575050505050505050565b83851161022a57803560b01c831461021e57948701946009199093019284016101e9565b50959950505050505050565b5080fd5b8780fd5b8880fd5b634e487b7160e01b84526032600452602484fd5b6001600160f01b0319903581811693926002811061026757505050565b60020360031b82901b16169150565b8115610280570490565b634e487b7160e01b600052601260045260246000fd5b916102a1828461024a565b60f01c92826002101561033657600281013560f81c926064841161034c5780600311610113576102d860021982016003840161024a565b60f01c92816005101561033657600583013560f81c926064841161032457826006116101135761030f926005190190600601610197565b919690928761031b5750565b60649194020492565b604051633066a1f160e01b8152600490fd5b634e487b7160e01b600052603260045260246000fd5b60405163c5374e2d60e01b8152600490fd5b6bffffffffffffffffffffffff19903581811693926014811061038057505050565b60140360031b82901b16169150565b90601f8019910116810190811067ffffffffffffffff8211176103b157604052565b634e487b7160e01b600052604160045260246000fd5b908060209392818452848401376000828201840152601f01601f1916010190565b94916104869997949896936104539260e06101c09180358a52602081013560208b0152604081013560408b0152606081013560608b0152608081013560808b015260a081013560a08b015260c081013560c08b0152013560e0890152806101008901528701916103c7565b6101208501979097526001600160a01b03166101408401526101608301526101808201528084036101a0909101526103c7565b90565b9197949690959492916014841061052f576104a4848361035e565b60601c9584601411610113576020986014966104de956040519c8d9b8c9a8b9a631d9671c360e01b8c526013190198019660048b016103e8565b03915afa908115610523576000916104f4575090565b90506020813d60201161051b575b8161050f6020938361038f565b81010312610113575190565b3d9150610502565b6040513d6000823e3d90fd5b9695505050505050610486925060a060c0830135920135610668565b620186a09160001983830992808302928380861095039480860395146105de57848311156105c5579082910981600003821680920460028082600302188083028203028083028203028083028203028083028203028083028203028092029003029360018380600003040190848311900302920304170290565b82634e487b71600052156003026011186020526024601cfd5b5050906104869250610276565b906000198183098183029182808310920391808303921461065c57620186a09082821115610649577f58cd20afa2f05a708ede54b48d3ae685db76b3bb83cf2cf95d4e8fb00bcbe61d940990828211900360fb1b910360051c170290565b634e487b7160005260116020526024601cfd5b5050620186a091500490565b909160001983830992808302928380861095039480860395146105de57848311156105c5579082910981600003821680920460028082600302188083028203028083028203028083028203028083028203028083028203028092029003029360018380600003040190848311900302920304170290565b91979496909594929160148410610734576106fa848361035e565b60601c9584601411610113576020986014966104de956040519c8d9b8c9a8b9a6301afff1560e71b8c526013190198019660048b016103e8565b975050505050505060a060c083013592013590610752828285610668565b9282156102805709151581018091116107685790565b634e487b7160e01b600052601160045260246000fdfea26469706673582212203d45ca52b5c2d94f89b0e6ee7696ecefe2e3f27103f8cd1e6ea71b328672199d64736f6c63430008170033";
+    static readonly abi: readonly [{
+        readonly inputs: readonly [];
+        readonly name: "InvalidIntegratorShare";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "InvalidWhitelistDiscountNumerator";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [{
+            readonly components: readonly [{
+                readonly internalType: "uint256";
+                readonly name: "salt";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "receiver";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "makerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "takerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "makingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "takingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "MakerTraits";
+                readonly name: "makerTraits";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IOrderMixin.Order";
+            readonly name: "order";
+            readonly type: "tuple";
+        }, {
+            readonly internalType: "bytes";
+            readonly name: "extension";
+            readonly type: "bytes";
+        }, {
+            readonly internalType: "bytes32";
+            readonly name: "orderHash";
+            readonly type: "bytes32";
+        }, {
+            readonly internalType: "address";
+            readonly name: "taker";
+            readonly type: "address";
+        }, {
+            readonly internalType: "uint256";
+            readonly name: "takingAmount";
+            readonly type: "uint256";
+        }, {
+            readonly internalType: "uint256";
+            readonly name: "remainingMakingAmount";
+            readonly type: "uint256";
+        }, {
+            readonly internalType: "bytes";
+            readonly name: "extraData";
+            readonly type: "bytes";
+        }];
+        readonly name: "getMakingAmount";
+        readonly outputs: readonly [{
+            readonly internalType: "uint256";
+            readonly name: "";
+            readonly type: "uint256";
+        }];
+        readonly stateMutability: "view";
+        readonly type: "function";
+    }, {
+        readonly inputs: readonly [{
+            readonly components: readonly [{
+                readonly internalType: "uint256";
+                readonly name: "salt";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "receiver";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "makerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "takerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "makingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "takingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "MakerTraits";
+                readonly name: "makerTraits";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IOrderMixin.Order";
+            readonly name: "order";
+            readonly type: "tuple";
+        }, {
+            readonly internalType: "bytes";
+            readonly name: "extension";
+            readonly type: "bytes";
+        }, {
+            readonly internalType: "bytes32";
+            readonly name: "orderHash";
+            readonly type: "bytes32";
+        }, {
+            readonly internalType: "address";
+            readonly name: "taker";
+            readonly type: "address";
+        }, {
+            readonly internalType: "uint256";
+            readonly name: "makingAmount";
+            readonly type: "uint256";
+        }, {
+            readonly internalType: "uint256";
+            readonly name: "remainingMakingAmount";
+            readonly type: "uint256";
+        }, {
+            readonly internalType: "bytes";
+            readonly name: "extraData";
+            readonly type: "bytes";
+        }];
+        readonly name: "getTakingAmount";
+        readonly outputs: readonly [{
+            readonly internalType: "uint256";
+            readonly name: "";
+            readonly type: "uint256";
+        }];
+        readonly stateMutability: "view";
+        readonly type: "function";
+    }];
+    static createInterface(): AmountGetterWithFeeInterface;
+    static connect(address: string, runner?: ContractRunner | null): AmountGetterWithFee;
+}
+export {};
+//# sourceMappingURL=AmountGetterWithFee__factory.d.ts.map

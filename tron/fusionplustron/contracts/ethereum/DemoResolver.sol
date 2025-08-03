@@ -63,10 +63,11 @@ contract DemoResolver {
         TakerTraits takerTraits,
         bytes calldata args
     ) external payable {
-        // Validate the value sent matches the expected amount
+        // Validate the value sent matches the safety deposit only
+        // The main 'amount' will be pulled from the order maker's wallet by LOP
         require(
-            msg.value == amount + immutables.safetyDeposit,
-            "Invalid ETH: must equal amount + safetyDeposit"
+            msg.value == immutables.safetyDeposit,
+            "Invalid ETH: must equal safetyDeposit only"
         );
 
         // Set deployment timestamp for timelocks (following official pattern)
