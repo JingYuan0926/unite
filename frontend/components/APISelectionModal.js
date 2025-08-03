@@ -103,7 +103,7 @@ export default function APISelectionModal({ isOpen, onClose, onSaveChanges, exis
   const handleConfigComplete = (apiName, config) => {
     setConfigStatus(prev => ({
       ...prev,
-      [apiName]: true
+      [apiName]: config // Store the actual config instead of just true
     }));
     
     // Close the current config modal
@@ -113,10 +113,11 @@ export default function APISelectionModal({ isOpen, onClose, onSaveChanges, exis
       setShowGasPriceConfig(false);
     }
 
-    // Check if there are more APIs to configure
+    // Check if there are more APIs to configure - use updated config status
+    const updatedConfigStatus = { ...configStatus, [apiName]: config };
     const apisNeedingConfig = selectedAPIs.filter(apiName => {
       const api = availableAPIs.find(a => a.name === apiName);
-      return api && api.requiresConfig && !configStatus[apiName];
+      return api && api.requiresConfig && !updatedConfigStatus[apiName];
     });
 
     if (apisNeedingConfig.length === 0) {
@@ -141,6 +142,7 @@ export default function APISelectionModal({ isOpen, onClose, onSaveChanges, exis
         config: configStatus[api.name] || false
       }));
     onSaveChanges(selectedAPIData);
+    setCurrentStep('selection'); // Reset to selection step
     onClose();
   };
 
@@ -297,7 +299,10 @@ export default function APISelectionModal({ isOpen, onClose, onSaveChanges, exis
       {showPortfolioConfig && (
         <PortfolioConfigModal
           isOpen={showPortfolioConfig}
-          onClose={() => setShowPortfolioConfig(false)}
+          onClose={() => {
+            setShowPortfolioConfig(false);
+            setCurrentStep('selection'); // Reset to selection step if closed without saving
+          }}
           onSave={(config) => handleConfigComplete("Portfolio API", config)}
           progress={getConfigProgress()}
         />
@@ -306,7 +311,10 @@ export default function APISelectionModal({ isOpen, onClose, onSaveChanges, exis
       {showGasPriceConfig && (
         <GasPriceConfigModal
           isOpen={showGasPriceConfig}
-          onClose={() => setShowGasPriceConfig(false)}
+          onClose={() => {
+            setShowGasPriceConfig(false);
+            setCurrentStep('selection'); // Reset to selection step if closed without saving
+          }}
           onSave={(config) => handleConfigComplete("Gas Price API", config)}
           progress={getConfigProgress()}
         />
