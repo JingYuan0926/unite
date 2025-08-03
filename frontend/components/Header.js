@@ -1,6 +1,17 @@
 import { LineShadowText } from "@/components/magicui/line-shadow-text";
+import { useScrollSpy } from "@/hooks/useScrollSpy";
 
 export default function Header() {
+  const sectionIds = ['home', 'how-it-works', 'features'];
+  const activeSection = useScrollSpy(sectionIds, 100); // 100px offset for header height
+
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -13,18 +24,47 @@ export default function Header() {
 
         {/* Middle - Navigation */}
         <nav className="flex items-center space-x-8">
-          <a href="/" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-            Home
-          </a>
-          <a href="/how-it-works" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-            How It Works
-          </a>
-          <a href="/features" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-            Features
-          </a>
-          <a href="/documentation" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-            Documentation
-          </a>
+          <button 
+            onClick={() => scrollToSection('home')}
+            className={`relative group transition-all duration-300 ${
+              activeSection === 'home' 
+                ? 'text-black font-bold text-lg' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <span className="font-medium">Home</span>
+            {activeSection === 'home' && (
+              <div className="absolute -inset-2 rounded-full border-2 border-gray-300 transition-all duration-300"></div>
+            )}
+          </button>
+          
+          <button 
+            onClick={() => scrollToSection('how-it-works')}
+            className={`relative group transition-all duration-300 ${
+              activeSection === 'how-it-works' 
+                ? 'text-black font-bold text-lg' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <span className="font-medium">How It Works</span>
+            {activeSection === 'how-it-works' && (
+              <div className="absolute -inset-2 rounded-full border-2 border-gray-300 transition-all duration-300"></div>
+            )}
+          </button>
+          
+          <button 
+            onClick={() => scrollToSection('features')}
+            className={`relative group transition-all duration-300 ${
+              activeSection === 'features' 
+                ? 'text-black font-bold text-lg' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <span className="font-medium">Features</span>
+            {activeSection === 'features' && (
+              <div className="absolute -inset-2 rounded-full border-2 border-gray-300 transition-all duration-300"></div>
+            )}
+          </button>
         </nav>
 
         {/* Right side - Blue button */}

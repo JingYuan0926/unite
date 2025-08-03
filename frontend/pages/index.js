@@ -7,13 +7,19 @@ export default function Home() {
   return (
     <div className="font-sans bg-white">
       {/* Home Section */}
-      <HomePage />
+      <section id="home">
+        <HomePage />
+      </section>
       
       {/* How It Works Section */}
-      <HowItWorks />
+      <section id="how-it-works">
+        <HowItWorks />
+      </section>
       
       {/* Features Section */}
-      <Features />
+      <section id="features">
+        <Features />
+      </section>
     </div>
   );
 }
