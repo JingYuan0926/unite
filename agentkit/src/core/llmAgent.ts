@@ -5,11 +5,23 @@ import { logger } from "../utils/logger";
 import { walletManager, Wallet } from "../utils/wallet";
 
 /**
+ * Conversation state for tracking multi-step actions
+ */
+interface ConversationState {
+  currentAction: string;
+  step: number;
+  data: any;
+  quote?: any;
+  order?: any;
+}
+
+/**
  * 1inch Agent Kit - Connect any LLM to 1inch DeFi protocols
  */
 export class OneInchAgentKit {
   private openai: OpenAI;
   private config: AgentKitConfig;
+  private conversationState: ConversationState | null = null;
 
   constructor(config: AgentKitConfig = {}) {
     this.config = {
@@ -77,7 +89,15 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
 
 2. **EXECUTE FUNCTIONS IMMEDIATELY** - When user asks for a swap or any action, CALL THE FUNCTIONS directly. Do NOT just describe what you will do.
 
-3. **Token Addresses by Chain**: 
+3. **CONTINUE MULTI-STEP ACTIONS** - If you have already started a multi-step process (like Fusion+ swap), continue with the next step automatically.
+
+4. **EXACT PARAMETER NAMES** - Use these EXACT parameter names, no variations:
+   - fusionPlusAPI: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
+   - swapAPI: endpoint, chain, src, dst, amount
+   - gasAPI: chain
+   - tokenDetailsAPI: endpoint, chain, tokenAddress
+
+5. **Token Addresses by Chain**: 
    - ETHEREUM (Chain 1):
      - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
      - USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
@@ -102,14 +122,14 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
      - WETH = "0x4200000000000000000000000000000000000006"
      - DAI = "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
 
-4. **Chain IDs**:
+6. **Chain IDs**:
    - Ethereum = 1
    - Polygon = 137
    - Arbitrum = 42161
    - Optimism = 10
    - BSC = 56
 
-5. **Amount Conversion**:
+7. **Amount Conversion**:
    - 1 ETH = "1000000000000000000" (18 decimals)
    - 1 USDC = "1000000" (6 decimals)
    - 1 DAI = "1000000000000000000" (18 decimals)
@@ -117,7 +137,7 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - 10 USDC = "10000000" (10 * 10^6)
    - 1000 USDC = "1000000" (1000 * 10^6)
 
-6. **Function Selection**:
+8. **Function Selection**:
    - Gas prices → gasAPI
    - Single-chain swaps (same chain) → swapAPI with endpoint="getQuote"
    - Cross-chain swaps (different chains) → fusionPlusAPI with endpoint="getQuote"
@@ -126,7 +146,7 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - Portfolio data → portfolioAPI
    - Wallet balances → balanceAPI
 
-7. **Fusion+ Swap Execution Flow** (EXECUTE IMMEDIATELY):
+9. **Fusion+ Swap Execution Flow** (EXECUTE IMMEDIATELY):
    When user wants a cross-chain swap, EXECUTE these functions in sequence:
    
    Step 1: Get Quote
@@ -140,32 +160,48 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - CALL fusionPlusAPI with endpoint="submitOrder" using the order from Step 2
    - Use the connected wallet's address and signature
 
-8. **Common Query Patterns**:
-   - "Get gas price on Ethereum" → gasAPI with chain=1
-   - "Swap 0.001 ETH to USDC on Ethereum" → swapAPI with endpoint="getQuote", chain=1, src="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dst="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", amount="1000000000000000"
-   - "Swap 10 USDC to ETH on Arbitrum" → swapAPI with endpoint="getQuote", chain=42161, src="0xaf88d065e77c8cc2239327c5edb3a432268e5831", dst="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", amount="10000000"
-   - "Cross-chain swap ETH from Arbitrum to Ethereum" → fusionPlusAPI with endpoint="getQuote", srcChain=42161, dstChain=1, srcTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dstTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+10. **EXACT EXAMPLES**:
+    - "Cross-chain swap ETH from Arbitrum to Ethereum" → fusionPlusAPI with:
+      {
+        "endpoint": "getQuote",
+        "srcChain": 42161,
+        "dstChain": 1,
+        "srcTokenAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "dstTokenAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "amount": "1000000000000000",
+        "walletAddress": "${walletAddress}",
+        "enableEstimate": true
+      }
+    
+    - "Swap ETH to USDC on Ethereum" → swapAPI with:
+      {
+        "endpoint": "getQuote",
+        "chain": 1,
+        "src": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "dst": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "amount": "1000000000000000000"
+      }
 
-9. **Required Parameters**:
-   - For swapAPI getQuote: endpoint, chain, src, dst, amount
-   - For fusionPlusAPI getQuote: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
-   - For gasAPI: chain
-   - For tokenDetailsAPI: endpoint, chain, tokenAddress
+11. **Required Parameters**:
+    - For swapAPI getQuote: endpoint, chain, src, dst, amount
+    - For fusionPlusAPI getQuote: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
+    - For gasAPI: chain
+    - For tokenDetailsAPI: endpoint, chain, tokenAddress
 
-10. **Wallet Address**: Use "${walletAddress}" (connected wallet address)
+12. **Wallet Address**: Use "${walletAddress}" (connected wallet address)
 
-11. **Enable Estimate**: Set to true for quotes
+13. **Enable Estimate**: Set to true for quotes
 
-12. **API Selection Logic**:
+14. **API Selection Logic**:
     - Use swapAPI for single-chain swaps (same source and destination chain)
     - Use fusionPlusAPI for cross-chain swaps (different source and destination chains)
     - Use fusionPlusAPI when user explicitly mentions "Fusion" or "cross-chain"
     - Use swapAPI for basic single-chain swaps
 
-13. **CRITICAL PARAMETER NAMING**:
+15. **CRITICAL PARAMETER NAMING**:
     - ALL functions use "endpoint" parameter (NOT "action") VERY IMPORTANT
-    - swapAPI uses: endpoint, chain, src, dst, amount
     - fusionPlusAPI uses: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
+    - swapAPI uses: endpoint, chain, src, dst, amount
     - gasAPI uses: chain
     - tokenDetailsAPI uses: endpoint, chain, tokenAddress
     - balanceAPI uses: endpoint, chain, walletAddress
@@ -180,23 +216,36 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
     - chartsAPI uses: type, token0, token1, chainId
     - rpcAPI uses: chainId, method, params
 
-14. **Swap Execution Instructions**:
+16. **Swap Execution Instructions**:
     - When user says "execute the swap" or "use my connected wallet to execute the swap", EXECUTE the complete Fusion+ flow
     - Always use the connected wallet's address for walletAddress parameter
     - For buildOrder, use the quote from getQuote and generate a secretsHashList
     - For submitOrder, use the order from buildOrder and the wallet's signature
     - EXECUTE ALL STEPS IMMEDIATELY - do not just describe them
 
-15. **Wallet Usage**:
+17. **Wallet Usage**:
     - ALWAYS use the connected wallet address: ${walletAddress}
     - If no wallet is connected, inform the user to connect their wallet first
     - For frontend usage, the wallet address comes from the connected MetaMask or other wallet
 
-16. **EXECUTION PRIORITY**:
+18. **EXECUTION PRIORITY**:
     - EXECUTE functions immediately when user requests an action
     - Do NOT describe what you will do - DO IT
     - Call multiple functions in sequence if needed
     - Provide results after execution, not before
+
+19. **CONTINUATION INSTRUCTIONS**:
+    - If you have a quote from a previous step, continue with buildOrder
+    - If you have an order from buildOrder, continue with submitOrder
+    - If user says "continue" or "execute", proceed with the next step automatically
+    - Do not ask for parameters again if you already have them from previous steps
+
+20. **NEVER USE THESE WRONG PARAMETER NAMES**:
+    - ❌ fromTokenAddress (use srcTokenAddress)
+    - ❌ toTokenAddress (use dstTokenAddress)
+    - ❌ action (use endpoint)
+    - ❌ fromChain (use srcChain)
+    - ❌ toChain (use dstChain)
 
 IMPORTANT: If you cannot extract required parameters from the user's query, ask them to provide more specific information rather than calling functions with empty arguments.`;
   }
@@ -213,6 +262,11 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
     await registry.init();
     
     logger.info("Starting chat with prompt:", userPrompt);
+    
+    // Check if we should continue a previous action
+    if (this.shouldContinueAction(userPrompt)) {
+      return this.continueAction(userPrompt);
+    }
     
     // 1) ask the model, giving it all your function definitions
     const fnDefs: FunctionDefinition[] = registry.getFunctionDefinitions();
@@ -272,6 +326,10 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
           result,
         });
         logger.info(`Function ${name} completed successfully`);
+        
+        // Update conversation state based on function results
+        this.updateConversationState(name, args, result);
+        
       } catch (error) {
         logger.error(`Function ${name} failed:`, error);
         functionCalls.push({
@@ -314,6 +372,161 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
       content: finalMessage?.content ?? "",
       functionCalls,
     };
+  }
+
+  /**
+   * Check if we should continue a previous action
+   */
+  private shouldContinueAction(userPrompt: string): boolean {
+    if (!this.conversationState) return false;
+    
+    const continueKeywords = ['continue', 'execute', 'proceed', 'next', 'build', 'submit', 'complete'];
+    const lowerPrompt = userPrompt.toLowerCase();
+    
+    return continueKeywords.some(keyword => lowerPrompt.includes(keyword));
+  }
+
+  /**
+   * Continue with the next step of a multi-step action
+   */
+  private async continueAction(userPrompt: string): Promise<AgentResponse> {
+    if (!this.conversationState) {
+      return { content: "No previous action to continue." };
+    }
+
+    logger.info(`Continuing action: ${this.conversationState.currentAction} at step ${this.conversationState.step}`);
+
+    // For Fusion+ swap, continue with the next step
+    if (this.conversationState.currentAction === 'fusionPlusSwap') {
+      if (this.conversationState.step === 1 && this.conversationState.quote) {
+        // Step 2: Build Order
+        return this.executeBuildOrder();
+      } else if (this.conversationState.step === 2 && this.conversationState.order) {
+        // Step 3: Submit Order
+        return this.executeSubmitOrder();
+      }
+    }
+
+    return { content: "Action completed or no next step available." };
+  }
+
+  /**
+   * Execute buildOrder step
+   */
+  private async executeBuildOrder(): Promise<AgentResponse> {
+    const quote = this.conversationState!.quote;
+    const walletAddress = walletManager.getWalletContext().wallet?.address;
+    
+    if (!walletAddress) {
+      return { content: "No wallet connected. Please connect your wallet first." };
+    }
+
+    const buildOrderArgs = {
+      endpoint: "buildOrder",
+      srcChain: quote.srcChain || 42161,
+      dstChain: quote.dstChain || 1,
+      srcTokenAddress: quote.srcTokenAddress || "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      dstTokenAddress: quote.dstTokenAddress || "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      amount: quote.srcTokenAmount || "1000000000000000",
+      walletAddress: walletAddress,
+      quote: quote,
+      secretsHashList: ["0x315b47a8c3780434b153667588db4ca628526e20000000000000000000000000"]
+    };
+
+    try {
+      const result = await registry.callFunction('fusionPlusAPI', buildOrderArgs);
+      this.conversationState!.step = 2;
+      this.conversationState!.order = result;
+      
+      return {
+        content: `Order built successfully! Now proceeding to submit the order.`,
+        functionCalls: [{
+          name: 'fusionPlusAPI',
+          arguments: buildOrderArgs,
+          result: result
+        }]
+      };
+    } catch (error) {
+      return {
+        content: `Failed to build order: ${error}`,
+        functionCalls: [{
+          name: 'fusionPlusAPI',
+          arguments: buildOrderArgs,
+          result: { error: error instanceof Error ? error.message : String(error) }
+        }]
+      };
+    }
+  }
+
+  /**
+   * Execute submitOrder step
+   */
+  private async executeSubmitOrder(): Promise<AgentResponse> {
+    const order = this.conversationState!.order;
+    const walletAddress = walletManager.getWalletContext().wallet?.address;
+    
+    if (!walletAddress) {
+      return { content: "No wallet connected. Please connect your wallet first." };
+    }
+
+    const submitOrderArgs = {
+      endpoint: "submitOrder",
+      order: order,
+      srcChainId: order.srcChainId || 42161,
+      signature: "0x", // This would need to be generated by the wallet
+      extension: "0x",
+      quoteId: order.quoteId || ""
+    };
+
+    try {
+      const result = await registry.callFunction('fusionPlusAPI', submitOrderArgs);
+      this.conversationState = null; // Reset after completion
+      
+      return {
+        content: `Order submitted successfully! Your cross-chain swap is now being processed.`,
+        functionCalls: [{
+          name: 'fusionPlusAPI',
+          arguments: submitOrderArgs,
+          result: result
+        }]
+      };
+    } catch (error) {
+      return {
+        content: `Failed to submit order: ${error}`,
+        functionCalls: [{
+          name: 'fusionPlusAPI',
+          arguments: submitOrderArgs,
+          result: { error: error instanceof Error ? error.message : String(error) }
+        }]
+      };
+    }
+  }
+
+  /**
+   * Update conversation state based on function results
+   */
+  private updateConversationState(functionName: string, args: any, result: any): void {
+    if (functionName === 'fusionPlusAPI' && args.endpoint === 'getQuote' && !result.error) {
+      // Started a Fusion+ swap
+      this.conversationState = {
+        currentAction: 'fusionPlusSwap',
+        step: 1,
+        data: args,
+        quote: result
+      };
+      logger.info('Started Fusion+ swap flow');
+    } else if (functionName === 'fusionPlusAPI' && args.endpoint === 'buildOrder' && !result.error) {
+      // Built order successfully
+      if (this.conversationState?.currentAction === 'fusionPlusSwap') {
+        this.conversationState.step = 2;
+        this.conversationState.order = result;
+        logger.info('Built order successfully');
+      }
+    } else if (functionName === 'fusionPlusAPI' && args.endpoint === 'submitOrder' && !result.error) {
+      // Submitted order successfully
+      this.conversationState = null; // Reset after completion
+      logger.info('Submitted order successfully');
+    }
   }
 
   /**
