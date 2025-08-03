@@ -379,10 +379,26 @@ export async function swapAPI(params: {
   privateKey?: string;
 }): Promise<any> {
   try {
+    // Validate endpoint parameter
+    if (!params.endpoint) {
+      throw new Error('Endpoint parameter is required. Please specify: getQuote, getSwap, getSpender, getApproveTransaction, getAllowance, getLiquiditySources, getTokens, executeSwap, or executeApprove');
+    }
+
+    // Validate chain parameter
+    if (!params.chain) {
+      throw new Error('Chain parameter is required. Please specify a valid chain ID (e.g., 1 for Ethereum, 137 for Polygon)');
+    }
+
     switch (params.endpoint) {
       case 'getQuote':
-        if (!params.src || !params.dst || !params.amount) {
-          throw new Error('src, dst, and amount are required for getQuote');
+        if (!params.src) {
+          throw new Error('src parameter is required for getQuote. Please specify the source token address (e.g., "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" for ETH)');
+        }
+        if (!params.dst) {
+          throw new Error('dst parameter is required for getQuote. Please specify the destination token address (e.g., "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" for USDC)');
+        }
+        if (!params.amount) {
+          throw new Error('amount parameter is required for getQuote. Please specify the amount in wei (e.g., "1000000000000000000" for 1 ETH)');
         }
         return await getQuote({
           chain: params.chain,
@@ -404,8 +420,23 @@ export async function swapAPI(params: {
         });
 
       case 'getSwap':
-        if (!params.src || !params.dst || !params.amount || !params.from || !params.origin || params.slippage === undefined) {
-          throw new Error('src, dst, amount, from, origin, and slippage are required for getSwap');
+        if (!params.src) {
+          throw new Error('src parameter is required for getSwap. Please specify the source token address');
+        }
+        if (!params.dst) {
+          throw new Error('dst parameter is required for getSwap. Please specify the destination token address');
+        }
+        if (!params.amount) {
+          throw new Error('amount parameter is required for getSwap. Please specify the amount in wei');
+        }
+        if (!params.from) {
+          throw new Error('from parameter is required for getSwap. Please specify the address that calls the 1inch contract');
+        }
+        if (!params.origin) {
+          throw new Error('origin parameter is required for getSwap. Please specify the EOA address that initiates the transaction');
+        }
+        if (params.slippage === undefined) {
+          throw new Error('slippage parameter is required for getSwap. Please specify the slippage tolerance percentage (e.g., 1 for 1%)');
         }
         return await getSwap({
           chain: params.chain,
@@ -443,7 +474,7 @@ export async function swapAPI(params: {
 
       case 'getApproveTransaction':
         if (!params.tokenAddress) {
-          throw new Error('tokenAddress is required for getApproveTransaction');
+          throw new Error('tokenAddress parameter is required for getApproveTransaction. Please specify the token address to approve');
         }
         return await getApproveTransaction({
           chain: params.chain,
@@ -452,8 +483,11 @@ export async function swapAPI(params: {
         });
 
       case 'getAllowance':
-        if (!params.tokenAddress || !params.walletAddress) {
-          throw new Error('tokenAddress and walletAddress are required for getAllowance');
+        if (!params.tokenAddress) {
+          throw new Error('tokenAddress parameter is required for getAllowance. Please specify the token address');
+        }
+        if (!params.walletAddress) {
+          throw new Error('walletAddress parameter is required for getAllowance. Please specify the wallet address');
         }
         return await getAllowance({
           chain: params.chain,
@@ -472,8 +506,23 @@ export async function swapAPI(params: {
         });
 
       case 'executeSwap':
-        if (!params.src || !params.dst || !params.amount || params.slippage === undefined || !params.walletAddress || !params.privateKey) {
-          throw new Error('src, dst, amount, slippage, walletAddress, and privateKey are required for executeSwap');
+        if (!params.src) {
+          throw new Error('src parameter is required for executeSwap. Please specify the source token address');
+        }
+        if (!params.dst) {
+          throw new Error('dst parameter is required for executeSwap. Please specify the destination token address');
+        }
+        if (!params.amount) {
+          throw new Error('amount parameter is required for executeSwap. Please specify the amount in wei');
+        }
+        if (params.slippage === undefined) {
+          throw new Error('slippage parameter is required for executeSwap. Please specify the slippage tolerance percentage');
+        }
+        if (!params.walletAddress) {
+          throw new Error('walletAddress parameter is required for executeSwap. Please specify the wallet address');
+        }
+        if (!params.privateKey) {
+          throw new Error('privateKey parameter is required for executeSwap. Please specify the private key for transaction signing');
         }
         return await executeSwap({
           chain: params.chain,
@@ -492,8 +541,17 @@ export async function swapAPI(params: {
         });
 
       case 'executeApprove':
-        if (!params.tokenAddress || !params.amount || !params.walletAddress || !params.privateKey) {
-          throw new Error('tokenAddress, amount, walletAddress, and privateKey are required for executeApprove');
+        if (!params.tokenAddress) {
+          throw new Error('tokenAddress parameter is required for executeApprove. Please specify the token address');
+        }
+        if (!params.amount) {
+          throw new Error('amount parameter is required for executeApprove. Please specify the amount to approve');
+        }
+        if (!params.walletAddress) {
+          throw new Error('walletAddress parameter is required for executeApprove. Please specify the wallet address');
+        }
+        if (!params.privateKey) {
+          throw new Error('privateKey parameter is required for executeApprove. Please specify the private key for transaction signing');
         }
         return await executeApprove({
           chain: params.chain,
@@ -504,7 +562,7 @@ export async function swapAPI(params: {
         });
 
       default:
-        throw new Error(`Unknown endpoint: ${params.endpoint}`);
+        throw new Error(`Unknown endpoint: ${params.endpoint}. Valid endpoints are: getQuote, getSwap, getSpender, getApproveTransaction, getAllowance, getLiquiditySources, getTokens, executeSwap, executeApprove`);
     }
   } catch (error) {
     throw new Error(`Swap API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
