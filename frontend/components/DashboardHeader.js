@@ -1,0 +1,65 @@
+import { LineShadowText } from "@/components/magicui/line-shadow-text";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useRouter } from "next/router";
+
+export default function DashboardHeader() {
+  const router = useRouter();
+  const currentPath = router.pathname;
+
+  const goToChat = () => {
+    router.push('/chat');
+  };
+
+  const goToDashboard = () => {
+    router.push('/dashboard');
+  };
+
+  return (
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        {/* Left side - Logo and text */}
+        <div className="flex items-center">
+          <span className="text-2xl font-bold text-gray-900 italic">
+            1inch Agent Kit
+          </span>
+        </div>
+
+        {/* Middle - Navigation */}
+        <nav className="flex items-center space-x-8">
+          <button 
+            onClick={goToChat}
+            className={`relative group transition-all duration-300 ${
+              currentPath === '/chat' 
+                ? 'text-black font-bold text-lg' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <span className="font-medium">Chat</span>
+            {currentPath === '/chat' && (
+              <div className="absolute -inset-2 rounded-full border-2 border-gray-300 transition-all duration-300"></div>
+            )}
+          </button>
+          
+          <button 
+            onClick={goToDashboard}
+            className={`relative group transition-all duration-300 ${
+              currentPath === '/dashboard' 
+                ? 'text-black font-bold text-lg' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <span className="font-medium">Dashboard</span>
+            {currentPath === '/dashboard' && (
+              <div className="absolute -inset-2 rounded-full border-2 border-gray-300 transition-all duration-300"></div>
+            )}
+          </button>
+        </nav>
+
+        {/* Right side - Connect Wallet Button */}
+        <div className="flex items-center">
+          <ConnectButton />
+        </div>
+      </div>
+    </header>
+  );
+} 
