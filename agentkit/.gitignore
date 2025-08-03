@@ -35,3 +35,5 @@ Thumbs.db
 /package-lock.json
 package-lock.json
 /wallet.json
+src/functions/tron/fusionplustron
+src/functions/tron/limit-order-protocol-master
