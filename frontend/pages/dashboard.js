@@ -28,7 +28,7 @@ export default function Dashboard() {
             <p className="text-gray-600">Manage and monitor your 1inch API integrations</p>
           </div>
           
-          {/* Add API Button */}
+          {/* Edit API Button */}
           <button
             onClick={handleAddAPI}
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-sm"
@@ -36,7 +36,7 @@ export default function Dashboard() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>Add API</span>
+            <span>Edit API</span>
           </button>
         </div>
         

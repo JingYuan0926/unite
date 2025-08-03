@@ -59,7 +59,7 @@ export default function APISelectionModal({ isOpen, onClose, onSaveChanges, exis
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">Add API to Dashboard</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Edit API Dashboard</h3>
             <button
               onClick={handleCancel}
               className="text-gray-400 hover:text-gray-600 focus:outline-none"
