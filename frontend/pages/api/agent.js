@@ -177,16 +177,140 @@ const handleDirectFunction = async (req, res, agentInstance, functionCall, param
   try {
     console.log('🔧 Direct function call:', functionCall.name, functionCall.parameters);
     
-    // Get the function from the agent's registry
-    const functionHandler = agentInstance.registry.getFunction(functionCall.name);
-    if (!functionHandler) {
-      return res.status(404).json({ 
-        error: `Function '${functionCall.name}' not found` 
-      });
+    // Import the function directly based on the function name
+    let result;
+    
+    switch (functionCall.name) {
+      case 'portfolioAPI':
+        try {
+          console.log('🔍 Attempting to import portfolioAPI...');
+          const { portfolioAPI } = await import('1inch-agent-kit');
+          console.log('✅ portfolioAPI imported successfully');
+          console.log('📋 Parameters:', functionCall.parameters);
+          
+          result = await portfolioAPI(functionCall.parameters || {});
+          console.log('✅ portfolioAPI executed successfully:', result);
+        } catch (importError) {
+          console.error('❌ Error with portfolioAPI:', importError);
+          throw new Error(`Portfolio API error: ${importError.message}`);
+        }
+        break;
+        
+      case 'gasAPI':
+        try {
+          console.log('⛽ Attempting to import gasAPI...');
+          const { gasAPI } = await import('1inch-agent-kit');
+          console.log('✅ gasAPI imported successfully');
+          console.log('📋 Parameters:', functionCall.parameters);
+          
+          result = await gasAPI(functionCall.parameters || {});
+          console.log('✅ gasAPI executed successfully:', result);
+        } catch (importError) {
+          console.error('❌ Error with gasAPI:', importError);
+          throw new Error(`Gas API error: ${importError.message}`);
+        }
+        break;
+        
+      case 'rpcAPI':
+        const { rpcAPI } = await import('1inch-agent-kit');
+        result = await rpcAPI(functionCall.parameters || {});
+        break;
+        
+      case 'swapAPI':
+        const { swapAPI } = await import('1inch-agent-kit');
+        result = await swapAPI(functionCall.parameters || {});
+        break;
+        
+      case 'getQuote':
+        const { getQuote } = await import('1inch-agent-kit');
+        result = await getQuote(functionCall.parameters || {});
+        break;
+        
+      case 'swap':
+        const { swap } = await import('1inch-agent-kit');
+        result = await swap(functionCall.parameters || {});
+        break;
+        
+      case 'healthCheck':
+        const { healthCheck } = await import('1inch-agent-kit');
+        result = await healthCheck(functionCall.parameters || {});
+        break;
+        
+      case 'chartsAPI':
+        const { chartsAPI } = await import('1inch-agent-kit');
+        result = await chartsAPI(functionCall.parameters || {});
+        break;
+        
+      case 'tokenDetailsAPI':
+        const { tokenDetailsAPI } = await import('1inch-agent-kit');
+        result = await tokenDetailsAPI(functionCall.parameters || {});
+        break;
+        
+      case 'historyAPI':
+        const { historyAPI } = await import('1inch-agent-kit');
+        result = await historyAPI(functionCall.parameters || {});
+        break;
+        
+      case 'tracesAPI':
+        const { tracesAPI } = await import('1inch-agent-kit');
+        result = await tracesAPI(functionCall.parameters || {});
+        break;
+        
+      case 'spotPriceAPI':
+        const { spotPriceAPI } = await import('1inch-agent-kit');
+        result = await spotPriceAPI(functionCall.parameters || {});
+        break;
+        
+      case 'fusionPlusAPI':
+        const { fusionPlusAPI } = await import('1inch-agent-kit');
+        result = await fusionPlusAPI(functionCall.parameters || {});
+        break;
+        
+      case 'orderbookAPI':
+        const { orderbookAPI } = await import('1inch-agent-kit');
+        result = await orderbookAPI(functionCall.parameters || {});
+        break;
+        
+      case 'nftAPI':
+        const { nftAPI } = await import('1inch-agent-kit');
+        result = await nftAPI(functionCall.parameters || {});
+        break;
+        
+      case 'domainAPI':
+        const { domainAPI } = await import('1inch-agent-kit');
+        result = await domainAPI(functionCall.parameters || {});
+        break;
+        
+      case 'balanceAPI':
+        const { balanceAPI } = await import('1inch-agent-kit');
+        result = await balanceAPI(functionCall.parameters || {});
+        break;
+        
+      case 'transactionAPI':
+        const { transactionAPI } = await import('1inch-agent-kit');
+        result = await transactionAPI(functionCall.parameters || {});
+        break;
+        
+      case 'tron':
+        try {
+          console.log('🚀 Attempting to import tron function...');
+          const { tron } = await import('1inch-agent-kit');
+          console.log('✅ tron function imported successfully');
+          console.log('📋 Parameters:', functionCall.parameters);
+          
+          result = await tron(functionCall.parameters || {});
+          console.log('✅ tron function executed successfully:', result);
+        } catch (importError) {
+          console.error('❌ Error with tron function:', importError);
+          throw new Error(`Tron swap error: ${importError.message}`);
+        }
+        break;
+        
+      default:
+        return res.status(404).json({ 
+          error: `Function '${functionCall.name}' not found. Available functions: portfolioAPI, gasAPI, rpcAPI, swapAPI, getQuote, swap, healthCheck, chartsAPI, tokenDetailsAPI, historyAPI, tracesAPI, spotPriceAPI, fusionPlusAPI, orderbookAPI, nftAPI, domainAPI, balanceAPI, transactionAPI, tron` 
+        });
     }
-
-    // Execute the function
-    const result = await functionHandler(functionCall.parameters || {});
 
     return res.status(200).json({
       action: 'function',

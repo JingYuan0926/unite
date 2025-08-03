@@ -1,0 +1,26 @@
+import type { BaseContract, BytesLike, FunctionFragment, Result, Interface, ContractRunner, ContractMethod, Listener } from "ethers";
+import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, TypedListener, TypedContractMethod } from "../../../../common";
+export interface ImmutableOwnerInterface extends Interface {
+    getFunction(nameOrSignature: "IMMUTABLE_OWNER"): FunctionFragment;
+    encodeFunctionData(functionFragment: "IMMUTABLE_OWNER", values?: undefined): string;
+    decodeFunctionResult(functionFragment: "IMMUTABLE_OWNER", data: BytesLike): Result;
+}
+export interface ImmutableOwner extends BaseContract {
+    connect(runner?: ContractRunner | null): ImmutableOwner;
+    waitForDeployment(): Promise<this>;
+    interface: ImmutableOwnerInterface;
+    queryFilter<TCEvent extends TypedContractEvent>(event: TCEvent, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    queryFilter<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    on<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    on<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    listeners<TCEvent extends TypedContractEvent>(event: TCEvent): Promise<Array<TypedListener<TCEvent>>>;
+    listeners(eventName?: string): Promise<Array<Listener>>;
+    removeAllListeners<TCEvent extends TypedContractEvent>(event?: TCEvent): Promise<this>;
+    IMMUTABLE_OWNER: TypedContractMethod<[], [string], "view">;
+    getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T;
+    getFunction(nameOrSignature: "IMMUTABLE_OWNER"): TypedContractMethod<[], [string], "view">;
+    filters: {};
+}
+//# sourceMappingURL=ImmutableOwner.d.ts.map

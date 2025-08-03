@@ -12,7 +12,7 @@
     "@heroui/react": "^2.8.2",
     "@rainbow-me/rainbowkit": "^2.2.8",
     "@tanstack/react-query": "^5.84.1",
-    "1inch-agent-kit": "^1.0.78",
+    "1inch-agent-kit": "^1.0.88",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

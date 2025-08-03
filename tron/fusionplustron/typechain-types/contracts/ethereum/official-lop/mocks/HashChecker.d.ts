@@ -1,0 +1,146 @@
+import type { BaseContract, BigNumberish, BytesLike, FunctionFragment, Result, Interface, EventFragment, AddressLike, ContractRunner, ContractMethod, Listener } from "ethers";
+import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, TypedLogDescription, TypedListener, TypedContractMethod } from "../../../../common";
+export declare namespace IOrderMixin {
+    type OrderStruct = {
+        salt: BigNumberish;
+        maker: BigNumberish;
+        receiver: BigNumberish;
+        makerAsset: BigNumberish;
+        takerAsset: BigNumberish;
+        makingAmount: BigNumberish;
+        takingAmount: BigNumberish;
+        makerTraits: BigNumberish;
+    };
+    type OrderStructOutput = [
+        salt: bigint,
+        maker: bigint,
+        receiver: bigint,
+        makerAsset: bigint,
+        takerAsset: bigint,
+        makingAmount: bigint,
+        takingAmount: bigint,
+        makerTraits: bigint
+    ] & {
+        salt: bigint;
+        maker: bigint;
+        receiver: bigint;
+        makerAsset: bigint;
+        takerAsset: bigint;
+        makingAmount: bigint;
+        takingAmount: bigint;
+        makerTraits: bigint;
+    };
+}
+export interface HashCheckerInterface extends Interface {
+    getFunction(nameOrSignature: "LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR" | "hashes" | "owner" | "preInteraction" | "renounceOwnership" | "setHashOrderStatus" | "transferOwnership"): FunctionFragment;
+    getEvent(nameOrSignatureOrTopic: "OwnershipTransferred"): EventFragment;
+    encodeFunctionData(functionFragment: "LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR", values?: undefined): string;
+    encodeFunctionData(functionFragment: "hashes", values: [BytesLike]): string;
+    encodeFunctionData(functionFragment: "owner", values?: undefined): string;
+    encodeFunctionData(functionFragment: "preInteraction", values: [
+        IOrderMixin.OrderStruct,
+        BytesLike,
+        BytesLike,
+        AddressLike,
+        BigNumberish,
+        BigNumberish,
+        BigNumberish,
+        BytesLike
+    ]): string;
+    encodeFunctionData(functionFragment: "renounceOwnership", values?: undefined): string;
+    encodeFunctionData(functionFragment: "setHashOrderStatus", values: [IOrderMixin.OrderStruct, boolean]): string;
+    encodeFunctionData(functionFragment: "transferOwnership", values: [AddressLike]): string;
+    decodeFunctionResult(functionFragment: "LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "hashes", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "preInteraction", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "renounceOwnership", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "setHashOrderStatus", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "transferOwnership", data: BytesLike): Result;
+}
+export declare namespace OwnershipTransferredEvent {
+    type InputTuple = [previousOwner: AddressLike, newOwner: AddressLike];
+    type OutputTuple = [previousOwner: string, newOwner: string];
+    interface OutputObject {
+        previousOwner: string;
+        newOwner: string;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export interface HashChecker extends BaseContract {
+    connect(runner?: ContractRunner | null): HashChecker;
+    waitForDeployment(): Promise<this>;
+    interface: HashCheckerInterface;
+    queryFilter<TCEvent extends TypedContractEvent>(event: TCEvent, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    queryFilter<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    on<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    on<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    listeners<TCEvent extends TypedContractEvent>(event: TCEvent): Promise<Array<TypedListener<TCEvent>>>;
+    listeners(eventName?: string): Promise<Array<Listener>>;
+    removeAllListeners<TCEvent extends TypedContractEvent>(event?: TCEvent): Promise<this>;
+    LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR: TypedContractMethod<[
+    ], [
+        string
+    ], "view">;
+    hashes: TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
+    owner: TypedContractMethod<[], [string], "view">;
+    preInteraction: TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        taker: AddressLike,
+        makingAmount: BigNumberish,
+        takingAmount: BigNumberish,
+        remainingMakingAmount: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
+    setHashOrderStatus: TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        status: boolean
+    ], [
+        void
+    ], "nonpayable">;
+    transferOwnership: TypedContractMethod<[
+        newOwner: AddressLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T;
+    getFunction(nameOrSignature: "LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "hashes"): TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
+    getFunction(nameOrSignature: "owner"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "preInteraction"): TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        taker: AddressLike,
+        makingAmount: BigNumberish,
+        takingAmount: BigNumberish,
+        remainingMakingAmount: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction(nameOrSignature: "renounceOwnership"): TypedContractMethod<[], [void], "nonpayable">;
+    getFunction(nameOrSignature: "setHashOrderStatus"): TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        status: boolean
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction(nameOrSignature: "transferOwnership"): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
+    getEvent(key: "OwnershipTransferred"): TypedContractEvent<OwnershipTransferredEvent.InputTuple, OwnershipTransferredEvent.OutputTuple, OwnershipTransferredEvent.OutputObject>;
+    filters: {
+        "OwnershipTransferred(address,address)": TypedContractEvent<OwnershipTransferredEvent.InputTuple, OwnershipTransferredEvent.OutputTuple, OwnershipTransferredEvent.OutputObject>;
+        OwnershipTransferred: TypedContractEvent<OwnershipTransferredEvent.InputTuple, OwnershipTransferredEvent.OutputTuple, OwnershipTransferredEvent.OutputObject>;
+    };
+}
+//# sourceMappingURL=HashChecker.d.ts.map

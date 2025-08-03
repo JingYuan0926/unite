@@ -143,6 +143,7 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - Gas prices → gasAPI
    - Single-chain swaps (same chain) → swapAPI with endpoint="getQuote"
    - Cross-chain swaps (different chains) → fusionPlusAPI with endpoint="getQuote"
+   - ETH to TRON swaps → tron (ALWAYS use this for any ETH to TRON swap request)
    - Token information → tokenDetailsAPI
    - Price data → spotPriceAPI
    - Portfolio data → portfolioAPI

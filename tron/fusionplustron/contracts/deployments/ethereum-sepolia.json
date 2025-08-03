@@ -1,0 +1,54 @@
+{
+  "network": "sepolia",
+  "timestamp": "2025-08-01T03:46:18.121Z",
+  "contracts": {
+    "WETH": "0x376f9Ce9C7125eF1AA5D83861163265176473131",
+    "LimitOrderProtocol": "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0",
+    "domainSeparator": "0x35e3bbd04ee98f672043d6daf45fb1b3f437643373ecb9481e5c3d6b55d81ca0",
+    "EscrowFactory": "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA",
+    "EscrowSrcImplementation": "0x890D63E67e7537e94855D3634f8D6A62f95eF928",
+    "EscrowDstImplementation": "0xe5De9De3B8fB5AD8C75C441327f50Cd6e19D46D8",
+    "Resolver": "0x80d1E22F66b30D444559225ED4740A9C0DA19F91",
+    "TronFusionExtension": "0x6997AC00dB9159A9331863d73a5CdA9fc3b47df1",
+    "DemoResolver": "0x8afcE2C8fC7e1Bc1F72EFF9CF292CF8318811c84",
+    "MockTRX": "0x74Fc932f869f088D2a9516AfAd239047bEb209BF"
+  },
+  "phase4": {
+    "timestamp": "2025-08-01T13:17:29.790Z",
+    "status": "COMPLETED",
+    "gasUsed": "54536",
+    "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F"
+  },
+  "DemoResolver": {
+    "address": "0xA7fa9C3a4BDBa7A2d29F8A2bC62Cf75c69C4bf3F",
+    "constructorArgs": [
+      "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0",
+      "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA"
+    ],
+    "deployedAt": "2025-08-01T16:12:18.689Z",
+    "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
+    "network": "sepolia",
+    "purpose": "Permissionless solver for atomic swap demonstration",
+    "deprecated": true,
+    "replacedBy": "0x852fE13c80bC1557fDBb5897E6884d9DACf7f66F"
+  },
+  "DemoResolverV2": {
+    "address": "0x852fE13c80bC1557fDBb5897E6884d9DACf7f66F",
+    "constructorArgs": [
+      "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0",
+      "0x92E7B96407BDAe442F52260dd46c82ef61Cf0EFA"
+    ],
+    "deployedAt": "2025-08-02T22:16:20.404Z",
+    "deployer": "0x32F91E4E2c60A9C16cAE736D3b42152B331c147F",
+    "network": "sepolia",
+    "purpose": "TRUE 1inch LOP integration resolver with executeAtomicSwap",
+    "features": [
+      "executeAtomicSwap() - Real LOP integration",
+      "executeSwap() - Legacy compatibility",
+      "createDstEscrow() - Destination escrow creation",
+      "Official EscrowFactory integration",
+      "Proper postInteraction flow"
+    ]
+  },
+  "lastUpdated": "2025-08-02T22:31:43.256Z"
+}

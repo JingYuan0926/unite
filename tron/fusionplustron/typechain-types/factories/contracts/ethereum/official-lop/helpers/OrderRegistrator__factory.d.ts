@@ -1,0 +1,139 @@
+import { ContractFactory, ContractTransactionResponse } from "ethers";
+import type { Signer, AddressLike, ContractDeployTransaction, ContractRunner } from "ethers";
+import type { NonPayableOverrides } from "../../../../../common";
+import type { OrderRegistrator, OrderRegistratorInterface } from "../../../../../contracts/ethereum/official-lop/helpers/OrderRegistrator";
+type OrderRegistratorConstructorParams = [signer?: Signer] | ConstructorParameters<typeof ContractFactory>;
+export declare class OrderRegistrator__factory extends ContractFactory {
+    constructor(...args: OrderRegistratorConstructorParams);
+    getDeployTransaction(limitOrderProtocol: AddressLike, overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<ContractDeployTransaction>;
+    deploy(limitOrderProtocol: AddressLike, overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<OrderRegistrator & {
+        deploymentTransaction(): ContractTransactionResponse;
+    }>;
+    connect(runner: ContractRunner | null): OrderRegistrator__factory;
+    static readonly bytecode = "0x60a03461006957601f61058f38819003918201601f19168301916001600160401b0383118484101761006e5780849260209460405283398101031261006957516001600160a01b03811681036100695760805260405161050a908161008582396080518160fa0152f35b600080fd5b634e487b7160e01b600052604160045260246000fdfe608060405260048036101561001357600080fd5b6000803560e01c63dfcb3e341461002957600080fd5b3461024257610140366003190181811261023e5761010080911261023e576101049367ffffffffffffffff853581811161023a5761006a9036908401610245565b909161012435908111610236576100849036908501610245565b93909761009183856102d1565b9015610230575060018060a01b03906020604051809263802b2ef160e01b82526100f68683016004358152602435602082015260443560408201526064356060820152608435608082015260a43560a082015260c43560c082015260e060e435910152565b81857f0000000000000000000000000000000000000000000000000000000000000000165afa9081156102255786918b918b916101e7575b5061013c9360243516610380565b156101d85750916101c37f1e8610b3a2275f01a103e27257e911d890537b0c70578537ea077ec0a27b5bc99697926101d294876040519889986101b88a6004358152602435602082015260443560408201526064356060820152608435608082015260a43560a082015260c43560c082015260e060e435910152565b8901528701916102b0565b918483036101208601526102b0565b0390a180f35b604051635cd5d23360e01b8152fd5b925050506020813d60201161021d575b8161020460209383610278565b81010312610219575185908a9061013c61012e565b8880fd5b3d91506101f7565b6040513d8b823e3d90fd5b88525086fd5b8680fd5b8580fd5b8280fd5b80fd5b9181601f840112156102735782359167ffffffffffffffff8311610273576020838186019501011161027357565b600080fd5b90601f8019910116810190811067ffffffffffffffff82111761029a57604052565b634e487b7160e01b600052604160045260246000fd5b908060209392818452848401376000828201840152601f01601f1916010190565b9060e435600160f91b161561036b57801561035b5767ffffffffffffffff811161029a576040519061030d601f8201601f191660200183610278565b8082526020820192368282011161027357816000926020928637830101525190206001600160a01b039081166004359091160361034d575b600190600090565b60009063dc11ee6b60e01b90565b5060009163b2d25e4960e01b9150565b905015610345576000906374896a7b60e01b90565b919290916001600160a01b0380821692919083156104c9576040938484149182156104be575b82610405575b50506103fb57602092826000938497835193630b135d3f60e11b98898652600486015260248501528160448501526064840137606401915afa6103ed575090565b600051143d60201416919050565b5050505050600190565b9091506000855185806041146104a65760401461047a575080805b61042f575b50161438806103ac565b817f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a1606083015110610462575b50610425565b6080828a6020945282805260015afa5051388161045c565b8060208a01358060ff1c601b01602083015260208b8a8401376001600160ff1b03166060820152610420565b5086890135821a602082015280878a81830137610420565b6041851492506103a6565b50505050505060009056fea2646970667358221220cc886acd033bd12442b5b38c4d2f3e186a2de13431a332887f7652bd90a545be64736f6c63430008170033";
+    static readonly abi: readonly [{
+        readonly inputs: readonly [{
+            readonly internalType: "contract IOrderMixin";
+            readonly name: "limitOrderProtocol";
+            readonly type: "address";
+        }];
+        readonly stateMutability: "nonpayable";
+        readonly type: "constructor";
+    }, {
+        readonly inputs: readonly [];
+        readonly name: "BadSignature";
+        readonly type: "error";
+    }, {
+        readonly anonymous: false;
+        readonly inputs: readonly [{
+            readonly components: readonly [{
+                readonly internalType: "uint256";
+                readonly name: "salt";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "receiver";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "makerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "takerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "makingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "takingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "MakerTraits";
+                readonly name: "makerTraits";
+                readonly type: "uint256";
+            }];
+            readonly indexed: false;
+            readonly internalType: "struct IOrderMixin.Order";
+            readonly name: "order";
+            readonly type: "tuple";
+        }, {
+            readonly indexed: false;
+            readonly internalType: "bytes";
+            readonly name: "extension";
+            readonly type: "bytes";
+        }, {
+            readonly indexed: false;
+            readonly internalType: "bytes";
+            readonly name: "signature";
+            readonly type: "bytes";
+        }];
+        readonly name: "OrderRegistered";
+        readonly type: "event";
+    }, {
+        readonly inputs: readonly [{
+            readonly components: readonly [{
+                readonly internalType: "uint256";
+                readonly name: "salt";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "maker";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "receiver";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "makerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "Address";
+                readonly name: "takerAsset";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "makingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "uint256";
+                readonly name: "takingAmount";
+                readonly type: "uint256";
+            }, {
+                readonly internalType: "MakerTraits";
+                readonly name: "makerTraits";
+                readonly type: "uint256";
+            }];
+            readonly internalType: "struct IOrderMixin.Order";
+            readonly name: "order";
+            readonly type: "tuple";
+        }, {
+            readonly internalType: "bytes";
+            readonly name: "extension";
+            readonly type: "bytes";
+        }, {
+            readonly internalType: "bytes";
+            readonly name: "signature";
+            readonly type: "bytes";
+        }];
+        readonly name: "registerOrder";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }];
+    static createInterface(): OrderRegistratorInterface;
+    static connect(address: string, runner?: ContractRunner | null): OrderRegistrator;
+}
+export {};
+//# sourceMappingURL=OrderRegistrator__factory.d.ts.map

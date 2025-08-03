@@ -1,0 +1,104 @@
+import type { BaseContract, BigNumberish, BytesLike, FunctionFragment, Result, Interface, AddressLike, ContractRunner, ContractMethod, Listener } from "ethers";
+import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, TypedListener, TypedContractMethod } from "../../../../../common";
+export declare namespace IOrderMixin {
+    type OrderStruct = {
+        salt: BigNumberish;
+        maker: BigNumberish;
+        receiver: BigNumberish;
+        makerAsset: BigNumberish;
+        takerAsset: BigNumberish;
+        makingAmount: BigNumberish;
+        takingAmount: BigNumberish;
+        makerTraits: BigNumberish;
+    };
+    type OrderStructOutput = [
+        salt: bigint,
+        maker: bigint,
+        receiver: bigint,
+        makerAsset: bigint,
+        takerAsset: bigint,
+        makingAmount: bigint,
+        takingAmount: bigint,
+        makerTraits: bigint
+    ] & {
+        salt: bigint;
+        maker: bigint;
+        receiver: bigint;
+        makerAsset: bigint;
+        takerAsset: bigint;
+        makingAmount: bigint;
+        takingAmount: bigint;
+        makerTraits: bigint;
+    };
+}
+export interface ResolverValidationExtensionInterface extends Interface {
+    getFunction(nameOrSignature: "ACCESS_TOKEN" | "FEE_TOKEN" | "LIMIT_ORDER_PROTOCOL" | "OWNER" | "postInteraction"): FunctionFragment;
+    encodeFunctionData(functionFragment: "ACCESS_TOKEN", values?: undefined): string;
+    encodeFunctionData(functionFragment: "FEE_TOKEN", values?: undefined): string;
+    encodeFunctionData(functionFragment: "LIMIT_ORDER_PROTOCOL", values?: undefined): string;
+    encodeFunctionData(functionFragment: "OWNER", values?: undefined): string;
+    encodeFunctionData(functionFragment: "postInteraction", values: [
+        IOrderMixin.OrderStruct,
+        BytesLike,
+        BytesLike,
+        AddressLike,
+        BigNumberish,
+        BigNumberish,
+        BigNumberish,
+        BytesLike
+    ]): string;
+    decodeFunctionResult(functionFragment: "ACCESS_TOKEN", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "FEE_TOKEN", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "LIMIT_ORDER_PROTOCOL", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "OWNER", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "postInteraction", data: BytesLike): Result;
+}
+export interface ResolverValidationExtension extends BaseContract {
+    connect(runner?: ContractRunner | null): ResolverValidationExtension;
+    waitForDeployment(): Promise<this>;
+    interface: ResolverValidationExtensionInterface;
+    queryFilter<TCEvent extends TypedContractEvent>(event: TCEvent, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    queryFilter<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    on<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    on<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    listeners<TCEvent extends TypedContractEvent>(event: TCEvent): Promise<Array<TypedListener<TCEvent>>>;
+    listeners(eventName?: string): Promise<Array<Listener>>;
+    removeAllListeners<TCEvent extends TypedContractEvent>(event?: TCEvent): Promise<this>;
+    ACCESS_TOKEN: TypedContractMethod<[], [string], "view">;
+    FEE_TOKEN: TypedContractMethod<[], [string], "view">;
+    LIMIT_ORDER_PROTOCOL: TypedContractMethod<[], [string], "view">;
+    OWNER: TypedContractMethod<[], [string], "view">;
+    postInteraction: TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        taker: AddressLike,
+        makingAmount: BigNumberish,
+        takingAmount: BigNumberish,
+        remainingMakingAmount: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T;
+    getFunction(nameOrSignature: "ACCESS_TOKEN"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "FEE_TOKEN"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "LIMIT_ORDER_PROTOCOL"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "OWNER"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "postInteraction"): TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        taker: AddressLike,
+        makingAmount: BigNumberish,
+        takingAmount: BigNumberish,
+        remainingMakingAmount: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    filters: {};
+}
+//# sourceMappingURL=ResolverValidationExtension.d.ts.map

@@ -1,0 +1,263 @@
+import type { BaseContract, BigNumberish, BytesLike, FunctionFragment, Result, Interface, EventFragment, AddressLike, ContractRunner, ContractMethod, Listener } from "ethers";
+import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, TypedLogDescription, TypedListener, TypedContractMethod } from "../../../../common";
+export declare namespace IOrderMixin {
+    type OrderStruct = {
+        salt: BigNumberish;
+        maker: BigNumberish;
+        receiver: BigNumberish;
+        makerAsset: BigNumberish;
+        takerAsset: BigNumberish;
+        makingAmount: BigNumberish;
+        takingAmount: BigNumberish;
+        makerTraits: BigNumberish;
+    };
+    type OrderStructOutput = [
+        salt: bigint,
+        maker: bigint,
+        receiver: bigint,
+        makerAsset: bigint,
+        takerAsset: bigint,
+        makingAmount: bigint,
+        takingAmount: bigint,
+        makerTraits: bigint
+    ] & {
+        salt: bigint;
+        maker: bigint;
+        receiver: bigint;
+        makerAsset: bigint;
+        takerAsset: bigint;
+        makingAmount: bigint;
+        takingAmount: bigint;
+        makerTraits: bigint;
+    };
+}
+export declare namespace ETHOrders {
+    type ETHOrderStruct = {
+        maker: AddressLike;
+        balance: BigNumberish;
+        maximumPremium: BigNumberish;
+        auctionDuration: BigNumberish;
+    };
+    type ETHOrderStructOutput = [
+        maker: string,
+        balance: bigint,
+        maximumPremium: bigint,
+        auctionDuration: bigint
+    ] & {
+        maker: string;
+        balance: bigint;
+        maximumPremium: bigint;
+        auctionDuration: bigint;
+    };
+}
+export interface ETHOrdersInterface extends Interface {
+    getFunction(nameOrSignature: "cancelOrder" | "cancelOrderByResolver" | "ethOrderDeposit" | "ethOrdersBatch" | "isValidSignature" | "ordersMakersBalances" | "postInteraction"): FunctionFragment;
+    getEvent(nameOrSignatureOrTopic: "ETHDeposited" | "ETHOrderCancelled" | "ETHOrderCancelledByThirdParty"): EventFragment;
+    encodeFunctionData(functionFragment: "cancelOrder", values: [BigNumberish, BytesLike]): string;
+    encodeFunctionData(functionFragment: "cancelOrderByResolver", values: [BigNumberish, BytesLike]): string;
+    encodeFunctionData(functionFragment: "ethOrderDeposit", values: [IOrderMixin.OrderStruct, BytesLike, BigNumberish, BigNumberish]): string;
+    encodeFunctionData(functionFragment: "ethOrdersBatch", values: [BytesLike[]]): string;
+    encodeFunctionData(functionFragment: "isValidSignature", values: [BytesLike, BytesLike]): string;
+    encodeFunctionData(functionFragment: "ordersMakersBalances", values: [BytesLike]): string;
+    encodeFunctionData(functionFragment: "postInteraction", values: [
+        IOrderMixin.OrderStruct,
+        BytesLike,
+        BytesLike,
+        AddressLike,
+        BigNumberish,
+        BigNumberish,
+        BigNumberish,
+        BytesLike
+    ]): string;
+    decodeFunctionResult(functionFragment: "cancelOrder", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "cancelOrderByResolver", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ethOrderDeposit", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ethOrdersBatch", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "isValidSignature", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ordersMakersBalances", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "postInteraction", data: BytesLike): Result;
+}
+export declare namespace ETHDepositedEvent {
+    type InputTuple = [orderHash: BytesLike, amount: BigNumberish];
+    type OutputTuple = [orderHash: string, amount: bigint];
+    interface OutputObject {
+        orderHash: string;
+        amount: bigint;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export declare namespace ETHOrderCancelledEvent {
+    type InputTuple = [orderHash: BytesLike, amount: BigNumberish];
+    type OutputTuple = [orderHash: string, amount: bigint];
+    interface OutputObject {
+        orderHash: string;
+        amount: bigint;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export declare namespace ETHOrderCancelledByThirdPartyEvent {
+    type InputTuple = [
+        orderHash: BytesLike,
+        amount: BigNumberish,
+        reward: BigNumberish
+    ];
+    type OutputTuple = [orderHash: string, amount: bigint, reward: bigint];
+    interface OutputObject {
+        orderHash: string;
+        amount: bigint;
+        reward: bigint;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export interface ETHOrders extends BaseContract {
+    connect(runner?: ContractRunner | null): ETHOrders;
+    waitForDeployment(): Promise<this>;
+    interface: ETHOrdersInterface;
+    queryFilter<TCEvent extends TypedContractEvent>(event: TCEvent, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    queryFilter<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    on<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    on<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    listeners<TCEvent extends TypedContractEvent>(event: TCEvent): Promise<Array<TypedListener<TCEvent>>>;
+    listeners(eventName?: string): Promise<Array<Listener>>;
+    removeAllListeners<TCEvent extends TypedContractEvent>(event?: TCEvent): Promise<this>;
+    cancelOrder: TypedContractMethod<[
+        makerTraits: BigNumberish,
+        orderHash: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    cancelOrderByResolver: TypedContractMethod<[
+        makerTraits: BigNumberish,
+        orderHash: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    ethOrderDeposit: TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        maximumPremium: BigNumberish,
+        auctionDuration: BigNumberish
+    ], [
+        string
+    ], "payable">;
+    ethOrdersBatch: TypedContractMethod<[
+        orderHashes: BytesLike[]
+    ], [
+        ETHOrders.ETHOrderStructOutput[]
+    ], "view">;
+    isValidSignature: TypedContractMethod<[
+        orderHash: BytesLike,
+        signature: BytesLike
+    ], [
+        string
+    ], "view">;
+    ordersMakersBalances: TypedContractMethod<[
+        orderHash: BytesLike
+    ], [
+        [
+            string,
+            bigint,
+            bigint,
+            bigint
+        ] & {
+            maker: string;
+            balance: bigint;
+            maximumPremium: bigint;
+            auctionDuration: bigint;
+        }
+    ], "view">;
+    postInteraction: TypedContractMethod<[
+        arg0: IOrderMixin.OrderStruct,
+        arg1: BytesLike,
+        orderHash: BytesLike,
+        arg3: AddressLike,
+        makingAmount: BigNumberish,
+        arg5: BigNumberish,
+        arg6: BigNumberish,
+        arg7: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T;
+    getFunction(nameOrSignature: "cancelOrder"): TypedContractMethod<[
+        makerTraits: BigNumberish,
+        orderHash: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction(nameOrSignature: "cancelOrderByResolver"): TypedContractMethod<[
+        makerTraits: BigNumberish,
+        orderHash: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction(nameOrSignature: "ethOrderDeposit"): TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        maximumPremium: BigNumberish,
+        auctionDuration: BigNumberish
+    ], [
+        string
+    ], "payable">;
+    getFunction(nameOrSignature: "ethOrdersBatch"): TypedContractMethod<[
+        orderHashes: BytesLike[]
+    ], [
+        ETHOrders.ETHOrderStructOutput[]
+    ], "view">;
+    getFunction(nameOrSignature: "isValidSignature"): TypedContractMethod<[
+        orderHash: BytesLike,
+        signature: BytesLike
+    ], [
+        string
+    ], "view">;
+    getFunction(nameOrSignature: "ordersMakersBalances"): TypedContractMethod<[
+        orderHash: BytesLike
+    ], [
+        [
+            string,
+            bigint,
+            bigint,
+            bigint
+        ] & {
+            maker: string;
+            balance: bigint;
+            maximumPremium: bigint;
+            auctionDuration: bigint;
+        }
+    ], "view">;
+    getFunction(nameOrSignature: "postInteraction"): TypedContractMethod<[
+        arg0: IOrderMixin.OrderStruct,
+        arg1: BytesLike,
+        orderHash: BytesLike,
+        arg3: AddressLike,
+        makingAmount: BigNumberish,
+        arg5: BigNumberish,
+        arg6: BigNumberish,
+        arg7: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getEvent(key: "ETHDeposited"): TypedContractEvent<ETHDepositedEvent.InputTuple, ETHDepositedEvent.OutputTuple, ETHDepositedEvent.OutputObject>;
+    getEvent(key: "ETHOrderCancelled"): TypedContractEvent<ETHOrderCancelledEvent.InputTuple, ETHOrderCancelledEvent.OutputTuple, ETHOrderCancelledEvent.OutputObject>;
+    getEvent(key: "ETHOrderCancelledByThirdParty"): TypedContractEvent<ETHOrderCancelledByThirdPartyEvent.InputTuple, ETHOrderCancelledByThirdPartyEvent.OutputTuple, ETHOrderCancelledByThirdPartyEvent.OutputObject>;
+    filters: {
+        "ETHDeposited(bytes32,uint256)": TypedContractEvent<ETHDepositedEvent.InputTuple, ETHDepositedEvent.OutputTuple, ETHDepositedEvent.OutputObject>;
+        ETHDeposited: TypedContractEvent<ETHDepositedEvent.InputTuple, ETHDepositedEvent.OutputTuple, ETHDepositedEvent.OutputObject>;
+        "ETHOrderCancelled(bytes32,uint256)": TypedContractEvent<ETHOrderCancelledEvent.InputTuple, ETHOrderCancelledEvent.OutputTuple, ETHOrderCancelledEvent.OutputObject>;
+        ETHOrderCancelled: TypedContractEvent<ETHOrderCancelledEvent.InputTuple, ETHOrderCancelledEvent.OutputTuple, ETHOrderCancelledEvent.OutputObject>;
+        "ETHOrderCancelledByThirdParty(bytes32,uint256,uint256)": TypedContractEvent<ETHOrderCancelledByThirdPartyEvent.InputTuple, ETHOrderCancelledByThirdPartyEvent.OutputTuple, ETHOrderCancelledByThirdPartyEvent.OutputObject>;
+        ETHOrderCancelledByThirdParty: TypedContractEvent<ETHOrderCancelledByThirdPartyEvent.InputTuple, ETHOrderCancelledByThirdPartyEvent.OutputTuple, ETHOrderCancelledByThirdPartyEvent.OutputObject>;
+    };
+}
+//# sourceMappingURL=ETHOrders.d.ts.map

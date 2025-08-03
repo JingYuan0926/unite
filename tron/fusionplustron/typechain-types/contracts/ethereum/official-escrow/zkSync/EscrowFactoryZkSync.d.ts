@@ -1,0 +1,307 @@
+import type { BaseContract, BigNumberish, BytesLike, FunctionFragment, Result, Interface, EventFragment, AddressLike, ContractRunner, ContractMethod, Listener } from "ethers";
+import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, TypedLogDescription, TypedListener, TypedContractMethod } from "../../../../common";
+export declare namespace IBaseEscrow {
+    type ImmutablesStruct = {
+        orderHash: BytesLike;
+        hashlock: BytesLike;
+        maker: BigNumberish;
+        taker: BigNumberish;
+        token: BigNumberish;
+        amount: BigNumberish;
+        safetyDeposit: BigNumberish;
+        timelocks: BigNumberish;
+    };
+    type ImmutablesStructOutput = [
+        orderHash: string,
+        hashlock: string,
+        maker: bigint,
+        taker: bigint,
+        token: bigint,
+        amount: bigint,
+        safetyDeposit: bigint,
+        timelocks: bigint
+    ] & {
+        orderHash: string;
+        hashlock: string;
+        maker: bigint;
+        taker: bigint;
+        token: bigint;
+        amount: bigint;
+        safetyDeposit: bigint;
+        timelocks: bigint;
+    };
+}
+export declare namespace IEscrowFactory {
+    type DstImmutablesComplementStruct = {
+        maker: BigNumberish;
+        amount: BigNumberish;
+        token: BigNumberish;
+        safetyDeposit: BigNumberish;
+        chainId: BigNumberish;
+    };
+    type DstImmutablesComplementStructOutput = [
+        maker: bigint,
+        amount: bigint,
+        token: bigint,
+        safetyDeposit: bigint,
+        chainId: bigint
+    ] & {
+        maker: bigint;
+        amount: bigint;
+        token: bigint;
+        safetyDeposit: bigint;
+        chainId: bigint;
+    };
+}
+export declare namespace IOrderMixin {
+    type OrderStruct = {
+        salt: BigNumberish;
+        maker: BigNumberish;
+        receiver: BigNumberish;
+        makerAsset: BigNumberish;
+        takerAsset: BigNumberish;
+        makingAmount: BigNumberish;
+        takingAmount: BigNumberish;
+        makerTraits: BigNumberish;
+    };
+    type OrderStructOutput = [
+        salt: bigint,
+        maker: bigint,
+        receiver: bigint,
+        makerAsset: bigint,
+        takerAsset: bigint,
+        makingAmount: bigint,
+        takingAmount: bigint,
+        makerTraits: bigint
+    ] & {
+        salt: bigint;
+        maker: bigint;
+        receiver: bigint;
+        makerAsset: bigint;
+        takerAsset: bigint;
+        makingAmount: bigint;
+        takingAmount: bigint;
+        makerTraits: bigint;
+    };
+}
+export interface EscrowFactoryZkSyncInterface extends Interface {
+    getFunction(nameOrSignature: "ACCESS_TOKEN" | "ESCROW_DST_IMPLEMENTATION" | "ESCROW_DST_INPUT_HASH" | "ESCROW_SRC_IMPLEMENTATION" | "ESCROW_SRC_INPUT_HASH" | "FEE_TOKEN" | "LIMIT_ORDER_PROTOCOL" | "OWNER" | "addressOfEscrowDst" | "addressOfEscrowSrc" | "createDstEscrow" | "lastValidated" | "postInteraction" | "takerInteraction"): FunctionFragment;
+    getEvent(nameOrSignatureOrTopic: "DstEscrowCreated" | "SrcEscrowCreated"): EventFragment;
+    encodeFunctionData(functionFragment: "ACCESS_TOKEN", values?: undefined): string;
+    encodeFunctionData(functionFragment: "ESCROW_DST_IMPLEMENTATION", values?: undefined): string;
+    encodeFunctionData(functionFragment: "ESCROW_DST_INPUT_HASH", values?: undefined): string;
+    encodeFunctionData(functionFragment: "ESCROW_SRC_IMPLEMENTATION", values?: undefined): string;
+    encodeFunctionData(functionFragment: "ESCROW_SRC_INPUT_HASH", values?: undefined): string;
+    encodeFunctionData(functionFragment: "FEE_TOKEN", values?: undefined): string;
+    encodeFunctionData(functionFragment: "LIMIT_ORDER_PROTOCOL", values?: undefined): string;
+    encodeFunctionData(functionFragment: "OWNER", values?: undefined): string;
+    encodeFunctionData(functionFragment: "addressOfEscrowDst", values: [IBaseEscrow.ImmutablesStruct]): string;
+    encodeFunctionData(functionFragment: "addressOfEscrowSrc", values: [IBaseEscrow.ImmutablesStruct]): string;
+    encodeFunctionData(functionFragment: "createDstEscrow", values: [IBaseEscrow.ImmutablesStruct, BigNumberish]): string;
+    encodeFunctionData(functionFragment: "lastValidated", values: [BytesLike]): string;
+    encodeFunctionData(functionFragment: "postInteraction", values: [
+        IOrderMixin.OrderStruct,
+        BytesLike,
+        BytesLike,
+        AddressLike,
+        BigNumberish,
+        BigNumberish,
+        BigNumberish,
+        BytesLike
+    ]): string;
+    encodeFunctionData(functionFragment: "takerInteraction", values: [
+        IOrderMixin.OrderStruct,
+        BytesLike,
+        BytesLike,
+        AddressLike,
+        BigNumberish,
+        BigNumberish,
+        BigNumberish,
+        BytesLike
+    ]): string;
+    decodeFunctionResult(functionFragment: "ACCESS_TOKEN", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ESCROW_DST_IMPLEMENTATION", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ESCROW_DST_INPUT_HASH", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ESCROW_SRC_IMPLEMENTATION", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "ESCROW_SRC_INPUT_HASH", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "FEE_TOKEN", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "LIMIT_ORDER_PROTOCOL", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "OWNER", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "addressOfEscrowDst", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "addressOfEscrowSrc", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "createDstEscrow", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "lastValidated", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "postInteraction", data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: "takerInteraction", data: BytesLike): Result;
+}
+export declare namespace DstEscrowCreatedEvent {
+    type InputTuple = [
+        escrow: AddressLike,
+        hashlock: BytesLike,
+        taker: BigNumberish
+    ];
+    type OutputTuple = [escrow: string, hashlock: string, taker: bigint];
+    interface OutputObject {
+        escrow: string;
+        hashlock: string;
+        taker: bigint;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export declare namespace SrcEscrowCreatedEvent {
+    type InputTuple = [
+        srcImmutables: IBaseEscrow.ImmutablesStruct,
+        dstImmutablesComplement: IEscrowFactory.DstImmutablesComplementStruct
+    ];
+    type OutputTuple = [
+        srcImmutables: IBaseEscrow.ImmutablesStructOutput,
+        dstImmutablesComplement: IEscrowFactory.DstImmutablesComplementStructOutput
+    ];
+    interface OutputObject {
+        srcImmutables: IBaseEscrow.ImmutablesStructOutput;
+        dstImmutablesComplement: IEscrowFactory.DstImmutablesComplementStructOutput;
+    }
+    type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+    type Filter = TypedDeferredTopicFilter<Event>;
+    type Log = TypedEventLog<Event>;
+    type LogDescription = TypedLogDescription<Event>;
+}
+export interface EscrowFactoryZkSync extends BaseContract {
+    connect(runner?: ContractRunner | null): EscrowFactoryZkSync;
+    waitForDeployment(): Promise<this>;
+    interface: EscrowFactoryZkSyncInterface;
+    queryFilter<TCEvent extends TypedContractEvent>(event: TCEvent, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    queryFilter<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, fromBlockOrBlockhash?: string | number | undefined, toBlock?: string | number | undefined): Promise<Array<TypedEventLog<TCEvent>>>;
+    on<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    on<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>;
+    once<TCEvent extends TypedContractEvent>(filter: TypedDeferredTopicFilter<TCEvent>, listener: TypedListener<TCEvent>): Promise<this>;
+    listeners<TCEvent extends TypedContractEvent>(event: TCEvent): Promise<Array<TypedListener<TCEvent>>>;
+    listeners(eventName?: string): Promise<Array<Listener>>;
+    removeAllListeners<TCEvent extends TypedContractEvent>(event?: TCEvent): Promise<this>;
+    ACCESS_TOKEN: TypedContractMethod<[], [string], "view">;
+    ESCROW_DST_IMPLEMENTATION: TypedContractMethod<[], [string], "view">;
+    ESCROW_DST_INPUT_HASH: TypedContractMethod<[], [string], "view">;
+    ESCROW_SRC_IMPLEMENTATION: TypedContractMethod<[], [string], "view">;
+    ESCROW_SRC_INPUT_HASH: TypedContractMethod<[], [string], "view">;
+    FEE_TOKEN: TypedContractMethod<[], [string], "view">;
+    LIMIT_ORDER_PROTOCOL: TypedContractMethod<[], [string], "view">;
+    OWNER: TypedContractMethod<[], [string], "view">;
+    addressOfEscrowDst: TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    addressOfEscrowSrc: TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    createDstEscrow: TypedContractMethod<[
+        dstImmutables: IBaseEscrow.ImmutablesStruct,
+        srcCancellationTimestamp: BigNumberish
+    ], [
+        void
+    ], "payable">;
+    lastValidated: TypedContractMethod<[
+        key: BytesLike
+    ], [
+        [bigint, string] & {
+            index: bigint;
+            leaf: string;
+        }
+    ], "view">;
+    postInteraction: TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        taker: AddressLike,
+        makingAmount: BigNumberish,
+        takingAmount: BigNumberish,
+        remainingMakingAmount: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    takerInteraction: TypedContractMethod<[
+        arg0: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        arg3: AddressLike,
+        arg4: BigNumberish,
+        arg5: BigNumberish,
+        arg6: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T;
+    getFunction(nameOrSignature: "ACCESS_TOKEN"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "ESCROW_DST_IMPLEMENTATION"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "ESCROW_DST_INPUT_HASH"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "ESCROW_SRC_IMPLEMENTATION"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "ESCROW_SRC_INPUT_HASH"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "FEE_TOKEN"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "LIMIT_ORDER_PROTOCOL"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "OWNER"): TypedContractMethod<[], [string], "view">;
+    getFunction(nameOrSignature: "addressOfEscrowDst"): TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    getFunction(nameOrSignature: "addressOfEscrowSrc"): TypedContractMethod<[
+        immutables: IBaseEscrow.ImmutablesStruct
+    ], [
+        string
+    ], "view">;
+    getFunction(nameOrSignature: "createDstEscrow"): TypedContractMethod<[
+        dstImmutables: IBaseEscrow.ImmutablesStruct,
+        srcCancellationTimestamp: BigNumberish
+    ], [
+        void
+    ], "payable">;
+    getFunction(nameOrSignature: "lastValidated"): TypedContractMethod<[
+        key: BytesLike
+    ], [
+        [bigint, string] & {
+            index: bigint;
+            leaf: string;
+        }
+    ], "view">;
+    getFunction(nameOrSignature: "postInteraction"): TypedContractMethod<[
+        order: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        taker: AddressLike,
+        makingAmount: BigNumberish,
+        takingAmount: BigNumberish,
+        remainingMakingAmount: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getFunction(nameOrSignature: "takerInteraction"): TypedContractMethod<[
+        arg0: IOrderMixin.OrderStruct,
+        extension: BytesLike,
+        orderHash: BytesLike,
+        arg3: AddressLike,
+        arg4: BigNumberish,
+        arg5: BigNumberish,
+        arg6: BigNumberish,
+        extraData: BytesLike
+    ], [
+        void
+    ], "nonpayable">;
+    getEvent(key: "DstEscrowCreated"): TypedContractEvent<DstEscrowCreatedEvent.InputTuple, DstEscrowCreatedEvent.OutputTuple, DstEscrowCreatedEvent.OutputObject>;
+    getEvent(key: "SrcEscrowCreated"): TypedContractEvent<SrcEscrowCreatedEvent.InputTuple, SrcEscrowCreatedEvent.OutputTuple, SrcEscrowCreatedEvent.OutputObject>;
+    filters: {
+        "DstEscrowCreated(address,bytes32,uint256)": TypedContractEvent<DstEscrowCreatedEvent.InputTuple, DstEscrowCreatedEvent.OutputTuple, DstEscrowCreatedEvent.OutputObject>;
+        DstEscrowCreated: TypedContractEvent<DstEscrowCreatedEvent.InputTuple, DstEscrowCreatedEvent.OutputTuple, DstEscrowCreatedEvent.OutputObject>;
+        "SrcEscrowCreated(tuple,tuple)": TypedContractEvent<SrcEscrowCreatedEvent.InputTuple, SrcEscrowCreatedEvent.OutputTuple, SrcEscrowCreatedEvent.OutputObject>;
+        SrcEscrowCreated: TypedContractEvent<SrcEscrowCreatedEvent.InputTuple, SrcEscrowCreatedEvent.OutputTuple, SrcEscrowCreatedEvent.OutputObject>;
+    };
+}
+//# sourceMappingURL=EscrowFactoryZkSync.d.ts.map
