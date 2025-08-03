@@ -1,0 +1,50 @@
+{
+  "name": "xrp",
+  "description": "ALWAYS use this function when users want to swap ETH to XRP or ETH for XRP. This function executes cross-chain atomic swaps between Ethereum and XRP networks using custom cross-chain protocol implementation. It handles all ETH to XRP swap requests by running the complete atomic swap process. Keywords that trigger this function: 'swap ETH to XRP', 'swap ETH for XRP', 'ETH to XRP', 'exchange ETH for XRP'.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "ethAmount": {
+        "type": "string",
+        "description": "Amount of ETH to swap (e.g., '0.01' for 0.01 ETH)",
+        "examples": [
+          {
+            "value": "0.01",
+            "description": "Swap 0.01 ETH for XRP"
+          },
+          {
+            "value": "0.001",
+            "description": "Swap 0.001 ETH for XRP"
+          }
+        ]
+      },
+      "xrpAmount": {
+        "type": "string",
+        "description": "Expected amount of XRP to receive (optional, will be calculated if not provided)",
+        "examples": [
+          {
+            "value": "10",
+            "description": "Expect to receive 10 XRP"
+          }
+        ]
+      },
+      "action": {
+        "type": "string",
+        "description": "The swap action to perform",
+        "enum": ["swap", "quote"],
+        "default": "swap",
+        "examples": [
+          {
+            "value": "swap",
+            "description": "Execute the actual swap"
+          },
+          {
+            "value": "quote",
+            "description": "Get a quote for the swap"
+          }
+        ]
+      }
+    },
+    "required": ["ethAmount"]
+  }
+} 

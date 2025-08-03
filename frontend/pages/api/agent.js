@@ -306,9 +306,24 @@ const handleDirectFunction = async (req, res, agentInstance, functionCall, param
         }
         break;
         
+      case 'xrp':
+        try {
+          console.log('🚀 Attempting to import xrp function...');
+          const { xrp } = await import('1inch-agent-kit');
+          console.log('✅ xrp function imported successfully');
+          console.log('📋 Parameters:', functionCall.parameters);
+          
+          result = await xrp(functionCall.parameters || {});
+          console.log('✅ xrp function executed successfully:', result);
+        } catch (importError) {
+          console.error('❌ Error with xrp function:', importError);
+          throw new Error(`XRP swap error: ${importError.message}`);
+        }
+        break;
+        
       default:
         return res.status(404).json({ 
-          error: `Function '${functionCall.name}' not found. Available functions: portfolioAPI, gasAPI, rpcAPI, swapAPI, getQuote, swap, healthCheck, chartsAPI, tokenDetailsAPI, historyAPI, tracesAPI, spotPriceAPI, fusionPlusAPI, orderbookAPI, nftAPI, domainAPI, balanceAPI, transactionAPI, tron` 
+          error: `Function '${functionCall.name}' not found. Available functions: portfolioAPI, gasAPI, rpcAPI, swapAPI, getQuote, swap, healthCheck, chartsAPI, tokenDetailsAPI, historyAPI, tracesAPI, spotPriceAPI, fusionPlusAPI, orderbookAPI, nftAPI, domainAPI, balanceAPI, transactionAPI, tron, xrp` 
         });
     }
 
