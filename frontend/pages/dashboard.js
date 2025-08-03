@@ -15,6 +15,30 @@ export default function Dashboard() {
     setApis(selectedAPIs);
   };
 
+  const getConfigStatusText = (api) => {
+    if (!api.requiresConfig) return null;
+    return api.config ? "✓ Configured" : "⚙️ Needs Configuration";
+  };
+
+  const getConfigSummary = (api) => {
+    if (!api.config) return null;
+    
+    if (api.name === "Portfolio API") {
+      const config = api.config;
+      const walletCount = config.trackedWallets.length + (config.includeCurrentWallet ? 1 : 0);
+      const networkCount = config.selectedNetworks.length;
+      return `${walletCount} wallet(s), ${networkCount} network(s)`;
+    }
+    
+    if (api.name === "Gas Price API") {
+      const config = api.config;
+      const networkCount = config.selectedNetworks.length;
+      return `${networkCount} network(s), ${config.gasPricePreferences.updateInterval}s updates`;
+    }
+    
+    return null;
+  };
+
   return (
     <div className="font-sans bg-gray-50 min-h-screen">
       {/* Dashboard Header */}
@@ -53,15 +77,34 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {apis.map((api, index) => (
-              <div 
-                key={index}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer"
-              >
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{api.name}</h3>
-                <p className="text-sm text-gray-600">{api.description}</p>
-              </div>
-            ))}
+            {apis.map((api, index) => {
+              const configStatusText = getConfigStatusText(api);
+              const configSummary = getConfigSummary(api);
+              
+              return (
+                <div 
+                  key={index}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{api.name}</h3>
+                    {configStatusText && (
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        api.config ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {configStatusText}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{api.description}</p>
+                  {configSummary && (
+                    <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                      {configSummary}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
