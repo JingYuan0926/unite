@@ -1,0 +1,76 @@
+{
+  "networks": [
+    {
+      "name": "Ethereum Mainnet",
+      "logo": "https://static.alchemyapi.io/images/emblems/eth-mainnet.svg",
+      "chainId": 1,
+      "symbol": "ETH"
+    },
+    {
+      "name": "Arbitrum",
+      "logo": "https://static.alchemyapi.io/images/emblems/arb-mainnet.svg",
+      "chainId": 42161,
+      "symbol": "ARB"
+    },
+    {
+      "name": "BNB Chain",
+      "logo": "https://static.alchemyapi.io/images/emblems/bnb-mainnet.svg",
+      "chainId": 56,
+      "symbol": "BNB"
+    },
+    {
+      "name": "Gnosis",
+      "logo": "https://static.alchemyapi.io/images/emblems/gnosis-mainnet.svg",
+      "chainId": 100,
+      "symbol": "XDAI"
+    },
+    {
+      "name": "Optimism",
+      "logo": "https://static.alchemyapi.io/images/emblems/opt-mainnet.svg",
+      "chainId": 10,
+      "symbol": "OP"
+    },
+    {
+      "name": "Sonic",
+      "logo": "https://static.alchemyapi.io/images/emblems/sonic-mainnet.svg",
+      "chainId": 1001,
+      "symbol": "SONIC"
+    },
+    {
+      "name": "Polygon",
+      "logo": "https://static.alchemyapi.io/images/emblems/matic-mainnet.svg",
+      "chainId": 137,
+      "symbol": "MATIC"
+    },
+    {
+      "name": "Base",
+      "logo": "https://static.alchemyapi.io/images/emblems/base-mainnet.svg",
+      "chainId": 8453,
+      "symbol": "ETH"
+    },
+    {
+      "name": "ZKsync Era",
+      "logo": "https://static.alchemyapi.io/images/emblems/zksync-mainnet.svg",
+      "chainId": 324,
+      "symbol": "ETH"
+    },
+    {
+      "name": "Linea",
+      "logo": "https://static.alchemyapi.io/images/emblems/linea-mainnet.svg",
+      "chainId": 59144,
+      "symbol": "ETH"
+    },
+    {
+      "name": "Avalanche",
+      "logo": "https://static.alchemyapi.io/images/emblems/avax-mainnet.svg",
+      "chainId": 43114,
+      "symbol": "AVAX"
+    },
+    {
+      "name": "Unichain",
+      "logo": "https://static.alchemyapi.io/images/emblems/unichain-mainnet.svg",
+      "chainId": 1002,
+      "symbol": "UNI"
+    }
+  ]
+} 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import chainData from '../data/chains.json';
 
 export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress }) {
   const [trackedWallets, setTrackedWallets] = useState([]);
@@ -6,35 +7,12 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
   const [includeCurrentWallet, setIncludeCurrentWallet] = useState(false);
   const [selectedNetworks, setSelectedNetworks] = useState([]);
 
-  const supportedNetworks = [
-    "Ethereum Mainnet",
-    "Arbitrum",
-    "BNB Chain",
-    "Gnosis",
-    "Optimism",
-    "Sonic",
-    "Polygon",
-    "Base",
-    "ZKsync Era",
-    "Linea",
-    "Avalanche",
-    "Unichain"
-  ];
+  const supportedNetworks = chainData.networks.map(network => network.name);
 
-  const networkLogos = {
-    "Ethereum Mainnet": "https://static.alchemyapi.io/images/emblems/eth-mainnet.svg",
-    "Arbitrum": "https://static.alchemyapi.io/images/emblems/arb-mainnet.svg",
-    "BNB Chain": "https://static.alchemyapi.io/images/emblems/bnb-mainnet.svg",
-    "Gnosis": "https://static.alchemyapi.io/images/emblems/gnosis-mainnet.svg",
-    "Optimism": "https://static.alchemyapi.io/images/emblems/opt-mainnet.svg",
-    "Sonic": "https://static.alchemyapi.io/images/emblems/sonic-mainnet.svg",
-    "Polygon": "https://static.alchemyapi.io/images/emblems/matic-mainnet.svg",
-    "Base": "https://static.alchemyapi.io/images/emblems/base-mainnet.svg",
-    "ZKsync Era": "https://static.alchemyapi.io/images/emblems/zksync-mainnet.svg",
-    "Linea": "https://static.alchemyapi.io/images/emblems/linea-mainnet.svg",
-    "Avalanche": "https://static.alchemyapi.io/images/emblems/avax-mainnet.svg",
-    "Unichain": "https://static.alchemyapi.io/images/emblems/unichain-mainnet.svg"
-  };
+  const networkLogos = chainData.networks.reduce((acc, network) => {
+    acc[network.name] = network.logo;
+    return acc;
+  }, {});
 
   const handleAddWallet = () => {
     if (newWalletAddress.trim() && !trackedWallets.includes(newWalletAddress.trim())) {
