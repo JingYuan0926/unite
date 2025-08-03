@@ -146,6 +146,143 @@ class XRPLEscrowTEE {
       }
     }
   }
+
+  setupRoutes() {
+    this.app.post("/escrow/create-dst", async (req, res) => {
+      try {
+        const {
+          orderHash,
+          hashlock,
+          maker,
+          taker,
+          token,
+          amount,
+          safetyDeposit,
+          timelocks,
+          type,
+        } = req.body;
+
+        const escrowWallet = await this.generateEscrowWallet();
+        const deployedAt = Math.floor(Date.now() / 1000);
+        const parsedTimelocks = this.parseTimelocks(timelocks, deployedAt);
+
+        const escrowId = crypto.randomUUID();
+        const escrow = {
+          id: escrowId,
+          orderHash,
+          hashlock,
+          maker,
+          taker,
+          token,
+          amount: BigInt(amount),
+          safetyDeposit: BigInt(safetyDeposit),
+          timelocks: parsedTimelocks,
+          deployedAt,
+          wallet: {
+            address: escrowWallet.address,
+            publicKey: escrowWallet.publicKey,
+          },
+          status: "created",
+          type: type,
+        };
+
+        this.escrows.set(escrowId, escrow);
+        this.walletSeeds.set(escrowId, escrowWallet.seed);
+
+        escrow.status = "funded";
+        escrow.autoFunded = true;
+
+        res.json({
+          escrowId,
+          walletAddress: escrowWallet.address,
+          requiredDeposit: {
+            xrp:
+              token === "0x0000000000000000000000000000000000000000"
+                ? (escrow.amount + escrow.safetyDeposit).toString()
+                : escrow.safetyDeposit.toString(),
+            token:
+              token !== "0x0000000000000000000000000000000000000000"
+                ? escrow.amount.toString()
+                : "0",
+          },
+          timelocks: parsedTimelocks,
+        });
+      } catch (error) {
+        console.error("Error creating destination escrow:", error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post("/escrow/:escrowId/fund", async (req, res) => {
+      try {
+        const { escrowId } = req.params;
+        const { fromAddress, txHash } = req.body;
+
+        let txHashes = txHash.split(",");
+        const escrow = this.escrows.get(escrowId);
+
+        if (!escrow) {
+          return res.status(404).json({ error: "Escrow not found" });
+        }
+
+        const hashArray = Array.isArray(txHashes) ? txHashes : [txHashes];
+
+        let totalAmountReceived = 0n;
+        const verifiedTxs = [];
+
+        for (const txHash of hashArray) {
+          const tx = await this.client.request({
+            command: "tx",
+            transaction: txHash,
+          });
+
+          if (tx.result.tx_json.TransactionType !== "Payment") {
+            return res.status(400).json({
+              error: `Invalid transaction type for ${txHash}`,
+            });
+          }
+
+          if (tx.result.tx_json.Destination !== escrow.wallet.address) {
+            return res.status(400).json({
+              error: `Payment ${txHash} not sent to escrow address`,
+            });
+          }
+
+          const amountReceived = BigInt(tx.result.meta.delivered_amount);
+          totalAmountReceived += amountReceived;
+          verifiedTxs.push({
+            txHash,
+            amount: amountReceived.toString(),
+          });
+        }
+
+        const requiredAmount =
+          escrow.token === "0x0000000000000000000000000000000000000000"
+            ? escrow.amount + escrow.safetyDeposit
+            : escrow.safetyDeposit;
+
+        if (totalAmountReceived < requiredAmount) {
+          return res.status(400).json({
+            error: `Insufficient funding. Required: ${requiredAmount}, Received: ${totalAmountReceived}`,
+            verifiedTxs,
+          });
+        }
+
+        escrow.status = "funded";
+        escrow.fundingTxs = hashArray;
+
+        res.json({
+          message: "Escrow successfully funded",
+          escrowId,
+          totalAmountReceived: totalAmountReceived.toString(),
+          verifiedTxs,
+        });
+      } catch (error) {
+        console.error("Error funding escrow:", error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+  }
 }
 
 module.exports = XRPLEscrowTEE;
