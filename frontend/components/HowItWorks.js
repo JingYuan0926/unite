@@ -5,6 +5,7 @@ import {
     TypingAnimation,
 } from "@/components/magicui/terminal";
 import BlackLine from "@/components/BlackLine";
+import Image from "next/image";
 
 export default function HowItWorks() {
     const goToDocs = () => {
@@ -77,24 +78,37 @@ export default function HowItWorks() {
                     </div>
 
                     {/* Right Side - Text and Button */}
-                    <div className="flex-1 text-left">
+                    <div className="flex-1 text-left relative">
                         <h2 className="text-4xl font-normal text-gray-900 mb-4">
                             Easily integrate the <span className="font-bold italic">1inch</span> Agent Kit into your project
                         </h2>
 
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 mb-28">
                             Select from our comprehensive suite of APIs including Portfolio tracking, Gas prices, Swap execution, and more. Each API can be configured to match your specific needs and trading strategy.
                         </p>
 
                         {/* Take me to the docs button */}
-                        <button 
-                            onClick={goToDocs}
-                            className="group relative inline-flex h-11 animate-rainbow cursor-pointer items-center justify-center rounded-xl border border-gray-200/50 bg-white/80 backdrop-blur-sm px-8 py-2 font-medium text-gray-900 transition-all hover:bg-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [background-clip:padding-box,border-box,border-box] [background-origin:border-box] [border:calc(0.08*1rem)_solid_transparent] bg-[length:200%] bg-[linear-gradient(rgba(255,255,255,0.8),rgba(255,255,255,0.8)),linear-gradient(rgba(255,255,255,0.8)_50%,rgba(255,255,255,0.6)_80%,rgba(255,255,255,0)),linear-gradient(90deg,hsl(var(--color-1)),hsl(var(--color-5)),hsl(var(--color-3)),hsl(var(--color-4)),hsl(var(--color-2)))] before:absolute before:bottom-[-20%] before:left-1/2 before:z-0 before:h-1/5 before:w-3/5 before:-translate-x-1/2 before:animate-rainbow before:bg-[linear-gradient(90deg,hsl(var(--color-1)),hsl(var(--color-5)),hsl(var(--color-3)),hsl(var(--color-4)),hsl(var(--color-2)))] before:[filter:blur(calc(0.8*1rem))]"
-                        >
-                          <span className="flex items-center space-x-2">
-                            <span>Take me to the docs &gt;&gt;</span>
-                          </span>
-                        </button>
+                        <div className="absolute top-32 left-0 mt-16">
+                            <button 
+                                onClick={goToDocs}
+                                className="group relative inline-flex h-11 animate-rainbow cursor-pointer items-center justify-center rounded-xl border border-gray-200/50 bg-white/80 backdrop-blur-sm px-8 py-2 font-medium text-gray-900 transition-all hover:bg-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [background-clip:padding-box,border-box,border-box] [background-origin:border-box] [border:calc(0.08*1rem)_solid_transparent] bg-[length:200%] bg-[linear-gradient(rgba(255,255,255,0.8),rgba(255,255,255,0.8)),linear-gradient(rgba(255,255,255,0.8)_50%,rgba(255,255,255,0.6)_80%,rgba(255,255,255,0)),linear-gradient(90deg,hsl(var(--color-1)),hsl(var(--color-5)),hsl(var(--color-3)),hsl(var(--color-4)),hsl(var(--color-2)))] before:absolute before:bottom-[-20%] before:left-1/2 before:z-0 before:h-1/5 before:w-3/5 before:-translate-x-1/2 before:animate-rainbow before:bg-[linear-gradient(90deg,hsl(var(--color-1)),hsl(var(--color-5)),hsl(var(--color-3)),hsl(var(--color-4)),hsl(var(--color-2)))] before:[filter:blur(calc(0.8*1rem))]"
+                            >
+                              <span className="flex items-center space-x-2">
+                                <span>Take me to the docs &gt;&gt;</span>
+                              </span>
+                            </button>
+                        </div>
+
+                        {/* Unicorn image positioned at left bottom */}
+                        <div className="absolute -bottom-16 right-8">
+                            <Image
+                                src="/unicorn.png"
+                                alt="Unicorn"
+                                width={200}
+                                height={200}
+                                className=" transition-opacity duration-300"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
