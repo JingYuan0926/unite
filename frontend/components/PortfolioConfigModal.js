@@ -21,6 +21,21 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
     "Unichain"
   ];
 
+  const networkLogos = {
+    "Ethereum Mainnet": "https://static.alchemyapi.io/images/emblems/eth-mainnet.svg",
+    "Arbitrum": "https://static.alchemyapi.io/images/emblems/arb-mainnet.svg",
+    "BNB Chain": "https://static.alchemyapi.io/images/emblems/bnb-mainnet.svg",
+    "Gnosis": "https://static.alchemyapi.io/images/emblems/gnosis-mainnet.svg",
+    "Optimism": "https://static.alchemyapi.io/images/emblems/opt-mainnet.svg",
+    "Sonic": "https://static.alchemyapi.io/images/emblems/sonic-mainnet.svg",
+    "Polygon": "https://static.alchemyapi.io/images/emblems/matic-mainnet.svg",
+    "Base": "https://static.alchemyapi.io/images/emblems/base-mainnet.svg",
+    "ZKsync Era": "https://static.alchemyapi.io/images/emblems/zksync-mainnet.svg",
+    "Linea": "https://static.alchemyapi.io/images/emblems/linea-mainnet.svg",
+    "Avalanche": "https://static.alchemyapi.io/images/emblems/avax-mainnet.svg",
+    "Unichain": "https://static.alchemyapi.io/images/emblems/unichain-mainnet.svg"
+  };
+
   const handleAddWallet = () => {
     if (newWalletAddress.trim() && !trackedWallets.includes(newWalletAddress.trim())) {
       setTrackedWallets([...trackedWallets, newWalletAddress.trim()]);
@@ -151,12 +166,20 @@ export default function PortfolioConfigModal({ isOpen, onClose, onSave, progress
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {supportedNetworks.map((network) => (
-                <label key={network} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
+                <label key={network} className="flex items-center space-x-3 p-3 rounded hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={selectedNetworks.includes(network)}
                     onChange={() => handleToggleNetwork(network)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <img 
+                    src={networkLogos[network]} 
+                    alt={`${network} logo`}
+                    className="w-6 h-6 rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
                   />
                   <span className="text-sm text-gray-700">{network}</span>
                 </label>
