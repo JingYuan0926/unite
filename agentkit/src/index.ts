@@ -28,6 +28,7 @@ export { portfolioAPI } from "./functions/portfolioAPI";
 export { transactionAPI } from "./functions/transactionAPI";
 export { swapAPI } from "./functions/swapAPI";
 export { tron } from "./functions/tron";
+export { xrp } from "./functions/xrp";
 
 // Type exports
 export type {
@@ -259,6 +260,11 @@ export type {
   TronSwapParams,
   TronSwapResponse
 } from "./functions/tron";
+
+export type {
+  XrpSwapParams,
+  XrpSwapResponse
+} from "./functions/xrp";
 
 // Utility exports
 export { OneInchFetcher } from "./utils/fetcher";

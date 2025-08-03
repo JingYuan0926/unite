@@ -1153,8 +1153,8 @@ const ChatBox = () => {
             {call.result && (
               <div className="function-result">
                 <div className="result-label">Result:</div>
-                {call.name === 'tron' && call.result.output ? (
-                  // Special handling for tron function - display the rich output
+                {(call.name === 'tron' || call.name === 'xrp') && call.result.output ? (
+                  // Special handling for tron and xrp functions - display the rich output
                   <div className="tron-output">
                     <pre className="tron-logs">{call.result.output}</pre>
                     {call.result.success && call.result.transactionDetails && (
@@ -1162,6 +1162,7 @@ const ChatBox = () => {
                         <h4>✅ Transaction Summary:</h4>
                         <p><strong>Status:</strong> {call.result.transactionDetails.status}</p>
                         <p><strong>ETH Amount:</strong> {call.result.ethAmount} ETH</p>
+                        <p><strong>Target:</strong> {call.name === 'tron' ? 'TRON' : 'XRP'}</p>
                         <p><strong>Action:</strong> {call.result.action}</p>
                         {call.result.command && (
                           <p><strong>Command:</strong> {call.result.command}</p>
