@@ -4,13 +4,17 @@ import { TronExtension, TronEscrowParams } from "./TronExtension";
 import { ConfigManager } from "../utils/ConfigManager";
 import { ScopedLogger } from "../utils/Logger";
 import { OrderStatus } from "@1inch/fusion-sdk";
+import {
+  DemoResolver__factory,
+  LimitOrderProtocol__factory,
+} from "../../typechain-types";
 
 // DemoResolver ABI for permissionless atomic swaps (including TRUE LOP integration)
 const DEMO_RESOLVER_ABI = [
   // Legacy function for compatibility
   "function executeSwap(bytes32 orderHash, uint256 amount, uint256 safetyDeposit, address maker) payable",
   // NEW: True 1inch LOP integration function with properly named tuples
-  "function executeAtomicSwap(tuple(bytes32 orderHash, bytes32 hashlock, uint256 maker, uint256 taker, uint256 token, uint256 amount, uint256 safetyDeposit, uint256 timelocks), tuple(uint256 salt, uint256 maker, uint256 receiver, uint256 makerAsset, uint256 takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits), bytes32, bytes32, uint256, uint256, bytes) payable",
+  "function executeAtomicSwap(tuple(bytes32 orderHash, bytes32 hashlock, uint256 maker, uint256 taker, uint256 token, uint256 amount, uint256 safetyDeposit, uint256 timelocks), tuple(uint256 salt, address maker, address receiver, address makerAsset, address takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits), bytes32, bytes32, uint256, uint256, bytes) payable",
   // Utility functions
   "function withdrawETH(uint256 amount, address payable recipient)",
   "function getLockedBalance() view returns (uint256)",
@@ -124,13 +128,14 @@ export class CrossChainOrchestrator {
   private logger: ScopedLogger;
   private official1inch: Official1inchSDK;
   private tronExtension: TronExtension;
-  private resolverContract: ethers.Contract;
+  private resolverContract: any; // DemoResolver contract instance
 
   // SINGLE SOURCE OF TRUTH FOR USER ROLES
   // User A: ETH holder wanting TRX (MAKER)
-  // User B: TRX holder wanting ETH (TAKER)
+  // User B: TRX holder wanting ETH (TAKER/RESOLVER)
   private userA_ethSigner: ethers.Wallet;
   private userA_tronAddress: string;
+  private userB_ethSigner: ethers.Wallet;
   private userB_tronPrivateKey: string;
   private userB_ethAddress: string;
 
@@ -140,11 +145,10 @@ export class CrossChainOrchestrator {
     this.official1inch = new Official1inchSDK(config, logger);
     this.tronExtension = new TronExtension(config, logger);
 
-    // Initialize DemoResolver contract for permissionless swaps
+    // Initialize DemoResolver contract for permissionless swaps using TypeScript factory
     const provider = config.getEthProvider();
-    this.resolverContract = new ethers.Contract(
+    this.resolverContract = DemoResolver__factory.connect(
       config.DEMO_RESOLVER_ADDRESS,
-      DEMO_RESOLVER_ABI,
       provider
     );
 
@@ -154,6 +158,10 @@ export class CrossChainOrchestrator {
       provider
     );
     this.userA_tronAddress = config.USER_A_TRX_RECEIVE_ADDRESS;
+    this.userB_ethSigner = new ethers.Wallet(
+      config.USER_B_ETH_PRIVATE_KEY,
+      provider
+    );
     this.userB_tronPrivateKey = config.USER_B_TRON_PRIVATE_KEY;
     this.userB_ethAddress = config.USER_B_ETH_RECEIVE_ADDRESS;
 
@@ -165,12 +173,12 @@ export class CrossChainOrchestrator {
           tronAddress: this.userA_tronAddress,
           role: "MAKER (ETH → TRX)",
         },
-        userB_taker: {
-          ethAddress: this.userB_ethAddress,
+        userB_resolver: {
+          ethAddress: this.userB_ethSigner.address,
           tronPrivateKey: this.userB_tronPrivateKey
             ? "***SET***"
             : "***MISSING***",
-          role: "TAKER (TRX → ETH)",
+          role: "RESOLVER/TAKER (calls DemoResolver)",
         },
       },
     });
@@ -222,16 +230,22 @@ export class CrossChainOrchestrator {
     const now = Math.floor(Date.now() / 1000);
     const expiry = now + 3600; // Set expiry to 1 hour from now (critical for LOP)
 
-    // Create standard 8-field order for LOP v4 (no expiry/predicate in basic orders)
+    // Create standard 8-field order for LOP v4 configured for DemoResolver pattern
+    // 🎯 BREAKTHROUGH FIX: Use FULL ADDRESS encoding, not bottom 80 bits!
+    // Research showed that LOP expects full address in makerTraits for allowedSender
+    // This fixes the 0xa4f62a96 "PrivateOrder" error
+    const demoResolverAddress = this.config.DEMO_RESOLVER_ADDRESS;
+    const encodedAllowedSender = BigInt(demoResolverAddress); // Use full address!
+
     const orderForSigning = {
       salt: BigInt(Date.now()),
       maker: ethSigner.address,
       receiver: ethSigner.address, // Receiver of the ETH (for cancellation)
       makerAsset: ethers.ZeroAddress, // ETH (what maker is giving)
-      takerAsset: "0x74Fc932f869f088D2a9516AfAd239047bEb209BF", // MockTRX token (represents TRX in LOP order)
+      takerAsset: ethers.ZeroAddress, // 🎯 ETH-ONLY: Both assets are ETH for cross-chain swaps
       makingAmount: params.ethAmount,
-      takingAmount: trxAmount,
-      makerTraits: 0n, // Default traits (expiry would be encoded here if needed)
+      takingAmount: 1n, // 🎯 MINIMAL: Avoid division by zero, minimal wei
+      makerTraits: encodedAllowedSender, // 🎯 FIXED: Full address authorization (not bottom 80 bits)
     };
 
     const preparedOrder = {
@@ -314,16 +328,21 @@ export class CrossChainOrchestrator {
     const vs = sig.yParityAndS;
 
     // Step 6: Execute atomic order fill + escrow creation via Resolver
+    // 🎯 CRITICAL FIX: User B (resolver operator) calls DemoResolver, not User A (order maker)
     this.logger.logSwapProgress(
       "Executing atomic order fill + escrow creation via Resolver.deploySrc"
     );
 
-    const resolverWithSigner = this.resolverContract.connect(ethSigner);
+    const resolverWithSigner = this.resolverContract.connect(
+      this.userB_ethSigner
+    );
 
     // Send the total value: swap amount + safety deposit in ONE atomic transaction
     const totalValue = params.ethAmount + safetyDeposit;
 
     this.logger.debug("Calling deploySrc with detailed parameters", {
+      caller: this.userB_ethSigner.address,
+      callerRole: "User B (Resolver operator)",
       immutables: {
         orderHash: immutables[0],
         hashlock: immutables[1],
@@ -352,7 +371,7 @@ export class CrossChainOrchestrator {
       takerTraits: "0", // Default takerTraits
       args: "0x", // Empty args
       totalValue: totalValue.toString(),
-      note: "Total value includes both swap amount and safety deposit in ONE atomic transaction",
+      note: "User B calls DemoResolver with User A's signed order - CORRECT FLOW",
     });
 
     // Convert order object to array format for contract call (8-field Order struct)
@@ -375,7 +394,7 @@ export class CrossChainOrchestrator {
 
     let deployTx;
     try {
-      deployTx = await (resolverWithSigner as any).executeAtomicSwap(
+      deployTx = await resolverWithSigner.executeAtomicSwap(
         immutables, // Full escrow immutables struct (already array format)
         orderForContractCall, // 1inch order structure (8-field array matching IOrderMixin.Order)
         r, // Order signature r component

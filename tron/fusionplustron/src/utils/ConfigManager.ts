@@ -50,6 +50,7 @@ export class ConfigManager {
     process.env.USER_B_TRON_PRIVATE_KEY!;
   public readonly USER_B_ETH_RECEIVE_ADDRESS =
     process.env.USER_B_ETH_RECEIVE_ADDRESS!;
+  public readonly USER_B_ETH_PRIVATE_KEY = process.env.USER_B_ETH_PRIVATE_KEY!;
 
   // Constants
   public readonly TRX_REPRESENTATION_ADDRESS =
