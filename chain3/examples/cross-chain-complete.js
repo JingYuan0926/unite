@@ -19,6 +19,9 @@ const config = {
     // IMPORTANT: Set this in your .env file after deploying EscrowFactory
     escrowFactory: process.env.ESCROW_FACTORY,
 
+    // IMPORTANT: Set this in your .env file after deploying CustomLimitOrderResolver
+    customResolver: process.env.CUSTOM_RESOLVER,
+
     // Test tokens
     usdcToken: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // USDC on Sepolia
   },
@@ -35,6 +38,12 @@ const config = {
     dstAmount: "1000000", // 1 XRP (in drops) on XRPL
     safetyDeposit: "100000", // 0.1 XRP safety deposit
     rescueDelay: 691200, // 8 days (from DeployEscrowFactory.s.sol)
+
+    // Partial fill configuration
+    enablePartialFill: true, // Enable partial fill functionality
+    partialFillPercentage: 50, // Default partial fill percentage (50%)
+    minFillPercentage: 10, // Minimum fill percentage allowed (10%)
+    maxFillPercentage: 90, // Maximum fill percentage allowed (90%)
   },
 };
 
@@ -69,6 +78,42 @@ const ESCROW_ABI = [
   "function getStatus() external view returns (uint8)",
   "event EscrowWithdrawal(bytes32 secret)",
   "event EscrowCancelled()",
+];
+
+// Custom Limit Order Resolver ABI
+const CUSTOM_RESOLVER_ABI = [
+  // Main resolver functions
+  "function resolveOrder(tuple(uint256 salt, uint256 maker, uint256 receiver, uint256 makerAsset, uint256 takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits) external returns (uint256 makingAmount, uint256 takingAmount, bytes32 orderHash)",
+  "function resolvePartialOrder(tuple(uint256 salt, uint256 maker, uint256 receiver, uint256 makerAsset, uint256 takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits) order, bytes32 r, bytes32 vs, uint256 fillPercentage, uint256 takerTraits, address escrowAddress) external returns (uint256 makingAmount, uint256 takingAmount, bytes32 orderHash)",
+
+  // Partial fill management
+  "function createAdditionalPartialFill(bytes32 orderHash, uint256 newFillPercentage) external returns (bool success)",
+  "function calculatePartialAmount(uint256 totalAmount, uint256 fillPercentage) external pure returns (uint256 partialAmount)",
+
+  // View functions
+  "function getPartialFillOrder(bytes32 orderHash) external view returns (tuple(bytes32 orderHash, uint256 totalAmount, uint256 filledAmount, uint256 remainingAmount, uint256 fillPercentage, bool isActive, address escrowAddress))",
+  "function getActivePartialFillOrders() external view returns (bytes32[] memory orderHashes)",
+  "function getUserOrderFill(address user, bytes32 orderHash) external view returns (uint256 fillAmount)",
+  "function config() external view returns (tuple(uint256 minFillPercentage, uint256 maxFillPercentage, uint256 defaultFillPercentage, bool partialFillEnabled))",
+
+  // Configuration
+  "function updateConfig(tuple(uint256 minFillPercentage, uint256 maxFillPercentage, uint256 defaultFillPercentage, bool partialFillEnabled) newConfig) external",
+
+  // Constants and properties
+  "function limitOrderProtocol() external view returns (address)",
+  "function owner() external view returns (address)",
+
+  // Events
+  "event OrderResolved(bytes32 indexed orderHash, address indexed maker, address indexed taker, uint256 makingAmount, uint256 takingAmount, bool isPartialFill)",
+  "event PartialFillCreated(bytes32 indexed orderHash, uint256 fillPercentage, uint256 filledAmount, uint256 remainingAmount)",
+  "event EscrowIntegration(bytes32 indexed orderHash, address indexed escrow, uint256 amount)",
+];
+
+// 1inch Limit Order Protocol ABI (essential functions)
+const LIMIT_ORDER_PROTOCOL_ABI = [
+  "function hashOrder(tuple(uint256 salt, uint256 maker, uint256 receiver, uint256 makerAsset, uint256 takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits) order) external view returns (bytes32 orderHash)",
+  "function fillOrder(tuple(uint256 salt, uint256 maker, uint256 receiver, uint256 makerAsset, uint256 takerAsset, uint256 makingAmount, uint256 takingAmount, uint256 makerTraits) order, bytes32 r, bytes32 vs, uint256 amount, uint256 takerTraits) external payable returns (uint256 makingAmount, uint256 takingAmount, bytes32 orderHash)",
+  "function remainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns (uint256 remaining)",
 ];
 
 // Helper function to convert address to uint256 format for Address type
@@ -151,6 +196,16 @@ class EthXrpCrossChainOrder {
       );
     }
 
+    if (
+      !config.ethereum.customResolver ||
+      config.ethereum.customResolver ===
+        "0x0000000000000000000000000000000000000000"
+    ) {
+      throw new Error(
+        "CUSTOM_RESOLVER environment variable not set. Please deploy CustomLimitOrderResolver first."
+      );
+    }
+
     // Initialize Ethereum provider and wallet
     this.ethProvider = new ethers.JsonRpcProvider(config.ethereum.rpcUrl);
     this.ethWallet = new ethers.Wallet(
@@ -165,11 +220,29 @@ class EthXrpCrossChainOrder {
       this.ethWallet
     );
 
+    // Initialize custom resolver contract
+    this.customResolver = new ethers.Contract(
+      config.ethereum.customResolver,
+      CUSTOM_RESOLVER_ABI,
+      this.ethWallet
+    );
+
+    // Initialize 1inch Limit Order Protocol contract
+    this.limitOrderProtocol = new ethers.Contract(
+      config.ethereum.limitOrderProtocol,
+      LIMIT_ORDER_PROTOCOL_ABI,
+      this.ethWallet
+    );
+
     // Initialize XRPL  client
     this.xrplClient = new XRPLClient(config.xrpl.xrplServerUrl);
 
     // Active orders storage
     this.activeOrders = new Map();
+
+    // Storage for limit orders and resolver tracking
+    this.limitOrders = new Map();
+    this.resolverOrders = new Map();
   }
 
   async initialize() {
@@ -213,6 +286,51 @@ class EthXrpCrossChainOrder {
         console.log("💡 Make sure the contract is properly deployed");
       }
 
+      // Verify Custom Resolver contract
+      const resolverCode = await this.ethProvider.getCode(
+        config.ethereum.customResolver
+      );
+      if (resolverCode === "0x") {
+        throw new Error(
+          "CustomLimitOrderResolver contract not found at specified address"
+        );
+      }
+
+      // Get resolver configuration and verify integration
+      try {
+        const resolverConfig = await this.customResolver.config();
+        const lopAddress = await this.customResolver.limitOrderProtocol();
+        const resolverOwner = await this.customResolver.owner();
+
+        console.log(
+          `✅ CustomResolver verified at: ${config.ethereum.customResolver}`
+        );
+        console.log(`📋 Resolver Owner: ${resolverOwner}`);
+        console.log(`📋 Connected to LOP: ${lopAddress}`);
+        console.log(
+          `📋 Partial Fill Enabled: ${resolverConfig.partialFillEnabled}`
+        );
+        console.log(
+          `📋 Fill Percentage Range: ${resolverConfig.minFillPercentage}% - ${resolverConfig.maxFillPercentage}%`
+        );
+        console.log(
+          `📋 Default Fill Percentage: ${resolverConfig.defaultFillPercentage}%`
+        );
+
+        // Verify LOP address matches our configuration
+        if (
+          lopAddress.toLowerCase() !==
+          config.ethereum.limitOrderProtocol.toLowerCase()
+        ) {
+          console.log(
+            "⚠️  Warning: Resolver LOP address doesn't match configuration"
+          );
+        }
+      } catch (error) {
+        console.log("⚠️  Could not verify CustomResolver configuration");
+        console.log("💡 Make sure the custom resolver is properly deployed");
+      }
+
       // Check xrpl server
       try {
         const response = await axios.get(`${config.xrpl.xrplServerUrl}/health`);
@@ -231,8 +349,17 @@ class EthXrpCrossChainOrder {
     }
   }
 
-  async createCrossChainOrder() {
+  async createCrossChainOrder(partialFillPercentage = null) {
     console.log("\n🔄 Creating ETH-XRP Cross-Chain Order using 1inch LOP...");
+
+    // Use provided percentage or default from config
+    const fillPercentage =
+      partialFillPercentage || config.swap.partialFillPercentage;
+
+    // Validate partial fill percentage if provided
+    if (partialFillPercentage !== null) {
+      this.validatePartialFillPercentage(partialFillPercentage);
+    }
 
     try {
       // Generate order identifiers using the pattern from evmToXrplSwapWithRealEVM.js
@@ -291,12 +418,29 @@ class EthXrpCrossChainOrder {
         secret,
         status: "created",
 
+        // Partial fill tracking
+        partialFill: {
+          enabled: config.swap.enablePartialFill,
+          totalEthAmount: ethers.parseEther(config.swap.srcAmount), // Original total ETH amount
+          totalXrpAmount: BigInt(config.swap.dstAmount), // Original total XRP amount
+          currentFillPercentage: fillPercentage, // Current fill percentage
+          filledEthAmount: BigInt(0), // Amount of ETH filled so far
+          filledXrpAmount: BigInt(0), // Amount of XRP filled so far
+          remainingEthAmount: ethers.parseEther(config.swap.srcAmount), // Remaining ETH to fill
+          remainingXrpAmount: BigInt(config.swap.dstAmount), // Remaining XRP to fill
+          fillHistory: [], // Array to track fill history
+        },
+
         // Ethereum escrow data
         ethereum: {
           maker: this.ethWallet.address,
           taker: this.ethWallet.address, // Same for demo
           token: "0x0000000000000000000000000000000000000000", // ETH
-          amount: ethers.parseEther(config.swap.srcAmount),
+          totalAmount: ethers.parseEther(config.swap.srcAmount), // Total order amount
+          amount: this.calculatePartialAmount(
+            ethers.parseEther(config.swap.srcAmount),
+            fillPercentage
+          ), // Current partial amount
           safetyDeposit: ethers.parseEther("0.001"), // 0.001 ETH safety deposit
           timelocks: evmPackedTimelocks,
         },
@@ -306,7 +450,11 @@ class EthXrpCrossChainOrder {
           maker: "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW", // Funded XRPL testnet address for receiving XRP
           taker: this.ethWallet.address, // ETH wallet will receive XRP
           token: "0x0000000000000000000000000000000000000000", // XRP native
-          amount: BigInt(config.swap.dstAmount), // 1 XRP in drops as BigInt
+          totalAmount: BigInt(config.swap.dstAmount), // Total order amount in drops
+          amount: this.calculatePartialAmount(
+            BigInt(config.swap.dstAmount),
+            fillPercentage
+          ), // Current partial amount
           safetyDeposit: BigInt(config.swap.safetyDeposit), // 0.1 XRP safety deposit as BigInt
           timelocks: xrplPackedTimelocks,
         },
@@ -328,6 +476,31 @@ class EthXrpCrossChainOrder {
 
       this.activeOrders.set(orderId, order);
       console.log(`✅ ETH-XRP cross-chain order created successfully!`);
+
+      // Log partial fill information
+      if (order.partialFill.enabled) {
+        console.log("\n💫 Partial Fill Configuration:");
+        console.log(`  Enabled: ${order.partialFill.enabled}`);
+        console.log(`  Fill Percentage: ${fillPercentage}%`);
+        console.log(
+          `  ETH Total: ${ethers.formatEther(order.partialFill.totalEthAmount)} ETH`
+        );
+        console.log(
+          `  ETH Current Fill: ${ethers.formatEther(order.ethereum.amount)} ETH`
+        );
+        console.log(
+          `  XRP Total: ${Number(order.partialFill.totalXrpAmount) / 1000000} XRP`
+        );
+        console.log(
+          `  XRP Current Fill: ${Number(order.xrpl.amount) / 1000000} XRP`
+        );
+        console.log(
+          `  Remaining ETH: ${ethers.formatEther(order.partialFill.remainingEthAmount)} ETH`
+        );
+        console.log(
+          `  Remaining XRP: ${Number(order.partialFill.remainingXrpAmount) / 1000000} XRP`
+        );
+      }
 
       return order;
     } catch (error) {
@@ -593,10 +766,447 @@ class EthXrpCrossChainOrder {
     );
   }
 
+  // PARTIAL FILL HELPER METHODS
+
+  // Calculate partial amount based on percentage
+  calculatePartialAmount(totalAmount, percentage) {
+    if (typeof totalAmount === "bigint") {
+      return (totalAmount * BigInt(percentage)) / BigInt(100);
+    } else {
+      // For ethers BigNumber
+      return (totalAmount * BigInt(percentage)) / BigInt(100);
+    }
+  }
+
+  // Validate partial fill percentage
+  validatePartialFillPercentage(percentage) {
+    if (
+      percentage < config.swap.minFillPercentage ||
+      percentage > config.swap.maxFillPercentage
+    ) {
+      throw new Error(
+        `Partial fill percentage must be between ${config.swap.minFillPercentage}% and ${config.swap.maxFillPercentage}%`
+      );
+    }
+  }
+
+  // Update order fill progress
+  updateFillProgress(orderId, ethAmountFilled, xrpAmountFilled) {
+    const order = this.activeOrders.get(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    // Update filled amounts
+    order.partialFill.filledEthAmount += ethAmountFilled;
+    order.partialFill.filledXrpAmount += xrpAmountFilled;
+
+    // Update remaining amounts
+    order.partialFill.remainingEthAmount =
+      order.partialFill.totalEthAmount - order.partialFill.filledEthAmount;
+    order.partialFill.remainingXrpAmount =
+      order.partialFill.totalXrpAmount - order.partialFill.filledXrpAmount;
+
+    // Calculate fill percentage
+    const ethFillPercentage = Number(
+      (order.partialFill.filledEthAmount * BigInt(100)) /
+        order.partialFill.totalEthAmount
+    );
+    const xrpFillPercentage = Number(
+      (order.partialFill.filledXrpAmount * BigInt(100)) /
+        order.partialFill.totalXrpAmount
+    );
+
+    // Add to fill history
+    order.partialFill.fillHistory.push({
+      timestamp: Date.now(),
+      ethAmountFilled: ethAmountFilled.toString(),
+      xrpAmountFilled: xrpAmountFilled.toString(),
+      ethFillPercentage,
+      xrpFillPercentage,
+    });
+
+    // Update status based on fill completion
+    if (
+      order.partialFill.remainingEthAmount === BigInt(0) &&
+      order.partialFill.remainingXrpAmount === BigInt(0)
+    ) {
+      order.status = "fully_filled";
+    } else if (
+      order.partialFill.filledEthAmount > BigInt(0) ||
+      order.partialFill.filledXrpAmount > BigInt(0)
+    ) {
+      order.status = "partially_filled";
+    }
+
+    console.log(`📊 Fill Progress Updated for Order ${orderId}:`);
+    console.log(
+      `  ETH Filled: ${ethFillPercentage}% (${ethers.formatEther(order.partialFill.filledEthAmount)} ETH)`
+    );
+    console.log(
+      `  XRP Filled: ${xrpFillPercentage}% (${Number(order.partialFill.filledXrpAmount) / 1000000} XRP)`
+    );
+    console.log(`  Status: ${order.status}`);
+  }
+
+  // Check if order can be partially filled
+  canPartialFill(orderId, requestedEthAmount, requestedXrpAmount) {
+    const order = this.activeOrders.get(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    if (!order.partialFill.enabled) {
+      throw new Error(`Partial fill not enabled for order ${orderId}`);
+    }
+
+    const hasEnoughEth =
+      requestedEthAmount <= order.partialFill.remainingEthAmount;
+    const hasEnoughXrp =
+      requestedXrpAmount <= order.partialFill.remainingXrpAmount;
+
+    return {
+      hasEnoughEth,
+      hasEnoughXrp,
+      canFill: hasEnoughEth && hasEnoughXrp,
+    };
+  }
+
+  // Get partial fill status for an order
+  getPartialFillStatus(orderId) {
+    const order = this.activeOrders.get(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    const ethFillPercentage = Number(
+      (order.partialFill.filledEthAmount * BigInt(100)) /
+        order.partialFill.totalEthAmount
+    );
+    const xrpFillPercentage = Number(
+      (order.partialFill.filledXrpAmount * BigInt(100)) /
+        order.partialFill.totalXrpAmount
+    );
+
+    return {
+      enabled: order.partialFill.enabled,
+      totalEthAmount: ethers.formatEther(order.partialFill.totalEthAmount),
+      totalXrpAmount: (
+        Number(order.partialFill.totalXrpAmount) / 1000000
+      ).toString(),
+      filledEthAmount: ethers.formatEther(order.partialFill.filledEthAmount),
+      filledXrpAmount: (
+        Number(order.partialFill.filledXrpAmount) / 1000000
+      ).toString(),
+      remainingEthAmount: ethers.formatEther(
+        order.partialFill.remainingEthAmount
+      ),
+      remainingXrpAmount: (
+        Number(order.partialFill.remainingXrpAmount) / 1000000
+      ).toString(),
+      ethFillPercentage,
+      xrpFillPercentage,
+      fillHistory: order.partialFill.fillHistory,
+      status: order.status,
+    };
+  }
+
+  // LIMIT ORDER AND RESOLVER METHODS
+
+  /**
+   * Creates a 1inch limit order for the cross-chain swap
+   * @param {string} orderId - The cross-chain order ID
+   * @param {number} fillPercentage - Percentage of the order to fill (optional)
+   * @returns {Object} - Limit order object
+   */
+  async createLimitOrder(orderId, fillPercentage = null) {
+    const order = this.activeOrders.get(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    console.log(
+      `\n📋 Creating 1inch Limit Order for cross-chain order ${orderId}...`
+    );
+
+    try {
+      // Determine fill percentage
+      const usePartialFill =
+        fillPercentage !== null && order.partialFill.enabled;
+      const actualFillPercentage = usePartialFill ? fillPercentage : 100;
+
+      // Calculate amounts based on fill percentage
+      const makerAmount = usePartialFill
+        ? this.calculatePartialAmount(
+            order.ethereum.totalAmount,
+            actualFillPercentage
+          )
+        : order.ethereum.totalAmount;
+
+      const takerAmount = usePartialFill
+        ? this.calculatePartialAmount(
+            order.xrpl.totalAmount,
+            actualFillPercentage
+          )
+        : order.xrpl.totalAmount;
+
+      // Create 1inch limit order structure
+      const limitOrder = {
+        salt: BigInt(Date.now()), // Unique salt
+        maker: addressToUint256(order.ethereum.maker), // Maker address
+        receiver: addressToUint256(order.ethereum.taker), // Receiver address
+        makerAsset: addressToUint256(order.ethereum.token), // ETH (0x0)
+        takerAsset: addressToUint256(order.xrpl.token), // Represents XRP in the context
+        makingAmount: makerAmount, // Amount maker is providing (ETH)
+        takingAmount: takerAmount, // Amount maker wants (XRP equivalent)
+        makerTraits: BigInt(0), // Default maker traits
+      };
+
+      // Calculate order hash using 1inch LOP
+      const orderHash = await this.limitOrderProtocol.hashOrder(limitOrder);
+
+      // Store limit order
+      this.limitOrders.set(orderId, {
+        limitOrder,
+        orderHash,
+        fillPercentage: actualFillPercentage,
+        created: Date.now(),
+        status: "created",
+      });
+
+      console.log(`✅ Limit Order created successfully!`);
+      console.log(`📋 Order Hash: ${orderHash}`);
+      console.log(`💰 Making Amount: ${ethers.formatEther(makerAmount)} ETH`);
+      console.log(
+        `💰 Taking Amount: ${Number(takerAmount) / 1000000} XRP equivalent`
+      );
+      console.log(`📊 Fill Percentage: ${actualFillPercentage}%`);
+
+      return { limitOrder, orderHash, fillPercentage: actualFillPercentage };
+    } catch (error) {
+      console.error("❌ Failed to create limit order:", error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Resolves a limit order using the custom resolver
+   * @param {string} orderId - The cross-chain order ID
+   * @param {number} fillPercentage - Percentage to fill (optional for partial fills)
+   * @returns {Object} - Resolution result
+   */
+  async resolveLimitOrder(orderId, fillPercentage = null) {
+    const order = this.activeOrders.get(orderId);
+    const limitOrderData = this.limitOrders.get(orderId);
+
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    if (!limitOrderData) {
+      throw new Error(
+        `Limit order not found for ${orderId}. Create limit order first.`
+      );
+    }
+
+    console.log(
+      `\n🔧 Resolving Limit Order using Custom Resolver for ${orderId}...`
+    );
+
+    try {
+      const usePartialFill =
+        fillPercentage !== null && order.partialFill.enabled;
+      const resolverConfig = await this.customResolver.config();
+
+      // Validate fill percentage if using partial fill
+      if (usePartialFill) {
+        if (
+          fillPercentage < resolverConfig.minFillPercentage ||
+          fillPercentage > resolverConfig.maxFillPercentage
+        ) {
+          throw new Error(
+            `Fill percentage must be between ${resolverConfig.minFillPercentage}% and ${resolverConfig.maxFillPercentage}%`
+          );
+        }
+      }
+
+      // Create dummy signature components (in real implementation, these would be actual signatures)
+      const r = ethers.keccak256(ethers.toUtf8Bytes("dummy_r"));
+      const vs = ethers.keccak256(ethers.toUtf8Bytes("dummy_vs"));
+      const takerTraits = BigInt(0); // Default taker traits
+
+      let makingAmount, takingAmount, resolverOrderHash;
+
+      if (usePartialFill) {
+        // Use partial fill resolver
+        console.log(`📊 Using partial fill: ${fillPercentage}%`);
+
+        const result = await this.customResolver.resolvePartialOrder(
+          limitOrderData.limitOrder,
+          r,
+          vs,
+          fillPercentage,
+          takerTraits,
+          order.ethereum.escrowAddress || ethers.ZeroAddress
+        );
+
+        makingAmount = result.makingAmount;
+        takingAmount = result.takingAmount;
+        resolverOrderHash = result.orderHash;
+
+        // Update partial fill tracking
+        this.updateFillProgress(orderId, makingAmount, takingAmount);
+      } else {
+        // Use full order resolver
+        console.log(`📊 Using full order resolution`);
+
+        const amount = limitOrderData.limitOrder.takingAmount;
+        const result = await this.customResolver.resolveOrder(
+          limitOrderData.limitOrder,
+          r,
+          vs,
+          amount,
+          takerTraits
+        );
+
+        makingAmount = result.makingAmount;
+        takingAmount = result.takingAmount;
+        resolverOrderHash = result.orderHash;
+      }
+
+      // Update limit order status
+      limitOrderData.status = "resolved";
+      limitOrderData.resolvedAt = Date.now();
+      limitOrderData.makingAmount = makingAmount;
+      limitOrderData.takingAmount = takingAmount;
+
+      // Store resolver order tracking
+      this.resolverOrders.set(resolverOrderHash, {
+        orderId,
+        limitOrderHash: limitOrderData.orderHash,
+        fillPercentage: usePartialFill ? fillPercentage : 100,
+        makingAmount,
+        takingAmount,
+        resolvedAt: Date.now(),
+      });
+
+      console.log(`✅ Limit Order resolved successfully!`);
+      console.log(`📋 Resolver Order Hash: ${resolverOrderHash}`);
+      console.log(`💰 Making Amount: ${ethers.formatEther(makingAmount)} ETH`);
+      console.log(`💰 Taking Amount: ${Number(takingAmount) / 1000000} XRP`);
+
+      return {
+        resolverOrderHash,
+        makingAmount,
+        takingAmount,
+        fillPercentage: usePartialFill ? fillPercentage : 100,
+        isPartialFill: usePartialFill,
+      };
+    } catch (error) {
+      console.error("❌ Failed to resolve limit order:", error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets resolver order status and partial fill information
+   * @param {string} resolverOrderHash - Hash of the resolver order
+   * @returns {Object} - Resolver order status
+   */
+  async getResolverOrderStatus(resolverOrderHash) {
+    try {
+      const resolverOrder = this.resolverOrders.get(resolverOrderHash);
+      if (!resolverOrder) {
+        throw new Error(`Resolver order ${resolverOrderHash} not found`);
+      }
+
+      // Get partial fill order from resolver contract
+      const partialFillOrder =
+        await this.customResolver.getPartialFillOrder(resolverOrderHash);
+
+      return {
+        localData: resolverOrder,
+        contractData: partialFillOrder,
+        isActive: partialFillOrder.isActive,
+        totalAmount: partialFillOrder.totalAmount.toString(),
+        filledAmount: partialFillOrder.filledAmount.toString(),
+        remainingAmount: partialFillOrder.remainingAmount.toString(),
+        fillPercentage: partialFillOrder.fillPercentage.toString(),
+        escrowAddress: partialFillOrder.escrowAddress,
+      };
+    } catch (error) {
+      console.error("❌ Failed to get resolver order status:", error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates additional partial fill for an existing resolver order
+   * @param {string} resolverOrderHash - Hash of the resolver order
+   * @param {number} newFillPercentage - New fill percentage
+   * @returns {boolean} - Success status
+   */
+  async createAdditionalPartialFill(resolverOrderHash, newFillPercentage) {
+    console.log(
+      `\n💫 Creating additional partial fill for resolver order ${resolverOrderHash}...`
+    );
+
+    try {
+      const success = await this.customResolver.createAdditionalPartialFill(
+        resolverOrderHash,
+        newFillPercentage
+      );
+
+      if (success) {
+        console.log(
+          `✅ Additional partial fill created: ${newFillPercentage}%`
+        );
+
+        // Update local tracking
+        const resolverOrder = this.resolverOrders.get(resolverOrderHash);
+        if (resolverOrder) {
+          resolverOrder.additionalFills = resolverOrder.additionalFills || [];
+          resolverOrder.additionalFills.push({
+            fillPercentage: newFillPercentage,
+            createdAt: Date.now(),
+          });
+        }
+      }
+
+      return success;
+    } catch (error) {
+      console.error(
+        "❌ Failed to create additional partial fill:",
+        error.message
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Lists all active partial fill orders from the resolver
+   * @returns {Array} - Array of active order hashes
+   */
+  async getActiveResolverOrders() {
+    try {
+      const activeOrders =
+        await this.customResolver.getActivePartialFillOrders();
+      console.log(`📋 Found ${activeOrders.length} active resolver orders`);
+      return activeOrders;
+    } catch (error) {
+      console.error("❌ Failed to get active resolver orders:", error.message);
+      throw error;
+    }
+  }
+
   // ATOMIC SWAP EXECUTION METHODS
 
-  // Method 1: Withdraw from Ethereum Escrow (reveal secret)
-  async withdrawFromEthereumEscrow(orderId, secret = null) {
+  // Method 1: Withdraw from Ethereum Escrow (reveal secret) - with partial fill support
+  async withdrawFromEthereumEscrow(
+    orderId,
+    secret = null,
+    partialAmount = null
+  ) {
     const order = this.activeOrders.get(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
@@ -609,11 +1219,33 @@ class EthXrpCrossChainOrder {
     // Use the stored secret if none provided
     const withdrawSecret = secret || order.secret;
 
+    // Handle partial withdrawal amount
+    let withdrawAmount = order.ethereum.amount; // Default to current escrow amount
+    if (partialAmount !== null) {
+      if (order.partialFill.enabled) {
+        // Validate partial amount doesn't exceed available amount
+        if (partialAmount > order.ethereum.amount) {
+          throw new Error(
+            `Partial withdrawal amount (${ethers.formatEther(partialAmount)} ETH) exceeds available escrow amount (${ethers.formatEther(order.ethereum.amount)} ETH)`
+          );
+        }
+        withdrawAmount = partialAmount;
+        console.log(
+          `📊 Partial withdrawal requested: ${ethers.formatEther(partialAmount)} ETH`
+        );
+      } else {
+        throw new Error(`Partial withdrawals not enabled for order ${orderId}`);
+      }
+    }
+
     console.log(
       `\n🔓 Withdrawing from Ethereum Escrow for order ${orderId}...`
     );
     console.log(`📍 Escrow Address: ${order.ethereum.escrowAddress}`);
     console.log(`🔑 Using Secret: ${withdrawSecret}`);
+    console.log(
+      `💰 Withdrawal Amount: ${ethers.formatEther(withdrawAmount)} ETH`
+    );
 
     try {
       // Create escrow contract instance
@@ -793,11 +1425,28 @@ class EthXrpCrossChainOrder {
       order.ethereum.withdrawnAt = Date.now();
       order.status = "ethereum_withdrawn";
 
+      // Update partial fill progress if enabled
+      if (order.partialFill.enabled) {
+        // Update fill progress with the withdrawn amount
+        this.updateFillProgress(orderId, withdrawAmount, BigInt(0));
+
+        // Update remaining amount in ethereum escrow
+        order.ethereum.amount -= withdrawAmount;
+
+        console.log(`📊 Partial Fill Progress Updated after ETH withdrawal:`);
+        console.log(`  Withdrawn: ${ethers.formatEther(withdrawAmount)} ETH`);
+        console.log(
+          `  Remaining in escrow: ${ethers.formatEther(order.ethereum.amount)} ETH`
+        );
+      }
+
       return {
         transactionHash: tx.hash,
         blockNumber: receipt.blockNumber,
         gasUsed: receipt.gasUsed.toString(),
         secretRevealed: withdrawSecret,
+        withdrawnAmount: ethers.formatEther(withdrawAmount),
+        partialFillEnabled: order.partialFill.enabled,
       };
     } catch (error) {
       console.error(
@@ -808,8 +1457,13 @@ class EthXrpCrossChainOrder {
     }
   }
 
-  // Method 2: Withdraw from XRPL Escrow
-  async withdrawFromXrplEscrow(orderId, secret = null, callerAddress = null) {
+  // Method 2: Withdraw from XRPL Escrow - with partial fill support
+  async withdrawFromXrplEscrow(
+    orderId,
+    secret = null,
+    callerAddress = null,
+    partialAmount = null
+  ) {
     const order = this.activeOrders.get(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
@@ -823,10 +1477,32 @@ class EthXrpCrossChainOrder {
     const withdrawSecret = secret || order.secret;
     const caller = callerAddress || order.ethereum.maker; // ETH maker receives XRP
 
+    // Handle partial withdrawal amount for XRP
+    let withdrawAmount = order.xrpl.amount; // Default to current escrow amount
+    if (partialAmount !== null) {
+      if (order.partialFill.enabled) {
+        // Validate partial amount doesn't exceed available amount
+        if (partialAmount > order.xrpl.amount) {
+          throw new Error(
+            `Partial withdrawal amount (${Number(partialAmount) / 1000000} XRP) exceeds available escrow amount (${Number(order.xrpl.amount) / 1000000} XRP)`
+          );
+        }
+        withdrawAmount = partialAmount;
+        console.log(
+          `📊 Partial XRP withdrawal requested: ${Number(partialAmount) / 1000000} XRP`
+        );
+      } else {
+        throw new Error(`Partial withdrawals not enabled for order ${orderId}`);
+      }
+    }
+
     console.log(`\n🌊 Withdrawing from XRPL Escrow for order ${orderId}...`);
     console.log(`📍 Escrow ID: ${order.xrpl.escrowId}`);
     console.log(`🔑 Using Secret: ${withdrawSecret}`);
     console.log(`👤 Caller Address: ${caller}`);
+    console.log(
+      `💰 Withdrawal Amount: ${Number(withdrawAmount) / 1000000} XRP`
+    );
 
     try {
       // Call XRPL withdrawal via local server
@@ -845,11 +1521,28 @@ class EthXrpCrossChainOrder {
       order.xrpl.withdrawnAt = Date.now();
       order.status = "both_withdrawn";
 
+      // Update partial fill progress if enabled
+      if (order.partialFill.enabled) {
+        // Update fill progress with the withdrawn amount
+        this.updateFillProgress(orderId, BigInt(0), withdrawAmount);
+
+        // Update remaining amount in XRPL escrow
+        order.xrpl.amount -= withdrawAmount;
+
+        console.log(`📊 Partial Fill Progress Updated after XRP withdrawal:`);
+        console.log(`  Withdrawn: ${Number(withdrawAmount) / 1000000} XRP`);
+        console.log(
+          `  Remaining in escrow: ${Number(order.xrpl.amount) / 1000000} XRP`
+        );
+      }
+
       return {
         transactionHash: withdrawalResult.txHash,
         amount: withdrawalResult.amount,
         secretUsed: withdrawSecret,
         message: withdrawalResult.message,
+        withdrawnAmount: (Number(withdrawAmount) / 1000000).toString(),
+        partialFillEnabled: order.partialFill.enabled,
       };
     } catch (error) {
       console.error("❌ Failed to withdraw from XRPL escrow:", error.message);
@@ -857,11 +1550,13 @@ class EthXrpCrossChainOrder {
     }
   }
 
-  // Method 3: Execute Complete Atomic Swap
+  // Method 3: Execute Complete Atomic Swap - with partial fill support
   async executeAtomicSwap(
     orderId,
     customSecret = null,
-    recipientAddress = null
+    recipientAddress = null,
+    partialEthAmount = null,
+    partialXrpAmount = null
   ) {
     console.log(`\n🔄 Executing Atomic Swap for order ${orderId}...`);
     console.log("=".repeat(60));
@@ -875,6 +1570,26 @@ class EthXrpCrossChainOrder {
       const secret = customSecret || order.secret;
       const recipient = recipientAddress || order.ethereum.maker;
 
+      // Validate partial amounts if provided
+      if (
+        order.partialFill.enabled &&
+        (partialEthAmount !== null || partialXrpAmount !== null)
+      ) {
+        const ethAmount = partialEthAmount || order.ethereum.amount;
+        const xrpAmount = partialXrpAmount || order.xrpl.amount;
+
+        const canFill = this.canPartialFill(orderId, ethAmount, xrpAmount);
+        if (!canFill.canFill) {
+          throw new Error(
+            `Cannot execute partial swap: ETH sufficient: ${canFill.hasEnoughEth}, XRP sufficient: ${canFill.hasEnoughXrp}`
+          );
+        }
+
+        console.log(`📊 Partial Swap Amounts:`);
+        console.log(`  ETH: ${ethers.formatEther(ethAmount)} ETH`);
+        console.log(`  XRP: ${Number(xrpAmount) / 1000000} XRP`);
+      }
+
       console.log(`🔑 Secret: ${secret}`);
       console.log(`👤 Recipient: ${recipient}`);
       console.log(`📋 Order Hash: ${order.orderHash}`);
@@ -883,7 +1598,8 @@ class EthXrpCrossChainOrder {
       console.log("\n📍 Step 1: Revealing secret on Ethereum...");
       const ethWithdrawal = await this.withdrawFromEthereumEscrow(
         orderId,
-        secret
+        secret,
+        partialEthAmount
       );
 
       // Step 2: Withdraw from XRPL escrow (using revealed secret)
@@ -891,7 +1607,8 @@ class EthXrpCrossChainOrder {
       const xrplWithdrawal = await this.withdrawFromXrplEscrow(
         orderId,
         secret,
-        recipient
+        recipient,
+        partialXrpAmount
       );
 
       // Step 3: Get final status
@@ -1003,6 +1720,11 @@ class EthXrpCrossChainOrder {
         withdrawalTx: order.xrpl.withdrawalTx || null,
       },
 
+      // Partial fill information
+      partialFill: order.partialFill.enabled
+        ? this.getPartialFillStatus(orderId)
+        : null,
+
       // Timestamps
       createdAt: new Date(order.createdAt).toISOString(),
     };
@@ -1010,6 +1732,282 @@ class EthXrpCrossChainOrder {
 
   listActiveOrders() {
     return Array.from(this.activeOrders.keys());
+  }
+
+  // PARTIAL FILL SPECIFIC METHODS
+
+  // Create a new partial fill for an existing order
+  async createPartialFill(orderId, fillPercentage) {
+    const order = this.activeOrders.get(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    if (!order.partialFill.enabled) {
+      throw new Error(`Partial fill not enabled for order ${orderId}`);
+    }
+
+    // Validate percentage
+    this.validatePartialFillPercentage(fillPercentage);
+
+    // Calculate new partial amounts
+    const newEthAmount = this.calculatePartialAmount(
+      order.partialFill.remainingEthAmount,
+      fillPercentage
+    );
+    const newXrpAmount = this.calculatePartialAmount(
+      order.partialFill.remainingXrpAmount,
+      fillPercentage
+    );
+
+    console.log(`\n💫 Creating new partial fill for order ${orderId}:`);
+    console.log(`  Fill Percentage: ${fillPercentage}%`);
+    console.log(`  ETH Amount: ${ethers.formatEther(newEthAmount)} ETH`);
+    console.log(`  XRP Amount: ${Number(newXrpAmount) / 1000000} XRP`);
+
+    // Check if we have enough remaining amounts
+    const canFill = this.canPartialFill(orderId, newEthAmount, newXrpAmount);
+    if (!canFill.canFill) {
+      throw new Error(
+        `Cannot create partial fill: ETH sufficient: ${canFill.hasEnoughEth}, XRP sufficient: ${canFill.hasEnoughXrp}`
+      );
+    }
+
+    // Update current escrow amounts
+    order.ethereum.amount = newEthAmount;
+    order.xrpl.amount = newXrpAmount;
+    order.partialFill.currentFillPercentage = fillPercentage;
+
+    console.log(
+      `✅ Partial fill created successfully for ${fillPercentage}% of remaining amounts`
+    );
+
+    return {
+      orderId,
+      fillPercentage,
+      ethAmount: ethers.formatEther(newEthAmount),
+      xrpAmount: (Number(newXrpAmount) / 1000000).toString(),
+      remainingEthAmount: ethers.formatEther(
+        order.partialFill.remainingEthAmount
+      ),
+      remainingXrpAmount: (
+        Number(order.partialFill.remainingXrpAmount) / 1000000
+      ).toString(),
+    };
+  }
+
+  // Execute partial atomic swap with specific amounts
+  async executePartialAtomicSwap(
+    orderId,
+    ethAmount,
+    xrpAmount,
+    customSecret = null,
+    recipientAddress = null
+  ) {
+    console.log(`\n🔄 Executing Partial Atomic Swap for order ${orderId}...`);
+    console.log("=".repeat(60));
+
+    const order = this.activeOrders.get(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    if (!order.partialFill.enabled) {
+      throw new Error(`Partial fill not enabled for order ${orderId}`);
+    }
+
+    // Convert string amounts to BigInt if needed
+    const ethAmountBig =
+      typeof ethAmount === "string" ? ethers.parseEther(ethAmount) : ethAmount;
+    const xrpAmountBig =
+      typeof xrpAmount === "string"
+        ? BigInt(parseFloat(xrpAmount) * 1000000)
+        : xrpAmount;
+
+    console.log(`📊 Partial Swap Request:`);
+    console.log(`  ETH Amount: ${ethers.formatEther(ethAmountBig)} ETH`);
+    console.log(`  XRP Amount: ${Number(xrpAmountBig) / 1000000} XRP`);
+
+    // Execute the atomic swap with partial amounts
+    return await this.executeAtomicSwap(
+      orderId,
+      customSecret,
+      recipientAddress,
+      ethAmountBig,
+      xrpAmountBig
+    );
+  }
+}
+
+// Custom Resolver Demo Workflow Function
+async function startCustomResolverDemo() {
+  console.log("🚀 Starting ETH-XRP Custom Resolver Demo with Partial Fills");
+  console.log("=".repeat(80));
+
+  try {
+    const orderSystem = new EthXrpCrossChainOrder();
+
+    // Step 1: Initialize
+    await orderSystem.initialize();
+
+    // Step 2: Create cross-chain order with partial fill enabled
+    console.log(
+      "\n📋 Creating cross-chain order with partial fill capability..."
+    );
+    const order = await orderSystem.createCrossChainOrder(40); // Start with 40% fill
+
+    // Step 3: Create 1inch Limit Order
+    console.log("\n📋 Creating 1inch Limit Order...");
+    const limitOrder = await orderSystem.createLimitOrder(order.id, 40);
+
+    // Step 4: Create escrows for the order
+    const ethEscrow = await orderSystem.createEthereumEscrow(order.id);
+    const xrplEscrow = await orderSystem.createXrplEscrow(order.id);
+
+    // Step 5: Resolve the limit order using custom resolver (partial fill)
+    console.log(
+      "\n🔧 Resolving limit order with custom resolver (40% partial fill)..."
+    );
+    const resolverResult1 = await orderSystem.resolveLimitOrder(order.id, 40);
+
+    // Step 6: Get resolver order status
+    console.log("\n📊 Checking resolver order status...");
+    const resolverStatus1 = await orderSystem.getResolverOrderStatus(
+      resolverResult1.resolverOrderHash
+    );
+    console.log(
+      "First Resolution Status:",
+      JSON.stringify(resolverStatus1, null, 2)
+    );
+
+    // Step 7: Create additional partial fill (25% of remaining)
+    console.log("\n💫 Creating additional partial fill (25%)...");
+    const additionalFill = await orderSystem.createAdditionalPartialFill(
+      resolverResult1.resolverOrderHash,
+      25
+    );
+
+    // Step 8: Resolve the additional partial fill
+    console.log("\n🔧 Resolving additional partial fill...");
+    const resolverResult2 = await orderSystem.resolveLimitOrder(order.id, 25);
+
+    // Step 9: Get all active resolver orders
+    console.log("\n📋 Getting all active resolver orders...");
+    const activeOrders = await orderSystem.getActiveResolverOrders();
+    console.log(
+      `Found ${activeOrders.length} active resolver orders:`,
+      activeOrders
+    );
+
+    // Step 10: Final status check
+    console.log("\n📊 Final resolver status check...");
+    const finalResolverStatus = await orderSystem.getResolverOrderStatus(
+      resolverResult2.resolverOrderHash
+    );
+    console.log(
+      "Final Resolution Status:",
+      JSON.stringify(finalResolverStatus, null, 2)
+    );
+
+    // Step 11: Show overall partial fill progress
+    console.log("\n📊 Overall Partial Fill Progress:");
+    const partialFillStatus = orderSystem.getPartialFillStatus(order.id);
+    console.log(JSON.stringify(partialFillStatus, null, 2));
+
+    console.log("\n🎉 CUSTOM RESOLVER DEMO COMPLETED SUCCESSFULLY!");
+    console.log("✅ Demonstrated custom resolver integration");
+    console.log("✅ Created and resolved 1inch limit orders");
+    console.log("✅ Multiple partial fills executed through resolver");
+    console.log("✅ Partial fill progress tracked successfully");
+    console.log("✅ Custom resolver used instead of 1inch default resolver");
+
+    return {
+      orderId: order.id,
+      limitOrderHash: limitOrder.orderHash,
+      resolverResult1,
+      resolverResult2,
+      finalStatus: partialFillStatus,
+      activeResolverOrders: activeOrders,
+    };
+  } catch (error) {
+    console.error("❌ Custom resolver demo failed:", error.message);
+    throw error;
+  }
+}
+
+// Partial Fill Demo Workflow Function
+async function startPartialFillDemo() {
+  console.log("🚀 Starting ETH-XRP Partial Fill Demo");
+  console.log("=".repeat(70));
+
+  try {
+    const orderSystem = new EthXrpCrossChainOrder();
+
+    // Step 1: Initialize
+    await orderSystem.initialize();
+
+    // Step 2: Create cross-chain order with partial fill enabled
+    console.log("\n📋 Creating order with partial fill capability...");
+    const order = await orderSystem.createCrossChainOrder(30); // Start with 30% fill
+
+    // Step 3: Create escrows
+    const ethEscrow = await orderSystem.createEthereumEscrow(order.id);
+    const xrplEscrow = await orderSystem.createXrplEscrow(order.id);
+
+    // Wait for withdrawal window
+    console.log("\n⏰ Waiting for withdrawal window to open...");
+    const currentTime = Math.floor(Date.now() / 1000);
+    const dstWithdrawalTime = order.timelocks[4];
+    const waitTime = Math.max(
+      10000, // Always wait at least 10 seconds
+      (dstWithdrawalTime - currentTime) * 1000 + 10000
+    );
+    console.log(
+      `⏰ Waiting ${waitTime / 1000} seconds for withdrawal window...`
+    );
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+    // Step 4: Execute first partial swap (30%)
+    console.log("\n🔄 Executing first partial swap (30%)...");
+    const firstSwap = await orderSystem.executeAtomicSwap(order.id);
+
+    // Step 5: Show partial fill status
+    console.log("\n📊 Partial Fill Status after first swap:");
+    const status1 = orderSystem.getPartialFillStatus(order.id);
+    console.log(JSON.stringify(status1, null, 2));
+
+    // Step 6: Create another partial fill (25% of remaining)
+    console.log("\n💫 Creating second partial fill (25% of remaining)...");
+    const secondFill = await orderSystem.createPartialFill(order.id, 25);
+
+    // Step 7: Create new escrows for the second partial fill
+    console.log("\n🏗️  Creating escrows for second partial fill...");
+    await orderSystem.createEthereumEscrow(order.id);
+    await orderSystem.createXrplEscrow(order.id);
+
+    // Step 8: Execute second partial swap
+    console.log("\n🔄 Executing second partial swap...");
+    const secondSwap = await orderSystem.executeAtomicSwap(order.id);
+
+    // Step 9: Final status
+    console.log("\n📊 Final Partial Fill Status:");
+    const finalStatus = orderSystem.getPartialFillStatus(order.id);
+    console.log(JSON.stringify(finalStatus, null, 2));
+
+    console.log("\n🎉 PARTIAL FILL DEMO COMPLETED SUCCESSFULLY!");
+    console.log("✅ Demonstrated partial fill capability");
+    console.log("✅ Multiple partial swaps executed");
+    console.log("✅ Fill progress tracked successfully");
+
+    return {
+      orderId: order.id,
+      firstSwap,
+      secondSwap,
+      finalStatus,
+    };
+  } catch (error) {
+    console.error("❌ Partial fill demo failed:", error.message);
+    throw error;
   }
 }
 
@@ -1153,6 +2151,8 @@ module.exports = {
   config,
   XRPLClient,
   startCrossChainSwapWithExecution,
+  startPartialFillDemo,
+  startCustomResolverDemo,
 };
 
 // Run based on command line argument
@@ -1160,6 +2160,10 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   if (args.includes("--execute")) {
     startCrossChainSwapWithExecution().catch(console.error);
+  } else if (args.includes("--partial-fill")) {
+    startPartialFillDemo().catch(console.error);
+  } else if (args.includes("--custom-resolver")) {
+    startCustomResolverDemo().catch(console.error);
   } else {
     main().catch(console.error);
   }
