@@ -999,9 +999,68 @@ class CrossChainOrchestrator {
       ethDstTx.hash,
       "EthereumEscrowDst Creation (TRX→ETH)"
     );
-    // For DemoResolverV2, the "escrow" is handled by the official EscrowFactory
-    // Use DemoResolver as escrow address for simplified implementation (EXACT COPY of working flow)
-    const ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS;
+
+    // 🎯 CRITICAL FIX: Extract actual ETH escrow address from DstEscrowCreated event (like working ETH→TRX flow)
+    let ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS; // fallback
+
+    try {
+      // Try multiple event patterns to find the escrow address (like working ETH→TRX flow)
+
+      // Try EscrowCreated event from DemoResolver (like working ETH→TRX flow)
+      const escrowCreatedEvent = ethDstReceipt?.logs?.find(
+        (log) =>
+          log.address.toLowerCase() ===
+            this.config.DEMO_RESOLVER_ADDRESS.toLowerCase() &&
+          log.topics[0] ===
+            "0x2e51eb252678ae00b7491f29b35873f446f09ee22d616fc60d9db472d87b4081" // EscrowCreated event signature (same as working flow)
+      );
+
+      if (escrowCreatedEvent && escrowCreatedEvent.topics[1]) {
+        // Extract escrow address from first indexed parameter (escrow address)
+        const extractedAddress = "0x" + escrowCreatedEvent.topics[1].slice(-40);
+        ethEscrowAddress = extractedAddress;
+        this.logger.debug(
+          "✅ Extracted ETH escrow address from EscrowCreated event (like working flow)",
+          {
+            extractedAddress: ethEscrowAddress,
+            orderHash: orderHash,
+          }
+        );
+      } else {
+        // Fallback: Try DstEscrowCreated event from EscrowFactory with corrected signature
+        const dstEscrowCreatedEvent = ethDstReceipt?.logs?.find(
+          (log) =>
+            log.address.toLowerCase() ===
+              this.config.OFFICIAL_ESCROW_FACTORY_ADDRESS.toLowerCase() &&
+            log.topics[0] ===
+              "0xc30e111dcc74fddc2c3a4d98ffb97adec4485c0a687946bf5b22c2a99c7ff96d" // DstEscrowCreated(address,bytes32,uint256) actual signature
+        );
+
+        if (dstEscrowCreatedEvent && dstEscrowCreatedEvent.data) {
+          // Extract escrow address from data field (first 32 bytes, but address is last 20 bytes)
+          const extractedAddress =
+            "0x" + dstEscrowCreatedEvent.data.slice(26, 66);
+          ethEscrowAddress = extractedAddress;
+          this.logger.debug(
+            "✅ Extracted ETH escrow address from DstEscrowCreated event data",
+            {
+              extractedAddress: ethEscrowAddress,
+              orderHash: orderHash,
+              dataLength: dstEscrowCreatedEvent.data.length,
+            }
+          );
+        } else {
+          this.logger.warn(
+            "⚠️ Could not find any escrow creation event, using fallback address"
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.warn("❌ Error extracting escrow address from event", {
+        error: error.message,
+      });
+    }
+
     this.logger.success("EthereumEscrowDst created", {
       txHash: ethDstTx.hash,
       escrowAddress: ethEscrowAddress,
@@ -1021,10 +1080,11 @@ class CrossChainOrchestrator {
       orderHash: orderInfo.orderHash,
       secret: secret,
       secretHash: secretHash,
-      ethEscrowAddress: ethEscrowAddress,
+      ethEscrowAddress: ethEscrowAddress, // 🎯 FIXED: Now points to actual escrow contract
       tronEscrowAddress: tronSrcResult.contractAddress || "TronEscrowSrc",
       ethTxHash: ethDstTx.hash,
       tronTxHash: tronSrcResult.txHash,
+      tronImmutables: tronSrcResult.immutables, // 🎯 CRITICAL FIX: Include tronImmutables for claiming
     };
     this.logger.success("TRX→ETH atomic swap setup complete", result);
     return result;

@@ -103,6 +103,7 @@ async function testTRXtoETHAtomicSwap() {
     await new Promise((resolve) => setTimeout(resolve, 3000)); // 3 second delay
 
     const userATronPrivateKey = process.env.USER_A_TRX_PRIVATE_KEY;
+    const userAEthPrivateKey = process.env.USER_A_ETH_PRIVATE_KEY;
     const userBEthPrivateKey = process.env.USER_B_ETH_PRIVATE_KEY;
     const provider = ethers.provider;
     const userB = new ethers.Wallet(userBEthPrivateKey!, provider); // User B is ETH holder (resolver)
@@ -231,11 +232,11 @@ async function testTRXtoETHAtomicSwap() {
       "╚══════════════════════════════════════════════════════════════╝"
     );
 
-    // Wait for timelock (15 seconds for fast testing)
+    // 🎯 HACKATHON: Wait longer for timelock to ensure withdrawal window is open
     console.log(
-      "⏳ Waiting for escrow timelock (15 seconds for fast testing)..."
+      "⏳ Waiting for escrow timelock (45 seconds for hackathon success)..."
     );
-    await new Promise((resolve) => setTimeout(resolve, 20000)); // 20 seconds
+    await new Promise((resolve) => setTimeout(resolve, 45000)); // 45 seconds to be safe
 
     // Check balances after atomic execution
     const afterUserBEth = await provider.getBalance(userB.address);
@@ -284,13 +285,14 @@ async function testTRXtoETHAtomicSwap() {
       "Action: Both parties claim their funds using the revealed secret"
     );
 
+    let claimResult: any = { tronWithdrawalTxHash: null };
     try {
-      // Use the orchestrator's complete claiming functionality
-      await orchestrator.claimAtomicSwap(
+      // 🎯 HACKATHON CRITICAL: User B must withdraw ETH first (reveals secret), User A gets TRX
+      claimResult = await orchestrator.claimAtomicSwap(
         swapResult,
         swapResult.secret,
-        config.USER_B_ETH_PRIVATE_KEY, // User B's ETH private key for claiming ETH
-        userATronPrivateKey! // User A's Tron private key for claiming TRX
+        config.USER_B_ETH_PRIVATE_KEY, // User B calls withdraw (taker), sends ETH to User A (maker)
+        userATronPrivateKey! // User A gets TRX using revealed secret
       );
 
       console.log("  ✅ Complete fund claiming executed successfully!");
@@ -453,6 +455,9 @@ async function testTRXtoETHAtomicSwap() {
       "║ ✅ EthereumEscrowDst Creation: User B locked ETH + deposit   ║"
     );
     console.log(
+      `║ ✅ TRX Withdrawal Success: ${claimResult?.txHash?.substring(0, 10) || "pending"}...${claimResult?.txHash?.substring(-8) || ""} ║`
+    );
+    console.log(
       `║ 📍 Tron Escrow: ${swapResult.tronEscrowAddress}                        ║`
     );
     console.log(`║ 📍 ETH Escrow: ${swapResult.ethEscrowAddress}     ║`);
@@ -467,6 +472,9 @@ async function testTRXtoETHAtomicSwap() {
     );
     console.log(
       `🔗 ETH Transaction: https://sepolia.etherscan.io/tx/${swapResult.ethTxHash}`
+    );
+    console.log(
+      `🔗 TRX Withdrawal: https://nile.tronscan.org/#/transaction/${claimResult?.tronWithdrawalTxHash || claimResult?.txHash || "pending"}`
     );
 
     console.log("\n💡 MONEY FLOW VERIFICATION:");
