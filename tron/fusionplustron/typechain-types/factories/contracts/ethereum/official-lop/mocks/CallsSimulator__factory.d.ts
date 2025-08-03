@@ -1,0 +1,41 @@
+import { ContractFactory, ContractTransactionResponse } from "ethers";
+import type { Signer, ContractDeployTransaction, ContractRunner } from "ethers";
+import type { NonPayableOverrides } from "../../../../../common";
+import type { CallsSimulator, CallsSimulatorInterface } from "../../../../../contracts/ethereum/official-lop/mocks/CallsSimulator";
+type CallsSimulatorConstructorParams = [signer?: Signer] | ConstructorParameters<typeof ContractFactory>;
+export declare class CallsSimulator__factory extends ContractFactory {
+    constructor(...args: CallsSimulatorConstructorParams);
+    getDeployTransaction(overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<ContractDeployTransaction>;
+    deploy(overrides?: NonPayableOverrides & {
+        from?: string;
+    }): Promise<CallsSimulator & {
+        deploymentTransaction(): ContractTransactionResponse;
+    }>;
+    connect(runner: ContractRunner | null): CallsSimulator__factory;
+    static readonly bytecode = "0x6080806040523461001657610369908161001c8239f35b600080fdfe608080604052600436101561001357600080fd5b60003560e01c637f29a59d1461002857600080fd5b3461023d57604036600319011261023d5760043567ffffffffffffffff811161023d5761005990369060040161027a565b60249291923567ffffffffffffffff811161023d5761007c90369060040161027a565b93909284830361026b5750610090826102e3565b9361009e60405195866102ab565b8285526100aa836102e3565b601f199490850136602088013760005b8481106101405761013760448888601f6040519261010f602d8560208101936c43414c4c5f524553554c54535f60981b85526100ff8151809260208686019101610310565b810103600d8101875201856102ab565b60405195869462461bcd60e51b86526020600487015251809281602488015287870190610310565b01168101030190fd5b600581901b848101356001600160a01b038116900361023d57838210156102555780830135601e198436030181121561023d57830167ffffffffffffffff81351161023d5780353603602082011361023d576000918291826040518281933560208201833735810182815203928901355af1903d1561024d573d916101c4836102e3565b926101d260405194856102ab565b83523d6000602085013e5b80610242575b80610218575b60019250156102065760316101fe828a6102ff565b535b016100ba565b6030610212828a6102ff565b53610200565b509060208180518101031261023d576020015190811515820361023d576001916101e9565b600080fd5b5060208251146101e3565b6060916101dd565b634e487b7160e01b600052603260045260246000fd5b63cc6e40b360e01b8152600490fd5b9181601f8401121561023d5782359167ffffffffffffffff831161023d576020808501948460051b01011161023d57565b90601f8019910116810190811067ffffffffffffffff8211176102cd57604052565b634e487b7160e01b600052604160045260246000fd5b67ffffffffffffffff81116102cd57601f01601f191660200190565b908151811015610255570160200190565b60005b8381106103235750506000910152565b818101518382015260200161031356fea2646970667358221220dea78fba092b6b7a6c86415bcbf35ecf47558718b1c4a341d42cafdeb6df303764736f6c63430008170033";
+    static readonly abi: readonly [{
+        readonly inputs: readonly [];
+        readonly name: "ArraySizeMismatch";
+        readonly type: "error";
+    }, {
+        readonly inputs: readonly [{
+            readonly internalType: "address[]";
+            readonly name: "targets";
+            readonly type: "address[]";
+        }, {
+            readonly internalType: "bytes[]";
+            readonly name: "data";
+            readonly type: "bytes[]";
+        }];
+        readonly name: "simulateCalls";
+        readonly outputs: readonly [];
+        readonly stateMutability: "nonpayable";
+        readonly type: "function";
+    }];
+    static createInterface(): CallsSimulatorInterface;
+    static connect(address: string, runner?: ContractRunner | null): CallsSimulator;
+}
+export {};
+//# sourceMappingURL=CallsSimulator__factory.d.ts.map
