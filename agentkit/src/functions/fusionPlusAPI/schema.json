@@ -1,64 +1,142 @@
 {
   "name": "fusionPlusAPI",
-  "description": "Access 1inch Fusion+ API for cross-chain swaps. This API provides advanced gasless swaps with MEV protection. EXAMPLES: For active orders: {\"endpoint\": \"getActiveOrders\", \"srcChain\": 1, \"dstChain\": 137}. For escrow factory: {\"endpoint\": \"getEscrowFactory\", \"chainId\": 1}. For quote: {\"endpoint\": \"getQuote\", \"srcChain\": 1, \"dstChain\": 137, \"srcTokenAddress\": \"0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2\", \"dstTokenAddress\": \"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174\", \"amount\": 1000000000000000000, \"walletAddress\": \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\", \"enableEstimate\": false}.",
+  "description": "Access 1inch Fusion+ API for cross-chain swaps and advanced swap execution. This API provides advanced gasless swaps with MEV protection. CRITICAL: When users ask for cross-chain swaps or Fusion quotes, you MUST extract the parameters from their natural language. COMMON PATTERNS: 'Swap 0.1 ETH from Arbitrum to Ethereum mainnet using Fusion' → endpoint='executeCrossChainSwap', srcChain=42161 (Arbitrum), dstChain=1 (Ethereum), srcTokenAddress='0x82af49447d8a07e3bd95bd0d56f35241523fbab1' (WETH on Arbitrum), dstTokenAddress='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' (WETH on Ethereum), amount=100000000000000000 (0.1 ETH in wei), walletAddress='USER_WALLET_ADDRESS', preset='fast'. 'Get Fusion quote for 1000 USDC from Ethereum to Polygon' → endpoint='getQuote', srcChain=1 (Ethereum), dstChain=137 (Polygon), srcTokenAddress='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' (USDC), dstTokenAddress='0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' (USDC on Polygon), amount=1000000 (1000 USDC in smallest units), walletAddress='USER_WALLET_ADDRESS', enableEstimate=true. TOKEN ADDRESSES: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'. CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56. DECIMALS: ETH=18, USDC=6, DAI=18. EXAMPLES: Execute Cross-Chain Swap: {\"endpoint\": \"executeCrossChainSwap\", \"srcChain\": 42161, \"dstChain\": 1, \"srcTokenAddress\": \"0x82af49447d8a07e3bd95bd0d56f35241523fbab1\", \"dstTokenAddress\": \"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2\", \"amount\": 100000000000000000, \"walletAddress\": \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\", \"preset\": \"fast\"}. Quote: {\"endpoint\": \"getQuote\", \"srcChain\": 42161, \"dstChain\": 1, \"srcTokenAddress\": \"0x82af49447d8a07e3bd95bd0d56f35241523fbab1\", \"dstTokenAddress\": \"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2\", \"amount\": 100000000000000000, \"walletAddress\": \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\", \"enableEstimate\": true}. Active Orders: {\"endpoint\": \"getActiveOrders\", \"srcChain\": 1, \"dstChain\": 137}. Escrow Factory: {\"endpoint\": \"getEscrowFactory\", \"chainId\": 1}.",
   "type": "object",
   "properties": {
     "endpoint": {
       "type": "string",
-      "enum": ["getActiveOrders", "getEscrowFactory", "getQuote"],
-      "description": "REQUIRED: The Fusion+ API endpoint to call. Use 'getActiveOrders' to get cross-chain swap active orders, 'getEscrowFactory' to get escrow factory contract address, 'getQuote' to get quote details for cross-chain swaps."
+      "enum": [
+        "getActiveOrders",
+        "getEscrowFactory", 
+        "getQuote",
+        "buildOrder",
+        "submitOrder",
+        "submitManyOrders",
+        "submitSecret",
+        "executeCrossChainSwap"
+      ],
+      "description": "REQUIRED: The Fusion+ API endpoint to call. executeCrossChainSwap for complete cross-chain swaps (recommended), getQuote for quotes, buildOrder for building orders, submitOrder for submitting orders, submitManyOrders for submitting multiple orders, submitSecret for submitting secrets"
     },
     "page": {
       "type": "number",
       "description": "Pagination step, default: 1 (page = offset / limit)"
     },
     "limit": {
-      "type": "number",
+      "type": "number", 
       "description": "Number of active orders to receive (default: 100, max: 500)"
     },
     "srcChain": {
       "type": "number",
-      "description": "Source chain ID (required for getActiveOrders and getQuote). Use 1 for Ethereum, 137 for Polygon, etc."
+      "description": "Source chain ID (REQUIRED for getActiveOrders, getQuote, buildOrder). CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56"
     },
     "dstChain": {
       "type": "number",
-      "description": "Destination chain ID (required for getActiveOrders and getQuote). Use 1 for Ethereum, 137 for Polygon, etc."
+      "description": "Destination chain ID (REQUIRED for getActiveOrders, getQuote, buildOrder). CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56"
     },
     "chainId": {
       "type": "number",
-      "description": "Chain ID (required for getEscrowFactory). Use 1 for Ethereum, 137 for Polygon, etc."
+      "description": "Chain ID (REQUIRED for getEscrowFactory). CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56"
     },
     "srcTokenAddress": {
       "type": "string",
-      "description": "Address of source token (required for getQuote). Example: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 for WETH"
+      "description": "Address of source token (REQUIRED for getQuote, buildOrder). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "dstTokenAddress": {
       "type": "string",
-      "description": "Address of destination token (required for getQuote). Example: 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174 for USDC"
+      "description": "Address of destination token (REQUIRED for getQuote, buildOrder). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "amount": {
       "type": "number",
-      "description": "Amount to swap (required for getQuote). Amount in wei format"
+      "description": "Amount to swap (REQUIRED for getQuote, buildOrder). CONVERT: 1 ETH = 1000000000000000000, 1 USDC = 1000000, 1 DAI = 1000000000000000000. For user amounts like '0.1 ETH', convert to 100000000000000000 (0.1 * 10^18)"
     },
     "walletAddress": {
       "type": "string",
-      "description": "Wallet address (required for getQuote). Address of the wallet or contract who will create Fusion order"
+      "description": "Wallet address (REQUIRED for getQuote, buildOrder). Address of the wallet or contract who will create Fusion order"
     },
     "enableEstimate": {
       "type": "boolean",
-      "description": "Enable estimation (required for getQuote). If enabled then get estimation from 1inch swap builder and generates quoteId"
+      "description": "Enable estimation (REQUIRED for getQuote). If enabled then get estimation from 1inch swap builder and generates quoteId"
     },
     "fee": {
       "type": "number",
-      "description": "Fee in bps format, 1% is equal to 100bps (optional for getQuote)"
+      "description": "Fee in bps format, 1% is equal to 100bps"
     },
     "isPermit2": {
       "type": "string",
-      "description": "Permit2 allowance transfer encoded call (optional for getQuote)"
+      "description": "Permit2 allowance transfer encoded call"
     },
     "permit": {
       "type": "string",
-      "description": "Permit, user approval sign (optional for getQuote)"
+      "description": "Permit, user approval sign"
+    },
+    "quote": {
+      "type": "object",
+      "description": "Quote object from getQuote (REQUIRED for buildOrder)"
+    },
+    "secretsHashList": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of secret hashes (REQUIRED for buildOrder)"
+    },
+    "source": {
+      "type": "string",
+      "description": "Frontend or some other source selector"
+    },
+    "isMobile": {
+      "type": "string",
+      "description": "Enabled flag allows to save quote for Mobile History"
+    },
+    "feeReceiver": {
+      "type": "string",
+      "description": "In case fee non zero -> the fee will be transferred to this address"
+    },
+    "preset": {
+      "type": "string",
+      "description": "fast/medium/slow/custom"
+    },
+    "order": {
+      "type": "object",
+      "description": "Order object (REQUIRED for submitOrder)"
+    },
+    "srcChainId": {
+      "type": "number",
+      "description": "Source chain ID (REQUIRED for submitOrder)"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Order signature (REQUIRED for submitOrder)"
+    },
+    "extension": {
+      "type": "string",
+      "description": "Order extension (REQUIRED for submitOrder)"
+    },
+    "quoteId": {
+      "type": "string",
+      "description": "Quote ID (REQUIRED for submitOrder)"
+    },
+    "secretHashes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of secret hashes for submitOrder"
+    },
+    "orderHashes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of order hashes (REQUIRED for submitManyOrders)"
+    },
+    "secret": {
+      "type": "string",
+      "description": "Secret string (REQUIRED for submitSecret)"
+    },
+    "orderHash": {
+      "type": "string",
+      "description": "Order hash (REQUIRED for submitSecret)"
     }
   },
   "required": ["endpoint"]

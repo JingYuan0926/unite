@@ -1,6 +1,6 @@
 {
   "name": "swapAPI",
-  "description": "Access 1inch Classic Swap API (Pathfinder v6.1) for token swaps with wallet integration. This API provides cutting-edge discovery and routing algorithm that offers asset exchanges at the best rates on the market. EXAMPLES: For getting a quote: {\"endpoint\": \"getQuote\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\"}. For executing a swap with wallet: {\"endpoint\": \"executeSwap\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\", \"slippage\": 1, \"walletAddress\": \"0x...\", \"privateKey\": \"0x...\"}. For checking allowance: {\"endpoint\": \"getAllowance\", \"chain\": 1, \"tokenAddress\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"walletAddress\": \"0x...\"}.",
+  "description": "Access 1inch Classic Swap API (Pathfinder v6.1) for token swaps with wallet integration. This API provides cutting-edge discovery and routing algorithm that offers asset exchanges at the best rates on the market. CRITICAL: When users ask for swap quotes or routes, you MUST extract the parameters from their natural language. COMMON PATTERNS: '1000 USDC to ETH' → src='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' (USDC), dst='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' (ETH), amount='1000000' (1000 USDC in smallest units). '1 ETH to USDC' → src='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' (ETH), dst='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' (USDC), amount='1000000000000000000' (1 ETH in wei). TOKEN ADDRESSES: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'. DECIMALS: ETH=18, USDC=6, DAI=18. EXAMPLES: Quote: {\"endpoint\": \"getQuote\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\"}. Swap: {\"endpoint\": \"getSwap\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\", \"from\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\", \"origin\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\", \"slippage\": 1}. Allowance: {\"endpoint\": \"getAllowance\", \"chain\": 1, \"tokenAddress\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"walletAddress\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\"}.",
   "type": "object",
   "properties": {
     "endpoint": {
@@ -14,39 +14,39 @@
     },
     "src": {
       "type": "string",
-      "description": "Source token address (required for getQuote, getSwap, executeSwap). Example: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' for ETH"
+      "description": "Source token address (REQUIRED for getQuote, getSwap, executeSwap). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "dst": {
       "type": "string",
-      "description": "Destination token address (required for getQuote, getSwap, executeSwap). Example: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' for USDC"
+      "description": "Destination token address (REQUIRED for getQuote, getSwap, executeSwap). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "amount": {
       "type": "string",
-      "description": "Amount to swap in wei/smallest unit (required for getQuote, getSwap, executeSwap, executeApprove). Example: '1000000000000000000' for 1 ETH"
+      "description": "Amount to swap in wei/smallest unit (REQUIRED for getQuote, getSwap, executeSwap, executeApprove). CONVERT: 1 ETH = '1000000000000000000', 1 USDC = '1000000', 1 DAI = '1000000000000000000'. For user amounts like '1000 USDC', convert to '1000000' (1000 * 10^6)"
     },
     "from": {
       "type": "string",
-      "description": "Address that calls the 1inch contract (required for getSwap). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+      "description": "Address that calls the 1inch contract (REQUIRED for getSwap). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
     },
     "origin": {
       "type": "string",
-      "description": "EOA address that initiates the transaction (required for getSwap). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+      "description": "EOA address that initiates the transaction (REQUIRED for getSwap). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
     },
     "slippage": {
       "type": "number",
-      "description": "Slippage tolerance in percentage (required for getSwap, executeSwap). Example: 1 for 1% slippage"
+      "description": "Slippage tolerance in percentage (REQUIRED for getSwap, executeSwap). Example: 1 for 1% slippage"
     },
     "walletAddress": {
       "type": "string",
-      "description": "Wallet address (required for getAllowance, executeSwap, executeApprove). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
+      "description": "Wallet address (REQUIRED for getAllowance, executeSwap, executeApprove). Example: '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5'"
     },
     "privateKey": {
       "type": "string",
-      "description": "Private key for wallet operations (required for executeSwap, executeApprove). Example: '0x...'"
+      "description": "Private key for wallet operations (REQUIRED for executeSwap, executeApprove). Example: '0x...'"
     },
     "tokenAddress": {
       "type": "string",
-      "description": "Token address for approval operations (required for getApproveTransaction, getAllowance, executeApprove). Example: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'"
+      "description": "Token address for approval operations (REQUIRED for getApproveTransaction, getAllowance, executeApprove). Example: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'"
     },
     "protocols": {
       "type": "string",

@@ -258,4 +258,4 @@ export type {
 export { OneInchFetcher } from "./utils/fetcher";
 export { logger } from "./utils/logger";
 export { walletManager, WalletUtils } from "./utils/wallet";
-export type { Wallet, WalletContext, TransactionParams, TransactionResult } from "./utils/wallet";
+export type { Wallet, WalletContext } from "./utils/wallet";

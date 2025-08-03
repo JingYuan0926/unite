@@ -423,19 +423,58 @@ export class WalletManager {
    * Sign a message
    */
   async signMessage(message: string): Promise<string> {
-    if (!this.currentWallet) {
-      throw new Error('No wallet connected');
-    }
+    try {
+      if (!this.currentWallet) {
+        throw new Error('No wallet connected');
+      }
 
-    if (this.walletSource === 'local' && this.ethersWallet) {
-      // Local wallet signing
-      return await this.ethersWallet.signMessage(message);
-    } else if (this.walletSource === 'frontend') {
-      // Frontend wallet signing - return message for external signing
-      logger.info('Message signing requires frontend wallet interaction');
-      throw new Error('Message signing not supported for frontend wallets in this context');
-    } else {
-      throw new Error('No signing method available for current wallet type');
+      if (this.currentWallet.privateKey && this.ethersWallet) {
+        // Local wallet signing
+        const messageHash = ethers.hashMessage(message);
+        const signature = await this.ethersWallet.signMessage(message);
+        return signature;
+      } else {
+        // Frontend wallet - return a placeholder for now
+        // In a real implementation, this would trigger a wallet popup
+        logger.warn('Frontend wallet signing not implemented - returning placeholder');
+        return '0x';
+      }
+    } catch (error) {
+      logger.error('Failed to sign message:', error);
+      throw new Error(`Failed to sign message: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Sign EIP-712 typed data (for Fusion+ orders)
+   */
+  async signTypedData(typedData: any): Promise<string> {
+    try {
+      if (!this.currentWallet) {
+        throw new Error('No wallet connected');
+      }
+
+      if (this.currentWallet.privateKey && this.ethersWallet) {
+        // Local wallet signing
+        const signature = await this.ethersWallet.signTypedData(
+          typedData.domain,
+          { [typedData.primaryType]: typedData.types[typedData.primaryType] },
+          typedData.message
+        );
+        return signature;
+      } else if (this.walletSource === 'frontend') {
+        // Frontend wallet - return typed data for frontend signing
+        // The frontend will need to call MetaMask's eth_signTypedData_v4
+        logger.info('Frontend wallet detected - typed data needs to be signed by frontend');
+        throw new Error('FRONTEND_SIGNING_REQUIRED: Typed data needs to be signed by frontend wallet. Please implement eth_signTypedData_v4 in your frontend.');
+      } else {
+        // No signing method available
+        logger.warn('No signing method available - returning placeholder');
+        return '0x';
+      }
+    } catch (error) {
+      logger.error('Failed to sign typed data:', error);
+      throw new Error(`Failed to sign typed data: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
