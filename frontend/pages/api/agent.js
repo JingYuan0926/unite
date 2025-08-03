@@ -197,8 +197,18 @@ const handleDirectFunction = async (req, res, agentInstance, functionCall, param
         break;
         
       case 'gasAPI':
-        const { gasAPI } = await import('1inch-agent-kit');
-        result = await gasAPI(functionCall.parameters || {});
+        try {
+          console.log('⛽ Attempting to import gasAPI...');
+          const { gasAPI } = await import('1inch-agent-kit');
+          console.log('✅ gasAPI imported successfully');
+          console.log('📋 Parameters:', functionCall.parameters);
+          
+          result = await gasAPI(functionCall.parameters || {});
+          console.log('✅ gasAPI executed successfully:', result);
+        } catch (importError) {
+          console.error('❌ Error with gasAPI:', importError);
+          throw new Error(`Gas API error: ${importError.message}`);
+        }
         break;
         
       case 'rpcAPI':

@@ -4,6 +4,7 @@ import APISelectionModal from "@/components/APISelectionModal";
 import PortfolioConfigModal from "@/components/PortfolioConfigModal";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer } from "recharts";
 import { getPortfolioValue, checkPortfolioStatus } from '../lib/portfolioAPI';
+import { getGasPrices } from '../lib/gasAPI';
 import chainData from '../data/chains.json';
 
 export default function Dashboard() {
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [showPortfolioConfig, setShowPortfolioConfig] = useState(false);
   const [portfolioConfigs, setPortfolioConfigs] = useState([]);
   const [portfolioData, setPortfolioData] = useState({});
+  const [gasData, setGasData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -35,6 +37,12 @@ export default function Dashboard() {
       // Clear portfolio configs if Portfolio API is not selected or not configured
       setPortfolioConfigs([]);
     }
+
+    // Fetch gas data if Gas Price API is selected
+    const gasPriceAPI = selectedAPIs.find(api => api.name === "Gas Price API");
+    if (gasPriceAPI && gasPriceAPI.config) {
+      fetchGasData(gasPriceAPI.config.selectedNetworks);
+    }
   };
 
   const handleConfigurePortfolio = () => {
@@ -55,14 +63,19 @@ export default function Dashboard() {
   const fetchPortfolioData = async (configs = portfolioConfigs) => {
     if (configs.length === 0) return;
     
+    console.log('🚀 Dashboard: Starting portfolio data fetch for configs:', configs);
     setLoading(true);
     setError(null);
     
     try {
-      // Check if portfolio service is available first
-      const isAvailable = await checkPortfolioStatus();
-      if (!isAvailable) {
-        throw new Error('Portfolio service is currently unavailable');
+      // Check if portfolio service is available first (but don't block if it fails)
+      let isAvailable = true;
+      try {
+        isAvailable = await checkPortfolioStatus();
+        console.log('📊 Portfolio service availability:', isAvailable);
+      } catch (statusError) {
+        console.warn('⚠️ Portfolio status check failed, continuing anyway:', statusError.message);
+        // Continue anyway, individual calls will handle their own errors
       }
 
       const newPortfolioData = {};
@@ -72,21 +85,57 @@ export default function Dashboard() {
         const { trackedWallets, selectedNetworks } = config;
         
         if (trackedWallets.length === 0 || selectedNetworks.length === 0) {
+          console.log(`⚠️ Skipping config ${i}: missing wallets or networks`);
           continue;
         }
 
         try {
+          console.log(`📊 Fetching portfolio data for config ${i}:`, { trackedWallets, selectedNetworks });
           const data = await getPortfolioValue(trackedWallets, selectedNetworks);
           newPortfolioData[i] = data;
+          console.log(`✅ Portfolio data fetched for config ${i}:`, data);
         } catch (configError) {
-          console.error(`Error fetching data for config ${i}:`, configError);
-          newPortfolioData[i] = { error: configError.message };
+          console.error(`❌ Error fetching data for config ${i}:`, configError);
+          newPortfolioData[i] = { 
+            error: configError.message.includes('timeout') 
+              ? 'Portfolio API is slow. Please try again later.' 
+              : configError.message 
+          };
         }
       }
       
       setPortfolioData(newPortfolioData);
+      console.log('✅ All portfolio data processing complete:', newPortfolioData);
     } catch (err) {
-      console.error('Error fetching portfolio data:', err);
+      console.error('❌ Dashboard: Error fetching portfolio data:', err);
+      const errorMessage = err.message.includes('timeout') 
+        ? 'Portfolio API is experiencing delays. Please try again later.' 
+        : err.message;
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch real gas data
+  const fetchGasData = async (selectedNetworks) => {
+    if (!selectedNetworks || selectedNetworks.length === 0) {
+      console.log('⚠️ No networks selected for gas data fetch');
+      return;
+    }
+    
+    console.log('🚀 Dashboard: Starting gas data fetch for networks:', selectedNetworks);
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🚀 Fetching gas data for networks:', selectedNetworks);
+      const data = await getGasPrices(selectedNetworks);
+      console.log('📊 Dashboard: Received gas data:', data);
+      setGasData(data);
+      console.log('✅ Gas data fetched successfully:', data);
+    } catch (err) {
+      console.error('❌ Dashboard: Error fetching gas data:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -99,6 +148,17 @@ export default function Dashboard() {
       fetchPortfolioData();
     }
   }, [portfolioConfigs]);
+
+  // Fetch gas data when APIs change
+  useEffect(() => {
+    const gasPriceAPI = apis.find(api => api.name === "Gas Price API");
+    if (gasPriceAPI && gasPriceAPI.config && gasPriceAPI.config.selectedNetworks) {
+      fetchGasData(gasPriceAPI.config.selectedNetworks);
+    } else {
+      // Clear gas data if Gas Price API is not configured
+      setGasData({});
+    }
+  }, [apis]);
 
   const getConfigStatusText = (api) => {
     if (api.name === "Portfolio API") {
@@ -120,67 +180,88 @@ export default function Dashboard() {
     return null;
   };
 
-  // Mock gas price data generator for demonstration - only gas prices are fake
-  const generateMockGasPriceData = (selectedNetworks) => {
-    const baseGasPrices = {
-      'Ethereum Mainnet': { fast: 45, standard: 35, safe: 25 },
-      'Polygon': { fast: 180, standard: 150, safe: 120 },
-      'BNB Chain': { fast: 5, standard: 3, safe: 2 },
-      'Arbitrum': { fast: 2, standard: 1.5, safe: 1 },
-      'Optimism': { fast: 0.8, standard: 0.6, safe: 0.4 },
-      'Avalanche': { fast: 28, standard: 25, safe: 22 },
-      'Base': { fast: 1.2, standard: 0.9, safe: 0.6 },
-      'ZKsync Era': { fast: 0.5, standard: 0.3, safe: 0.2 },
-      'Gnosis': { fast: 4, standard: 3, safe: 2 },
-      'Linea': { fast: 0.8, standard: 0.6, safe: 0.4 },
-      'Sonic': { fast: 1.5, standard: 1.2, safe: 0.9 },
-      'Unichain': { fast: 0.7, standard: 0.5, safe: 0.3 }
-    };
-
-    return selectedNetworks.map(network => {
-      const basePrice = baseGasPrices[network] || { fast: 10, standard: 8, safe: 6 };
-      // Add some random variation to make it look more realistic
-      const variation = 0.8 + Math.random() * 0.4; // 0.8 to 1.2 multiplier
-      
-      return {
-        network,
-        fast: Math.round(basePrice.fast * variation * 10) / 10,
-        standard: Math.round(basePrice.standard * variation * 10) / 10,
-        safe: Math.round(basePrice.safe * variation * 10) / 10
-      };
-    });
-  };
-
+  // Real gas price chart component
   const GasPriceChart = ({ config }) => {
-    const gasPriceData = generateMockGasPriceData(config.selectedNetworks);
+    const selectedNetworks = config.selectedNetworks;
+    
+    console.log('📊 GasPriceChart: Rendering with config:', config);
+    console.log('📊 GasPriceChart: Selected networks:', selectedNetworks);
+    console.log('📊 GasPriceChart: Available gas data:', gasData);
+    
+    if (!gasData || Object.keys(gasData).length === 0) {
+      console.log('⚠️ GasPriceChart: No gas data available');
+      return (
+        <div className="text-center py-6">
+          <div className="text-gray-500">Loading gas prices...</div>
+        </div>
+      );
+    }
     
     return (
       <div className="space-y-4">
-        {gasPriceData.map((networkData, index) => (
-          <div key={networkData.network} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: chainColors[networkData.network] || '#8884d8' }}
-              ></div>
-              <span className="font-medium text-gray-900">{networkData.network}</span>
+        {selectedNetworks.map((networkName) => {
+          const networkGasData = gasData[networkName];
+          
+          if (!networkGasData) {
+            return (
+              <div key={networkName} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: chainColors[networkName] || '#8884d8' }}
+                  ></div>
+                  <span className="font-medium text-gray-900">{networkName}</span>
+                </div>
+                <div className="text-sm text-gray-500">Loading...</div>
+              </div>
+            );
+          }
+
+          if (networkGasData.error) {
+            return (
+              <div key={networkName} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: chainColors[networkName] || '#8884d8' }}
+                  ></div>
+                  <span className="font-medium text-gray-900">{networkName}</span>
+                </div>
+                <div className="text-sm text-red-600">Error</div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={networkName} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: chainColors[networkName] || '#8884d8' }}
+                ></div>
+                <span className="font-medium text-gray-900">{networkName}</span>
+              </div>
+              <div className="flex space-x-6 text-sm">
+                <div className="text-center">
+                  <div className="text-green-600 font-semibold">{networkGasData.low.toFixed(3)}</div>
+                  <div className="text-xs text-gray-500">Low</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-yellow-600 font-semibold">{networkGasData.medium.toFixed(3)}</div>
+                  <div className="text-xs text-gray-500">Medium</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-orange-600 font-semibold">{networkGasData.high.toFixed(3)}</div>
+                  <div className="text-xs text-gray-500">High</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-red-600 font-semibold">{networkGasData.instant.toFixed(3)}</div>
+                  <div className="text-xs text-gray-500">Instant</div>
+                </div>
+              </div>
             </div>
-            <div className="flex space-x-6 text-sm">
-              <div className="text-center">
-                <div className="text-green-600 font-semibold">{networkData.safe}</div>
-                <div className="text-xs text-gray-500">Safe</div>
-              </div>
-              <div className="text-center">
-                <div className="text-yellow-600 font-semibold">{networkData.standard}</div>
-                <div className="text-xs text-gray-500">Standard</div>
-              </div>
-              <div className="text-center">
-                <div className="text-red-600 font-semibold">{networkData.fast}</div>
-                <div className="text-xs text-gray-500">Fast</div>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };

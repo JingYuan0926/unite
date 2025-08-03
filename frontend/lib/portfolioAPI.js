@@ -30,7 +30,11 @@ function getNetworkName(chainId) {
 // Call the portfolio API through the backend
 async function callPortfolioAPI(params) {
   try {
-    console.log('📡 Calling Portfolio API with params:', params);
+    console.log('📊 Calling Portfolio API with params:', params);
+    
+    // Add a shorter timeout for frontend requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
     
     const response = await fetch('/api/agent', {
       method: 'POST',
@@ -43,8 +47,11 @@ async function callPortfolioAPI(params) {
           name: 'portfolioAPI',
           parameters: params
         }
-      })
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       // Try to get the error message from the response
@@ -54,7 +61,7 @@ async function callPortfolioAPI(params) {
         if (errorData.error) {
           errorMessage = errorData.error;
         }
-        console.error('❌ Backend API Error:', errorData);
+        console.error('❌ Backend Portfolio API Error:', errorData);
       } catch (parseError) {
         console.error('❌ Could not parse error response:', parseError);
       }
@@ -70,6 +77,10 @@ async function callPortfolioAPI(params) {
 
     return data.result;
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.error('❌ Portfolio API request timed out');
+      throw new Error('Portfolio API request timed out. Please try again.');
+    }
     console.error('❌ Portfolio API call failed:', error);
     throw error;
   }
@@ -77,67 +88,76 @@ async function callPortfolioAPI(params) {
 
 // Get portfolio value for multiple wallets and networks
 export async function getPortfolioValue(walletAddresses, selectedNetworks) {
-  try {
-    console.log('🚀 Starting portfolio fetch for:', { walletAddresses, selectedNetworks });
-    
-    // Get the total portfolio value (single API call, no chain restrictions)
-    const portfolioResponse = await callPortfolioAPI({
-      endpoint: 'getCurrentPortfolioValue',
-      addresses: walletAddresses,
-      use_cache: true
-    });
-    
-    console.log('📊 Portfolio API Response:', portfolioResponse);
-    
-    // Extract the total value safely
-    let totalValue = 0;
-    if (portfolioResponse && portfolioResponse.result && typeof portfolioResponse.result.total === 'number') {
-      totalValue = portfolioResponse.result.total;
-      console.log(`✅ Total portfolio value: $${totalValue}`);
+  const maxRetries = 2;
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🚀 Starting portfolio fetch (attempt ${attempt}/${maxRetries}) for:`, { walletAddresses, selectedNetworks });
+      
+      const portfolioResponse = await callPortfolioAPI({
+        endpoint: 'getCurrentPortfolioValue',
+        addresses: walletAddresses,
+        use_cache: true
+      });
+      
+      console.log('📊 Portfolio API Response:', portfolioResponse);
+      
+      let totalValue = 0;
+      if (portfolioResponse && portfolioResponse.result && typeof portfolioResponse.result.total === 'number') {
+        totalValue = portfolioResponse.result.total;
+        console.log(`✅ Total portfolio value: $${totalValue}`);
+      }
+      
+      const portfolioData = {};
+      
+      selectedNetworks.forEach((networkName, index) => {
+        const chainId = getChainId(networkName) || 0;
+        
+        const networkValue = index === 0 ? totalValue : 0;
+        
+        portfolioData[networkName] = {
+          chainId,
+          totalValue: networkValue,
+          byAddress: portfolioResponse?.result?.by_address || [],
+          byCategory: portfolioResponse?.result?.by_category || [],
+          byProtocolGroup: portfolioResponse?.result?.by_protocol_group || []
+        };
+        
+        console.log(`📋 ${networkName}: $${networkValue}`);
+      });
+      
+      console.log('✅ Final portfolio data:', portfolioData);
+      return portfolioData;
+      
+    } catch (error) {
+      console.error(`❌ Portfolio fetch attempt ${attempt} failed:`, error);
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        const delay = attempt * 2000; // 2s, 4s delay
+        console.log(`⏱️ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
-    
-    // Create portfolio data for each selected network
-    // For simplicity, show the total value divided by number of networks, or show full value for first network
-    const portfolioData = {};
-    
-    selectedNetworks.forEach((networkName, index) => {
-      const chainId = getChainId(networkName) || 0;
-      
-      // Show full portfolio value for the first network, 0 for others (to avoid duplication)
-      const networkValue = index === 0 ? totalValue : 0;
-      
-      portfolioData[networkName] = {
-        chainId,
-        totalValue: networkValue,
-        byAddress: portfolioResponse?.result?.by_address || [],
-        byCategory: portfolioResponse?.result?.by_category || [],
-        byProtocolGroup: portfolioResponse?.result?.by_protocol_group || []
-      };
-      
-      console.log(`📋 ${networkName}: $${networkValue}`);
-    });
-    
-    console.log('✅ Final portfolio data:', portfolioData);
-    return portfolioData;
-    
-  } catch (error) {
-    console.error('❌ Error in getPortfolioValue:', error);
-    
-    // Return safe fallback data
-    const portfolioData = {};
-    selectedNetworks.forEach(networkName => {
-      portfolioData[networkName] = {
-        chainId: getChainId(networkName) || 0,
-        totalValue: 0,
-        byAddress: [],
-        byCategory: [],
-        byProtfolioGroup: [],
-        error: error.message
-      };
-    });
-    
-    return portfolioData;
   }
+  
+  // All retries failed
+  console.error('❌ All portfolio fetch attempts failed:', lastError);
+  
+  const portfolioData = {};
+  selectedNetworks.forEach(networkName => {
+    portfolioData[networkName] = {
+      chainId: getChainId(networkName) || 0,
+      totalValue: 0,
+      byAddress: [],
+      byCategory: [],
+      byProtocolGroup: [],
+      error: lastError?.message || 'Portfolio API unavailable'
+    };
+  });
+  
+  return portfolioData;
 }
 
 // Get portfolio value chart data
@@ -268,27 +288,49 @@ export async function getProtocolsSnapshot(walletAddresses, selectedNetworks) {
 // Check if portfolio service is available
 export async function checkPortfolioStatus() {
   try {
-    const response = await callPortfolioAPI({
-      endpoint: 'checkPortfolioStatus'
-    });
+    console.log('🔍 Checking portfolio service status...');
     
-    return response.result?.is_available || false;
-  } catch (error) {
-    console.error('Error checking portfolio status:', error);
-    
-    // Fallback: try the direct portfolio API endpoint
+    // Try the direct status endpoint first (faster and more reliable)
     try {
-      console.log('🔄 Trying fallback portfolio status check...');
-      const fallbackResponse = await fetch('/api/portfolio/status');
-      if (fallbackResponse.ok) {
-        const data = await fallbackResponse.json();
-        return data.result?.is_available || false;
+      const response = await fetch('/api/portfolio/status', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Short timeout for status check
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Portfolio status via direct endpoint:', data);
+        return data.available !== false; // Default to true if not explicitly false
       }
-    } catch (fallbackError) {
-      console.error('Fallback portfolio status check failed:', fallbackError);
+    } catch (directError) {
+      console.warn('⚠️ Direct status endpoint failed:', directError.message);
     }
     
-    return false;
+    // Fallback: try a quick portfolio API call with short timeout
+    try {
+      const response = await callPortfolioAPI({
+        endpoint: 'checkPortfolioStatus'
+      });
+      
+      console.log('✅ Portfolio status via API:', response);
+      return response.result?.is_available !== false;
+    } catch (apiError) {
+      console.warn('⚠️ Portfolio API status check failed:', apiError.message);
+    }
+    
+    // If both fail, return true to allow the app to continue
+    // Individual portfolio calls will handle their own errors
+    console.log('⚠️ Portfolio status unknown, assuming available');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Portfolio status check failed:', error);
+    // Return true to allow the app to continue functioning
+    return true;
   }
 }
 
