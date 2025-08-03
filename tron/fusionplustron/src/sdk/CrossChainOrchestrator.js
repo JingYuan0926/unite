@@ -621,7 +621,7 @@ class CrossChainOrchestrator {
         deployedAt: 0, // Will be overwritten by contract with block.timestamp
         srcWithdrawal: 600, // 10 minutes after deployment
         srcCancellation: timelock, // timelock duration after deployment
-        dstWithdrawal: 15, // 15 seconds after deployment for fast testing
+        dstWithdrawal: 0, // 🚀 HACKATHON: Immediate withdrawal for demo purposes
         dstCancellation: timelock - 300, // timelock - 5 minutes after deployment
       }),
     ];
@@ -707,7 +707,7 @@ class CrossChainOrchestrator {
         deployedAt: 0, // Will be overwritten by contract with block.timestamp
         srcWithdrawal: 600, // 10 minutes after deployment
         srcCancellation: timelock, // timelock duration after deployment
-        dstWithdrawal: 15, // 15 seconds after deployment for fast testing
+        dstWithdrawal: 0, // 🚀 HACKATHON: Immediate withdrawal for demo purposes
         dstCancellation: timelock - 300, // timelock - 5 minutes after deployment
       }),
     };

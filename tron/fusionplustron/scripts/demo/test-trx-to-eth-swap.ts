@@ -232,11 +232,10 @@ async function testTRXtoETHAtomicSwap() {
       "╚══════════════════════════════════════════════════════════════╝"
     );
 
-    // 🎯 HACKATHON: Wait longer for timelock to ensure withdrawal window is open
+    // 🚀 HACKATHON: Immediate withdrawal enabled - no waiting needed!
     console.log(
-      "⏳ Waiting for escrow timelock (45 seconds for hackathon success)..."
+      "⚡ Timelock set to 0 - immediate withdrawal enabled for demo!"
     );
-    await new Promise((resolve) => setTimeout(resolve, 45000)); // 45 seconds to be safe
 
     // Check balances after atomic execution
     const afterUserBEth = await provider.getBalance(userB.address);
