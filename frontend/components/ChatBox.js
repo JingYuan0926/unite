@@ -1112,62 +1112,98 @@ const ChatBox = () => {
   };
 
   const formatWalletOverviewBeautifully = (data) => {
-    let response = `💰 Wallet Overview\n\n`;
+    let response = `💰 **Wallet Overview**\n\n`;
     
     // Header section
-    response += `Wallet: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}\n`;
-    response += `Chain: ${data.chainName} (${data.chainId})\n\n`;
+    response += `**📍 Wallet Details**\n`;
+    response += `Address: \`${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}\`\n`;
+    response += `Chain: **${data.chainName}** (${data.chainId})\n\n`;
     
-    // Portfolio section
-    response += `📊 Portfolio Summary\n\n`;
-    response += `Total Value: $${data.portfolio.totalValue.toFixed(2)}\n\n`;
-    response += `Breakdown:\n`;
-    response += `• 🪙 Tokens: $${data.portfolio.breakdown.tokens.toFixed(2)}\n`;
-    response += `• ⚡ Native Assets: $${data.portfolio.breakdown.nativeAssets.toFixed(2)}\n`;
-    response += `• 🏛️ Protocols: $${data.portfolio.breakdown.protocols.toFixed(2)}\n\n`;
+    // Portfolio section with enhanced formatting
+    response += `📊 **Portfolio Summary**\n\n`;
+    response += `💎 **Total Value:** $${data.portfolio.totalValue.toFixed(2)}\n\n`;
+    response += `**📈 Breakdown:**\n`;
+    response += `┌─ 🪙 **Tokens:** $${data.portfolio.breakdown.tokens.toFixed(2)}\n`;
+    response += `├─ ⚡ **Native Assets:** $${data.portfolio.breakdown.nativeAssets.toFixed(2)}\n`;
+    response += `└─ 🏛️ **Protocols:** $${data.portfolio.breakdown.protocols.toFixed(2)}\n\n`;
     
-    // Balances section
-    response += `💰 Token Balances\n\n`;
-    data.balances.tokens.forEach(token => {
+    // Balances section with enhanced formatting
+    response += `💰 **Token Balances**\n\n`;
+    data.balances.tokens.forEach((token, index) => {
       const icon = token.symbol === 'USDC' ? '💵' : '🔷';
-      response += `${icon} ${token.symbol}: ${token.balanceInUnits.toFixed(6)}\n`;
-      response += `   Address: ${token.address}\n\n`;
+      const prefix = index === data.balances.tokens.length - 1 ? '└─' : '├─';
+      response += `${prefix} ${icon} **${token.symbol}:** ${token.balanceInUnits.toFixed(6)}\n`;
+      response += `   📍 Address: \`${token.address.slice(0, 10)}...${token.address.slice(-8)}\`\n\n`;
     });
     
-    // Price Charts section
-    response += `📈 Price Charts\n\n`;
-    response += `Pair: ${data.priceCharts.pair}\n`;
-    response += `Timeframe: ${data.priceCharts.timeframe}\n`;
-    response += `Current Price: $${data.priceCharts.summary.currentPrice.toFixed(6)}\n`;
-    response += `Price Range: $${data.priceCharts.summary.priceRange.min.toFixed(6)} - $${data.priceCharts.summary.priceRange.max.toFixed(6)}\n`;
-    response += `Change: ${data.priceCharts.summary.changePercentage > 0 ? '+' : ''}${data.priceCharts.summary.changePercentage.toFixed(2)}%\n\n`;
+    // Price Charts section with enhanced formatting
+    response += `📈 **Price Analytics**\n\n`;
+    response += `**📊 Trading Pair:** ${data.priceCharts.pair}\n`;
+    response += `**⏰ Timeframe:** ${data.priceCharts.timeframe}\n`;
+    response += `**💹 Current Price:** $${data.priceCharts.summary.currentPrice.toFixed(6)}\n`;
+    response += `**📏 Price Range:** $${data.priceCharts.summary.priceRange.min.toFixed(6)} - $${data.priceCharts.summary.priceRange.max.toFixed(6)}\n`;
+    const changeIcon = data.priceCharts.summary.changePercentage > 0 ? '📈' : '📉';
+    const changeColor = data.priceCharts.summary.changePercentage > 0 ? '+' : '';
+    response += `**${changeIcon} Change:** ${changeColor}${data.priceCharts.summary.changePercentage.toFixed(2)}%\n\n`;
     
-    // Gas Estimates section
-    response += `⛽ Gas Estimates\n\n`;
-    response += `Base Fee: ${(data.gasEstimates.baseFee.value / 1000000000).toFixed(2)} ${data.gasEstimates.baseFee.unit}\n\n`;
-    response += `Priority Fees:\n`;
-    Object.entries(data.gasEstimates.priorityFees).forEach(([priority, fee]) => {
+    // Gas Estimates section with enhanced formatting
+    response += `⛽ **Gas Fee Estimates**\n\n`;
+    response += `**⚡ Base Fee:** ${(data.gasEstimates.baseFee.value / 1000000000).toFixed(2)} ${data.gasEstimates.baseFee.unit}\n\n`;
+    response += `**🚀 Priority Fee Options:**\n`;
+    Object.entries(data.gasEstimates.priorityFees).forEach(([priority, fee], index, arr) => {
       const icon = priority === 'low' ? '🐌' : 
                   priority === 'medium' ? '🚶' : 
                   priority === 'high' ? '🏃' : 
                   priority === 'instant' ? '🚀' : '⛽';
       const label = priority.charAt(0).toUpperCase() + priority.slice(1);
       const maxFeeGwei = (fee.maxFee / 1000000000).toFixed(2);
-      response += `${icon} ${label}: ${maxFeeGwei} ${fee.unit}\n`;
+      const prefix = index === arr.length - 1 ? '└─' : '├─';
+      response += `${prefix} ${icon} **${label}:** ${maxFeeGwei} ${fee.unit}\n`;
     });
     response += '\n';
     
-    // Metadata section
-    response += `🔧 Processing Details\n\n`;
-    response += `Total Function Calls: ${data.metadata.totalFunctionCalls}\n`;
-    response += `Status: ${data.metadata.processingTime}\n\n`;
+    // Metadata section with enhanced formatting
+    response += `🔧 **Processing Summary**\n\n`;
+    response += `**⚙️ Total Function Calls:** ${data.metadata.totalFunctionCalls}\n`;
+    response += `**✅ Status:** ${data.metadata.processingTime}\n\n`;
     
-    response += `Query Parts:\n`;
-    data.metadata.queryParts.forEach(part => {
-      response += `• ${part.id}: ${part.description} ✅\n`;
+    response += `**📋 Execution Steps:**\n`;
+    data.metadata.queryParts.forEach((part, index, arr) => {
+      const prefix = index === arr.length - 1 ? '└─' : '├─';
+      response += `${prefix} **${part.id}:** ${part.description} ✅\n`;
     });
     
     return response;
+  };
+
+  // Function to parse markdown-like formatting in AI responses
+  const parseMarkdownText = (text) => {
+    if (!text) return text;
+    
+    return text
+      // Bold text formatting
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Code/address formatting
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      // Tree structure characters
+      .replace(/┌─/g, '<span class="tree-branch">┌─</span>')
+      .replace(/├─/g, '<span class="tree-branch">├─</span>')
+      .replace(/└─/g, '<span class="tree-branch">└─</span>')
+      // Section headers (lines starting with emoji and **text**)
+      .replace(/^([🔧💰📊📈⛽🚀💎📍⚡🏛️🪙💵🔷📏💹📉🐌🚶🏃⚙️✅📋])\s\*\*(.*?)\*\*$/gm, '<div class="section-header">$1 <strong>$2</strong></div>')
+      // Subsection formatting
+      .replace(/^\*\*([🔧💰📊📈⛽🚀💎📍⚡🏛️🪙💵🔷📏💹📉🐌🚶🏃⚙️✅📋].*?)\*\*$/gm, '<div class="subsection-header"><strong>$1</strong></div>');
+  };
+
+  // Component to render formatted text
+  const FormattedText = ({ text }) => {
+    const formattedText = parseMarkdownText(text);
+    return (
+      <div 
+        className="formatted-text"
+        dangerouslySetInnerHTML={{ __html: formattedText }}
+      />
+    );
   };
 
   return (
@@ -1208,7 +1244,11 @@ const ChatBox = () => {
               </div>
               <div className="message-content">
                 <div className="message-text">
-                  {message.content}
+                  {message.type === 'bot' ? (
+                    <FormattedText text={message.content} />
+                  ) : (
+                    message.content
+                  )}
                 </div>
                 {message.isLoading && message.loadingSteps && renderLoadingSteps(message.loadingSteps)}
                 {message.functionCalls && renderFunctionCalls(message.functionCalls)}
@@ -1441,43 +1481,130 @@ const ChatBox = () => {
           padding: 0.75rem 1rem;
           border-radius: 1rem;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          position: relative;
+          animation: messageSlideIn 0.3s ease-out;
         }
 
         .message.user .message-content {
-          background: #4299e1;
+          background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
           color: white;
+          box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+        }
+
+        .message.bot .message-content {
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+          border: 1px solid #cbd5e0;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .message.bot .message-content::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+          border-radius: 1rem 1rem 0 0;
+        }
+
+        @keyframes messageSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Staggered animation for formatted text elements */
+        .formatted-text .section-header {
+          animation: fadeInUp 0.5s ease-out;
+        }
+
+        .formatted-text .subsection-header {
+          animation: fadeInUp 0.4s ease-out 0.1s both;
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(5px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Enhanced loading indicator */
+        .loading-indicator {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1rem 0;
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+          border-radius: 0.75rem;
+          margin: 0.5rem 0;
+          border: 1px solid #cbd5e0;
+        }
+
+        .loading-indicator span {
+          font-weight: 600;
+          color: #4a5568;
+          font-size: 0.95rem;
         }
 
         .message-text {
           white-space: pre-wrap;
-          line-height: 1.5;
+          line-height: 1.6;
+          font-size: 0.95rem;
+          color: #2d3748;
+        }
+
+        .message.user .message-text {
+          color: white;
+        }
+
+        /* Enhanced styling for bot messages with markdown-like formatting */
+        .message.bot .message-text {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .message.bot .message-text strong {
+          color: #1a202c;
+          font-weight: 700;
         }
 
         .message-timestamp {
           font-size: 0.75rem;
           color: #718096;
-          margin-top: 0.5rem;
+          margin-top: 0.75rem;
+          opacity: 0.8;
         }
 
         .message.user .message-timestamp {
-          color: #bee3f8;
+          color: rgba(255, 255, 255, 0.8);
         }
 
         .loading-indicator {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.75rem;
+          padding: 0.5rem 0;
         }
 
         .typing-dots {
           display: flex;
-          gap: 0.25rem;
+          gap: 0.3rem;
         }
 
         .typing-dots span {
-          width: 6px;
-          height: 6px;
-          background: #a0aec0;
+          width: 8px;
+          height: 8px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           border-radius: 50%;
           animation: typing 1.4s infinite ease-in-out;
         }
@@ -1486,8 +1613,14 @@ const ChatBox = () => {
         .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
 
         @keyframes typing {
-          0%, 80%, 100% { transform: scale(0); }
-          40% { transform: scale(1); }
+          0%, 80%, 100% { 
+            transform: scale(0.6);
+            opacity: 0.5;
+          }
+          40% { 
+            transform: scale(1);
+            opacity: 1;
+          }
         }
 
         .chat-input-form {
@@ -1542,22 +1675,34 @@ const ChatBox = () => {
         }
 
         .function-calls {
-          margin-top: 1rem;
-          background: #f7fafc;
-          border-radius: 0.5rem;
+          margin-top: 1.5rem;
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+          border-radius: 0.75rem;
           overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          border: 1px solid #cbd5e0;
         }
 
         .function-calls-header {
-          background: #e2e8f0;
-          padding: 0.5rem 1rem;
-          font-weight: 600;
-          color: #2d3748;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 1rem 1.5rem;
+          font-weight: 700;
+          font-size: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
 
         .function-call {
-          padding: 1rem;
+          padding: 1.5rem;
           border-bottom: 1px solid #e2e8f0;
+          background: white;
+          transition: background-color 0.2s ease;
+        }
+
+        .function-call:hover {
+          background: #f8fafc;
         }
 
         .function-call:last-child {
@@ -1565,28 +1710,36 @@ const ChatBox = () => {
         }
 
         .function-name {
-          font-weight: 600;
+          font-weight: 700;
           color: #2d3748;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
+          font-size: 1.1rem;
+          padding: 0.5rem 1rem;
+          background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+          border-radius: 0.5rem;
+          border-left: 4px solid #667eea;
         }
 
         .function-params, .function-result {
-          margin-top: 0.5rem;
+          margin-top: 1rem;
         }
 
         .params-label, .result-label {
-          font-weight: 500;
+          font-weight: 600;
           color: #4a5568;
-          margin-bottom: 0.25rem;
+          margin-bottom: 0.5rem;
+          font-size: 0.95rem;
         }
 
         .function-calls pre {
-          background: #2d3748;
+          background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
           color: #e2e8f0;
-          padding: 0.5rem;
-          border-radius: 0.25rem;
+          padding: 1rem;
+          border-radius: 0.5rem;
           font-size: 0.875rem;
           overflow-x: auto;
+          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+          border: 1px solid #4a5568;
         }
 
         .complex-query-results {
@@ -1681,58 +1834,88 @@ const ChatBox = () => {
         }
 
         .chart-section {
-          margin-top: 1rem;
-          padding: 1rem;
-          background: #f8fafc;
+          margin-top: 1.5rem;
+          padding: 1.5rem;
+          background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
           border: 1px solid #e2e8f0;
-          border-radius: 0.5rem;
+          border-radius: 1rem;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .chart-section::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+          border-radius: 1rem 1rem 0 0;
         }
 
         .candle-chart {
           background: white;
-          border-radius: 0.5rem;
-          padding: 1rem;
+          border-radius: 0.75rem;
+          padding: 1.5rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
         .candle-chart h4 {
-          margin: 0 0 1rem 0;
+          margin: 0 0 1.5rem 0;
           color: #2d3748;
-          font-size: 1rem;
-          font-weight: 600;
+          font-size: 1.2rem;
+          font-weight: 700;
+          text-align: center;
+          padding-bottom: 0.75rem;
+          border-bottom: 2px solid #e2e8f0;
         }
 
         .chart-container {
-          height: 200px;
+          height: 250px;
           position: relative;
+          margin-bottom: 1rem;
         }
 
         .chart-svg {
           border: 1px solid #e2e8f0;
-          border-radius: 0.25rem;
-          background: white;
+          border-radius: 0.5rem;
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
         }
 
         .price-info {
           display: flex;
+          justify-content: space-around;
           gap: 2rem;
-          font-size: 0.875rem;
+          font-size: 0.9rem;
           color: #4a5568;
+          background: #f8fafc;
+          padding: 1rem;
+          border-radius: 0.5rem;
+          border: 1px solid #e2e8f0;
         }
 
         .current-price {
-          font-weight: 600;
+          font-weight: 700;
           color: #2d3748;
+          font-size: 1rem;
         }
 
         .price-change {
           color: #059669;
+          font-weight: 600;
         }
 
         .no-data {
           text-align: center;
           color: #6b7280;
           font-style: italic;
-          padding: 2rem;
+          padding: 3rem;
+          background: #f9fafb;
+          border-radius: 0.5rem;
+          border: 2px dashed #d1d5db;
         }
 
         .query-progress-container {
@@ -1861,27 +2044,50 @@ const ChatBox = () => {
         }
 
         .loading-steps {
-          margin-top: 1rem;
-          padding: 1.5rem;
+          margin-top: 1.5rem;
+          padding: 2rem;
           background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
           border: 1px solid #cbd5e0;
-          border-radius: 0.75rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          border-radius: 1rem;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .loading-steps::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+          background-size: 200% 100%;
+          animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
         }
 
         .loading-steps-header {
           font-weight: 700;
           color: #2d3748;
-          margin-bottom: 1rem;
-          padding-bottom: 0.75rem;
+          margin-bottom: 1.5rem;
+          padding-bottom: 1rem;
           border-bottom: 2px solid #e2e8f0;
           text-align: center;
-          font-size: 1.1rem;
+          font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
         }
 
         .loading-steps-container {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
           gap: 1.5rem;
           justify-items: center;
         }
@@ -1890,49 +2096,77 @@ const ChatBox = () => {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.75rem;
+          gap: 1rem;
           text-align: center;
-          padding: 1rem;
+          padding: 1.5rem;
           background: white;
-          border-radius: 0.5rem;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-          min-width: 180px;
-          transition: all 0.3s ease;
+          border-radius: 0.75rem;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          min-width: 220px;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          border: 2px solid transparent;
+        }
+
+        .loading-step.pending {
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+          border-color: #e2e8f0;
         }
 
         .loading-step.completed {
-          background: #f0fff4;
-          border: 1px solid #9ae6b4;
+          background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+          border-color: #48bb78;
+          transform: scale(1.02);
+          box-shadow: 0 8px 25px rgba(72, 187, 120, 0.2);
+        }
+
+        .loading-step.completed::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+          border-radius: 0.75rem 0.75rem 0 0;
         }
 
         .step-content {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.75rem;
+          width: 100%;
         }
 
         .step-spinner {
-          width: 20px;
-          height: 20px;
-          border: 2px solid #e2e8f0;
-          border-top: 2px solid #3b82f6;
+          width: 28px;
+          height: 28px;
+          border: 3px solid #e2e8f0;
+          border-top: 3px solid #667eea;
           border-radius: 50%;
           animation: spin 1s linear infinite;
           margin-bottom: 0.5rem;
         }
 
         .step-completed {
-          font-size: 2rem;
+          font-size: 2.5rem;
           color: #48bb78;
-          animation: bounce 0.6s ease-in-out;
+          animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+          text-shadow: 0 2px 4px rgba(72, 187, 120, 0.3);
         }
 
         .step-text {
-          font-size: 0.875rem;
+          font-size: 0.9rem;
           color: #4a5568;
           font-weight: 600;
-          line-height: 1.3;
+          line-height: 1.4;
+          text-align: center;
+        }
+
+        .loading-step.completed .step-text {
+          color: #2d3748;
+          font-weight: 700;
         }
 
         @keyframes spin {
@@ -1940,16 +2174,98 @@ const ChatBox = () => {
           100% { transform: rotate(360deg); }
         }
 
-        @keyframes bounce {
-          0%, 20%, 50%, 80%, 100% {
-            transform: translateY(0);
+        @keyframes bounceIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.3);
           }
-          40% {
-            transform: translateY(-10px);
+          50% {
+            opacity: 1;
+            transform: scale(1.1);
           }
-          60% {
-            transform: translateY(-5px);
+          70% {
+            transform: scale(0.9);
           }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        /* Enhanced formatting for bot messages */
+        .formatted-text {
+          line-height: 1.7;
+          font-size: 0.95rem;
+        }
+
+        .formatted-text .section-header {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #2d3748;
+          margin: 1.5rem 0 1rem 0;
+          padding: 0.75rem 1rem;
+          background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+          border-radius: 0.5rem;
+          border-left: 4px solid #667eea;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .formatted-text .subsection-header {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #4a5568;
+          margin: 1rem 0 0.5rem 0;
+          padding: 0.5rem 0;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .formatted-text code {
+          background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+          color: #e2e8f0;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.25rem;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 0.85rem;
+          font-weight: 500;
+          border: 1px solid #4a5568;
+          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .formatted-text strong {
+          color: #1a202c;
+          font-weight: 700;
+        }
+
+        .formatted-text .tree-branch {
+          color: #667eea;
+          font-weight: 600;
+          font-family: monospace;
+          margin-right: 0.5rem;
+        }
+
+        /* Enhanced emoji styling */
+        .formatted-text {
+          font-variant-emoji: emoji;
+        }
+
+        /* Spacing improvements */
+        .formatted-text p {
+          margin: 0.75rem 0;
+        }
+
+        .formatted-text div {
+          margin: 0.5rem 0;
+        }
+
+        /* Special styling for value displays */
+        .formatted-text strong:contains('$') {
+          color: #059669;
+          background: rgba(5, 150, 105, 0.1);
+          padding: 0.125rem 0.25rem;
+          border-radius: 0.25rem;
         }
       `}</style>
     </div>
