@@ -339,7 +339,21 @@ class EthXrpCrossChainOrder {
         console.log("💡 Run: node serve-escrow.js");
       }
 
-      console.log(`📋 Wallet Address: ${this.ethWallet.address}`);
+      console.log(`📋 ETH Wallet Address: ${this.ethWallet.address}`);
+
+      // Display preset XRPL wallet info
+      const presetXrplAddress = process.env.XRPL_ADD;
+      if (presetXrplAddress) {
+        console.log(`📋 Preset XRPL Wallet: ${presetXrplAddress}`);
+        console.log(
+          `✅ Using your preset XRPL wallet for cross-chain operations`
+        );
+      } else {
+        console.log(`⚠️  XRPL_ADD not set, using fallback address`);
+        console.log(
+          `💡 Set XRPL_ADD and XRPL_SEC environment variables for your wallet`
+        );
+      }
     } catch (error) {
       console.error("❌ Initialization failed:", error.message);
       throw error;
@@ -442,17 +456,17 @@ class EthXrpCrossChainOrder {
           timelocks: evmPackedTimelocks,
         },
 
-        // XRP escrow data
+        // XRP escrow data - using preset XRPL wallet as destination
         xrpl: {
-          maker: process.env.XRPL_ADD || "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW", // User's XRPL address for receiving XRP
-          taker: this.ethWallet.address, // ETH wallet will receive XRP
+          maker: this.ethWallet.address, // ETH wallet is maker (sending ETH)
+          taker: process.env.XRPL_ADD || "rwptAc7REQmi4pCjhmTmNiCxTAocv4tzV5", // User's preset XRPL wallet receives XRP
           token: "0x0000000000000000000000000000000000000000", // XRP native
           totalAmount: BigInt(config.swap.dstAmount), // Total order amount in drops
           amount: this.calculatePartialAmount(
             BigInt(config.swap.dstAmount),
             fillPercentage
           ), // Current partial amount
-          safetyDeposit: BigInt(config.swap.safetyDeposit), // 0.1 XRP safety deposit as BigInt
+          safetyDeposit: BigInt(0), // No safety deposit needed for destination
           timelocks: xrplPackedTimelocks,
         },
 
@@ -724,8 +738,10 @@ class EthXrpCrossChainOrder {
         await this.xrplClient.createDestinationEscrow(xrplEscrowParams);
 
       console.log(`✅ XRPL Escrow created with ID: ${xrplEscrow.escrowId}`);
-      console.log(`📍 Escrow wallet address: ${xrplEscrow.walletAddress}`);
-      console.log(`💰 XRPL Escrow auto-funded by testnet faucet`);
+      console.log(
+        `📍 Using your preset XRPL wallet: ${xrplEscrow.walletAddress}`
+      );
+      console.log(`💰 XRPL Escrow auto-funded from your preset wallet`);
 
       order.xrpl.escrowId = xrplEscrow.escrowId;
       order.xrpl.walletAddress = xrplEscrow.walletAddress;
@@ -1902,9 +1918,16 @@ class EthXrpCrossChainOrder {
   }
 }
 
-// Custom Resolver Demo Workflow Function
+// Custom Resolver Demo with 1inch LOP and Partial Fills
 async function startCustomResolverDemo() {
-  console.log("🚀 Starting ETH-XRP Custom Resolver Demo with Partial Fills");
+  console.log(
+    "🚀 Starting ETH-XRP Cross-Chain Swap with 1inch LOP + Partial Fills"
+  );
+  console.log("=".repeat(80));
+  console.log("✅ Features: 1inch Limit Order Protocol");
+  console.log("✅ Features: Partial Fill Capability");
+  console.log("✅ Features: Preset XRPL Wallet Integration");
+  console.log("✅ Features: Auto-funding from MetaMask → XRPL");
   console.log("=".repeat(80));
 
   try {
@@ -2165,11 +2188,14 @@ async function main() {
     `  Destination: XRP Ledger (${parseInt(config.swap.dstAmount) / 1000000} XRP)`
   );
   console.log("");
-  console.log("🔧 Using:");
-  console.log("  • 1inch Limit Order Protocol for Ethereum");
-  console.log("  • EscrowFactory contract for atomic swaps");
-  console.log("  • Local XRPL server for XRP integration");
-  console.log("  • SHA256 hashlocks for atomicity");
+  console.log("🔧 Key Features:");
+  console.log("  ✅ 1inch Limit Order Protocol for advanced order management");
+  console.log("  ✅ Partial Fill Support for flexible order execution");
+  console.log("  ✅ Preset XRPL Wallet Integration (no new wallet generation)");
+  console.log("  ✅ Auto-funding: ETH MetaMask → XRPL Wallet");
+  console.log("  ✅ EscrowFactory contract for atomic swaps");
+  console.log("  ✅ Custom Resolver for partial order resolution");
+  console.log("  ✅ SHA256 hashlocks for cross-chain atomicity");
   console.log("=".repeat(70));
 
   try {

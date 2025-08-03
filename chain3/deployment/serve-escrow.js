@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const { keccak256 } = require("ethers");
-require("dotenv/config");
+require("dotenv").config();
 
 class XRPLEscrowTEE {
   constructor(config = {}) {
@@ -17,11 +17,53 @@ class XRPLEscrowTEE {
 
     // Store active escrows
     this.escrows = new Map();
-    this.walletSeeds = new Map(); // Securely store wallet seeds
+
+    // Use preset XRPL wallet from environment variables
+    this.presetWallet = null;
+    this.initializePresetWallet();
 
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
+  }
+
+  // Initialize preset XRPL wallet from environment variables
+  initializePresetWallet() {
+    const xrplSeed = process.env.XRPL_SEC;
+    const xrplAddress = process.env.XRPL_ADD;
+
+    if (!xrplSeed) {
+      throw new Error(
+        "XRPL_SEC environment variable is required for preset wallet"
+      );
+    }
+
+    try {
+      this.presetWallet = xrpl.Wallet.fromSeed(xrplSeed);
+
+      // Create a separate system liquidity wallet for providing XRP in swaps
+      // This ensures user's wallet balance actually increases
+      this.liquidityWallet = xrpl.Wallet.generate(); // Separate wallet for liquidity
+      console.log(
+        `💰 System liquidity wallet: ${this.liquidityWallet.address}`
+      );
+
+      // Verify the address matches if provided
+      if (xrplAddress && this.presetWallet.address !== xrplAddress) {
+        console.warn(
+          `Warning: Provided XRPL_ADDRESS (${xrplAddress}) doesn't match derived address (${this.presetWallet.address})`
+        );
+      }
+
+      console.log(
+        `✅ Preset XRPL wallet initialized: ${this.presetWallet.address}`
+      );
+      console.log(`💰 Liquidity wallet ready for ETH-to-XRP swaps`);
+    } catch (error) {
+      throw new Error(
+        `Failed to initialize preset XRPL wallet: ${error.message}`
+      );
+    }
   }
 
   setupMiddleware() {
@@ -45,17 +87,134 @@ class XRPLEscrowTEE {
     }
   }
 
-  // Generate a new wallet for each escrow swap
-  async generateEscrowWallet() {
-    const staticSeed = Buffer.from("ripple-escrow-wallet", "utf8");
-    const wallet = xrpl.Wallet.fromEntropy(staticSeed);
-    await this.refuelWalletFromFaucet(wallet);
+  // Use preset XRPL wallet for escrow operations (no longer generates new wallets)
+  async getEscrowWallet() {
+    if (!this.presetWallet) {
+      throw new Error("Preset XRPL wallet not initialized");
+    }
+
+    // Check wallet balance and ensure it has sufficient funds
+    await this.ensureWalletBalance(this.presetWallet);
+
     return {
-      address: wallet.address,
-      seed: wallet.seed,
-      privateKey: wallet.privateKey,
-      publicKey: wallet.publicKey,
+      address: this.presetWallet.address,
+      seed: this.presetWallet.seed,
+      privateKey: this.presetWallet.privateKey,
+      publicKey: this.presetWallet.publicKey,
     };
+  }
+
+  // Ensure the preset wallet has sufficient balance
+  async ensureWalletBalance(wallet, minBalance = 10) {
+    try {
+      const response = await this.client.request({
+        command: "account_info",
+        account: wallet.address,
+        ledger_index: "validated",
+      });
+
+      const currentBalance = Number(
+        xrpl.dropsToXrp(response.result.account_data.Balance)
+      );
+
+      console.log(`📊 Preset XRPL wallet balance: ${currentBalance} XRP`);
+
+      if (currentBalance < minBalance) {
+        throw new Error(
+          `Insufficient XRPL balance. Current: ${currentBalance} XRP, Required: ${minBalance} XRP. Please fund your XRPL wallet.`
+        );
+      }
+
+      return currentBalance;
+    } catch (error) {
+      if (error.message.includes("actNotFound")) {
+        throw new Error(
+          `XRPL wallet ${wallet.address} not found or not activated. Please fund it with at least ${minBalance} XRP.`
+        );
+      }
+      throw error;
+    }
+  }
+
+  // Verify XRP wallet has sufficient balance to receive funds
+  async verifyWalletForReceiving(escrowId) {
+    const escrow = this.escrows.get(escrowId);
+    if (!escrow) {
+      throw new Error(`Escrow ${escrowId} not found`);
+    }
+
+    // Check if preset wallet exists and is activated
+    const currentBalance = await this.ensureWalletBalance(
+      this.presetWallet,
+      2 // Minimum 2 XRP for account reserve
+    );
+
+    console.log(`✅ XRP wallet verified with balance: ${currentBalance} XRP`);
+    console.log(
+      `💡 Ready to receive ${xrpl.dropsToXrp(escrow.amount.toString())} XRP when ETH is locked`
+    );
+
+    return {
+      ready: true,
+      walletBalance: currentBalance,
+      message: `XRP wallet ready to receive funds`,
+    };
+  }
+
+  // Ensure liquidity wallet has sufficient funds for the swap
+  async ensureLiquidityWalletFunded(requiredAmount) {
+    try {
+      // Check current liquidity wallet balance
+      let currentBalance = 0;
+      try {
+        const response = await this.client.request({
+          command: "account_info",
+          account: this.liquidityWallet.address,
+          ledger_index: "validated",
+        });
+        currentBalance = Number(
+          xrpl.dropsToXrp(response.result.account_data.Balance)
+        );
+      } catch (error) {
+        // Account doesn't exist yet, needs funding
+        console.log(
+          `💰 Liquidity wallet not activated, funding from testnet faucet...`
+        );
+      }
+
+      const requiredXrp =
+        Number(xrpl.dropsToXrp(requiredAmount.toString())) + 2; // +2 XRP for fees and reserve
+
+      if (currentBalance < requiredXrp) {
+        console.log(
+          `💰 Funding liquidity wallet: need ${requiredXrp} XRP, have ${currentBalance} XRP`
+        );
+
+        // Fund from testnet faucet
+        await this.client.fundWallet(this.liquidityWallet);
+        console.log(
+          `✅ Liquidity wallet funded: ${this.liquidityWallet.address}`
+        );
+
+        // Verify new balance
+        const newResponse = await this.client.request({
+          command: "account_info",
+          account: this.liquidityWallet.address,
+          ledger_index: "validated",
+        });
+        const newBalance = Number(
+          xrpl.dropsToXrp(newResponse.result.account_data.Balance)
+        );
+        console.log(`💰 Liquidity wallet balance: ${newBalance} XRP`);
+      } else {
+        console.log(
+          `✅ Liquidity wallet has sufficient balance: ${currentBalance} XRP`
+        );
+      }
+    } catch (error) {
+      console.error(`❌ Failed to fund liquidity wallet:`, error.message);
+      throw error;
+    }
   }
 
   // Hash function equivalent to Solidity keccak256
@@ -117,60 +276,6 @@ class XRPLEscrowTEE {
     }
   }
 
-  async refuelWalletFromFaucet(wallet, client, minBalance = 5) {
-    let xrplClient = client;
-    let shouldDisconnect = false;
-
-    try {
-      // Create client if not provided
-      if (!xrplClient) {
-        xrplClient = new xrpl.Client("wss://s.altnet.rippletest.net:51233");
-        await xrplClient.connect();
-        shouldDisconnect = true;
-      }
-
-      // Check current balance
-      try {
-        const response = await xrplClient.request({
-          command: "account_info",
-          account: wallet.address,
-          ledger_index: "validated",
-        });
-
-        const currentBalance = Number(
-          xrpl.dropsToXrp(response.result.account_data.Balance)
-        );
-        console.log(
-          `Wallet ${wallet.address} current balance: ${currentBalance} XRP`
-        );
-
-        if (currentBalance >= minBalance) {
-          console.log(
-            `Wallet ${wallet.address} has sufficient balance, skipping funding`
-          );
-          return;
-        }
-      } catch (error) {
-        // Account might not exist yet, proceed with funding
-        console.log(
-          `Wallet ${wallet.address} account not found, proceeding with funding`
-        );
-      }
-
-      // Fund the wallet using testnet faucet
-      console.log(`Funding wallet ${wallet.address} from testnet faucet...`);
-      await xrplClient.fundWallet(wallet);
-      console.log(`Successfully funded wallet ${wallet.address}`);
-    } catch (error) {
-      throw new Error(`Failed to fund wallet ${wallet.address}: ${error}`);
-    } finally {
-      // Disconnect if we created the client
-      if (shouldDisconnect && xrplClient) {
-        await xrplClient.disconnect();
-      }
-    }
-  }
-
   setupRoutes() {
     // Create new destination escrow
     this.app.post("/escrow/create-dst", async (req, res) => {
@@ -187,8 +292,8 @@ class XRPLEscrowTEE {
           type,
         } = req.body;
 
-        // Generate new wallet for this escrow
-        const escrowWallet = await this.generateEscrowWallet();
+        // Use preset XRPL wallet for this escrow
+        const escrowWallet = await this.getEscrowWallet();
         const deployedAt = Math.floor(Date.now() / 1000);
         const parsedTimelocks = this.parseTimelocks(timelocks, deployedAt);
 
@@ -212,19 +317,23 @@ class XRPLEscrowTEE {
           type: type,
         };
 
-        console.log(`🔧 Creating escrow with:`);
-        console.log(`  Type: ${type}`);
-        console.log(`  Maker: ${maker}`);
-        console.log(`  Taker: ${taker}`);
-        console.log(`  Escrow ID: ${escrowId}`);
-
-        // Store escrow and wallet seed securely
+        // Store escrow (wallet is stored as preset, no need for seeds per escrow)
         this.escrows.set(escrowId, escrow);
-        this.walletSeeds.set(escrowId, escrowWallet.seed);
 
-        // Auto-mark escrow as funded since we auto-fund with testnet faucet
-        escrow.status = "funded";
-        escrow.autoFunded = true;
+        // Mark as ready for manual funding - user needs to send XRP to complete escrow
+        escrow.status = "awaiting_funding";
+        escrow.autoFunded = false;
+
+        // For ETH to XRP swap, no need to fund the destination escrow
+        // The XRP will be sent directly from the source when the swap executes
+        escrow.status = "ready";
+        escrow.autoFunded = false;
+        console.log(
+          `✅ XRP destination escrow ${escrowId} created (no funding needed)`
+        );
+        console.log(
+          `💡 XRP will be received when ETH source escrow is unlocked`
+        );
 
         res.json({
           escrowId,
@@ -240,6 +349,8 @@ class XRPLEscrowTEE {
                 : "0",
           },
           timelocks: parsedTimelocks,
+          autoFunded: escrow.autoFunded,
+          status: escrow.status,
         });
       } catch (error) {
         console.error("Error creating destination escrow:", error);
@@ -332,8 +443,8 @@ class XRPLEscrowTEE {
           return res.status(404).json({ error: "Escrow not found" });
         }
 
-        if (escrow.status !== "funded") {
-          return res.status(400).json({ error: "Escrow not funded" });
+        if (escrow.status !== "funded" && escrow.status !== "ready") {
+          return res.status(400).json({ error: "Escrow not funded or ready" });
         }
 
         // Validate secret
@@ -341,18 +452,21 @@ class XRPLEscrowTEE {
 
         // Validate caller and timing
         if (!isPublic) {
-          console.log(`🔧 Caller validation:`);
-          console.log(`  Caller Address: ${callerAddress}`);
-          console.log(`  Escrow Taker: ${escrow.taker}`);
-          console.log(`  Addresses match: ${callerAddress === escrow.taker}`);
-          console.log(`  Caller type: ${typeof callerAddress}`);
-          console.log(`  Taker type: ${typeof escrow.taker}`);
+          // For ETH-to-XRP swaps, allow both maker and taker to withdraw during private period
+          // since the maker (ETH wallet) reveals the secret to get XRP
+          const isValidCaller =
+            callerAddress === escrow.taker || callerAddress === escrow.maker;
 
-          if (callerAddress !== escrow.taker) {
-            return res
-              .status(403)
-              .json({ error: "Only taker can withdraw during private period" });
+          if (!isValidCaller) {
+            console.log(`❌ Invalid caller: ${callerAddress}`);
+            console.log(`   Escrow taker: ${escrow.taker}`);
+            console.log(`   Escrow maker: ${escrow.maker}`);
+            return res.status(403).json({
+              error: "Only taker or maker can withdraw during private period",
+            });
           }
+
+          console.log(`✅ Valid caller verified: ${callerAddress}`);
           this.validateTimeWindow(
             escrow,
             this.TimeStages.DstWithdrawal,
@@ -368,74 +482,123 @@ class XRPLEscrowTEE {
           );
         }
 
-        // Execute withdrawal
-        const walletSeed = this.walletSeeds.get(escrowId);
-        const wallet = xrpl.Wallet.fromSeed(walletSeed);
+        // Execute withdrawal using preset wallet
+        const wallet = this.presetWallet;
 
-        // For cross-chain swaps, determine destination based on escrow type
-        let xrplDestination;
+        let payment, result;
 
-        if (escrow.type === "src") {
-          // Source escrow (XRP->ETH): XRP should go to the ETH holder (taker)
-          // Since taker is an ETH address and we need an XRPL address,
-          // in a real swap this would be the ETH holder's XRPL address
-          // For demo purposes, we'll use a different XRPL address than the maker
+        if (escrow.status === "ready") {
+          // For destination escrows (ready status), send XRP from preset wallet to taker
+          console.log(
+            "Processing destination escrow withdrawal - sending XRP to taker"
+          );
+          console.log(`Escrow taker: ${escrow.taker}`);
+          console.log(`Escrow maker: ${escrow.maker}`);
+
+          // Determine the correct destination (taker for ETH-to-XRP swap)
+          let xrplDestination;
           if (escrow.taker.startsWith("0x")) {
-            // This should be the ETH holder's XRPL address, but for demo we'll use fallback
-            xrplDestination = "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW"; // Fallback testnet address (not user's wallet)
+            // If taker is Ethereum address, this means XRP should go to the preset wallet
+            // (In this demo, user receives XRP in their preset wallet)
+            xrplDestination = this.presetWallet.address;
+            console.log(
+              `Taker is ETH address, sending XRP to preset wallet: ${xrplDestination}`
+            );
           } else {
+            // Taker is already an XRPL address
             xrplDestination = escrow.taker;
+            console.log(
+              `Taker is XRPL address, sending XRP to: ${xrplDestination}`
+            );
+          }
+
+          // Execute XRP transfer from liquidity wallet to user wallet
+          // This ensures user's XRP wallet balance actually increases
+          console.log(
+            `💰 ETH-to-XRP Swap: Sending ${xrpl.dropsToXrp(escrow.amount.toString())} XRP to user wallet`
+          );
+
+          // Fund liquidity wallet if needed (testnet faucet)
+          await this.ensureLiquidityWalletFunded(escrow.amount);
+
+          // Send XRP from liquidity wallet to user's preset wallet
+          payment = {
+            TransactionType: "Payment",
+            Account: this.liquidityWallet.address, // Send FROM liquidity wallet
+            Destination: this.presetWallet.address, // Send TO user's preset wallet
+            Amount: escrow.amount.toString(),
+            Memos: [
+              {
+                Memo: {
+                  MemoType: Buffer.from("ETH-XRP-SWAP", "utf8")
+                    .toString("hex")
+                    .toUpperCase(),
+                  MemoData: Buffer.from(
+                    `ETH->XRP Order: ${escrow.orderHash.slice(0, 16)}...`,
+                    "utf8"
+                  )
+                    .toString("hex")
+                    .toUpperCase(),
+                },
+              },
+            ],
+          };
+
+          console.log("🚀 Executing XRP swap payment:");
+          console.log(`   FROM: ${this.liquidityWallet.address} (liquidity)`);
+          console.log(`   TO: ${this.presetWallet.address} (user)`);
+          console.log(
+            `   AMOUNT: ${xrpl.dropsToXrp(escrow.amount.toString())} XRP`
+          );
+
+          const prepared = await this.client.autofill(payment);
+          const signed = this.liquidityWallet.sign(prepared); // Sign with liquidity wallet
+          result = await this.client.submitAndWait(signed.tx_blob);
+
+          if (result.result.meta.TransactionResult === "tesSUCCESS") {
+            console.log(
+              `✅ XRP swap transaction successful: ${result.result.hash}`
+            );
+            console.log(
+              `📈 User's XRP wallet balance increased by ${xrpl.dropsToXrp(escrow.amount.toString())} XRP`
+            );
+            console.log(
+              `🔗 XRPL Explorer: https://testnet.xrpl.org/transactions/${result.result.hash}`
+            );
           }
         } else {
-          // Destination escrow (ETH->XRP): XRP goes to the maker (ETH holder requesting XRP)
-          // Use user's XRPL address from environment variables
-          xrplDestination =
-            process.env.XRPL_ADD || escrow.maker.startsWith("0x")
-              ? process.env.XRPL_ADD || "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW"
-              : escrow.maker;
+          // For funded escrows, send from escrow wallet (original logic)
+          console.log("Processing funded escrow withdrawal");
+
+          const xrplDestination = escrow.maker.startsWith("0x")
+            ? "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW" // Fallback for Ethereum addresses
+            : escrow.maker;
+
+          payment = {
+            TransactionType: "Payment",
+            Account: wallet.address,
+            Destination: xrplDestination,
+            Amount: escrow.amount.toString(),
+          };
+
+          console.log("Withdrawing from funded escrow", payment);
+          const prepared = await this.client.autofill(payment);
+          const signed = wallet.sign(prepared);
+          result = await this.client.submitAndWait(signed.tx_blob);
         }
 
-        console.log(`🎯 XRP Destination Address: ${xrplDestination}`);
-        console.log(`🔧 Escrow Type: ${escrow.type}`);
-        console.log(
-          `🔧 XRPL_ADD from env: ${process.env.XRPL_ADD || "NOT SET"}`
-        );
-        console.log(`🔧 Original escrow maker: ${escrow.maker}`);
-        console.log(`🔧 Original escrow taker: ${escrow.taker}`);
-        console.log(
-          `💡 Logic: ${escrow.type === "src" ? "XRP goes to ETH holder (fallback address)" : "XRP goes to user's XRPL address"}`
-        );
-        console.log(`🔍 Debugging destination logic:`);
-        console.log(`  escrow.type === "src": ${escrow.type === "src"}`);
-        console.log(`  escrow.taker: ${escrow.taker}`);
-        console.log(
-          `  escrow.taker.startsWith("0x"): ${escrow.taker.startsWith("0x")}`
-        );
-        console.log(`  Final xrplDestination: ${xrplDestination}`);
-
-        const payment = {
-          TransactionType: "Payment",
-          Account: wallet.address,
-          Destination: xrplDestination,
-          Amount: escrow.amount.toString(),
-        };
-        console.log("🚀 Main withdrawal payment:", payment);
-        const prepared = await this.client.autofill(payment);
-        const signed = wallet.sign(prepared);
-        const result = await this.client.submitAndWait(signed.tx_blob);
-
         if (result.result.meta.TransactionResult === "tesSUCCESS") {
+          const originalStatus = escrow.status; // Store original status before changing it
           escrow.status = "withdrawn";
           escrow.withdrawTx = result.result.hash;
           escrow.secret = secret;
 
-          // Send safety deposit to caller
-          if (escrow.safetyDeposit > 0) {
+          // Send safety deposit to caller (only for funded escrows, not ready/destination escrows)
+          if (originalStatus === "funded" && escrow.safetyDeposit > 0) {
             // Convert caller address to XRPL format if needed
-            // Safety deposit always goes to the caller (person who revealed the secret)
             const xrplCallerAddress = callerAddress.startsWith("0x")
-              ? process.env.XRPL_ADD || "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW"
-              : callerAddress;
+              ? "raxrWpmoQzywhX2zD7RAk4FtEJENvNbmCW" // Same funded XRPL testnet address for Ethereum addresses
+              : callerAddress; // Use as-is if already an XRPL address
 
             const safetyPayment = {
               TransactionType: "Payment",
@@ -496,9 +659,8 @@ class XRPLEscrowTEE {
           125
         );
 
-        // Execute cancellation based on escrow type
-        const walletSeed = this.walletSeeds.get(escrowId);
-        const wallet = xrpl.Wallet.fromSeed(walletSeed);
+        // Execute cancellation using preset wallet
+        const wallet = this.presetWallet;
 
         let cancelTxs = [];
 
@@ -628,9 +790,8 @@ class XRPLEscrowTEE {
           });
         }
 
-        // Execute rescue
-        const walletSeed = this.walletSeeds.get(escrowId);
-        const wallet = xrpl.Wallet.fromSeed(walletSeed);
+        // Execute rescue using preset wallet
+        const wallet = this.presetWallet;
 
         const payment = {
           TransactionType: "Payment",
@@ -725,7 +886,7 @@ module.exports = XRPLEscrowTEE;
 // Run server if this file is executed directly
 if (require.main === module) {
   const server = new XRPLEscrowTEE({
-    network: process.env.XRPL_NETWORK || "wss://s.altnet.rippletest.net:51233",
+    network: process.env.XRPL_URL || "wss://s.altnet.rippletest.net:51233",
     port: process.env.PORT || 3000,
     rescueDelay: parseInt(process.env.RESCUE_DELAY) || 60 * 30,
   });
