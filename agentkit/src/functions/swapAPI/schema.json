@@ -1,6 +1,6 @@
 {
   "name": "swapAPI",
-  "description": "Access 1inch Classic Swap API (Pathfinder v6.1) for token swaps with wallet integration. This API provides cutting-edge discovery and routing algorithm that offers asset exchanges at the best rates on the market. IMPORTANT: You MUST provide the required parameters based on the endpoint you want to call. For getting a quote: use endpoint 'getQuote' with chain, src, dst, and amount. For getting swap data: use endpoint 'getSwap' with chain, src, dst, amount, from, origin, and slippage. For checking allowance: use endpoint 'getAllowance' with chain, tokenAddress, and walletAddress. EXAMPLES: Quote: {\"endpoint\": \"getQuote\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\"}. Swap: {\"endpoint\": \"getSwap\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\", \"from\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\", \"origin\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\", \"slippage\": 1}. Allowance: {\"endpoint\": \"getAllowance\", \"chain\": 1, \"tokenAddress\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"walletAddress\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\"}.",
+  "description": "Access 1inch Classic Swap API (Pathfinder v6.1) for token swaps with wallet integration. This API provides cutting-edge discovery and routing algorithm that offers asset exchanges at the best rates on the market. CRITICAL: When users ask for swap quotes or routes, you MUST extract the parameters from their natural language. COMMON PATTERNS: '1000 USDC to ETH' → src='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' (USDC), dst='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' (ETH), amount='1000000' (1000 USDC in smallest units). '1 ETH to USDC' → src='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' (ETH), dst='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' (USDC), amount='1000000000000000000' (1 ETH in wei). TOKEN ADDRESSES: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'. DECIMALS: ETH=18, USDC=6, DAI=18. EXAMPLES: Quote: {\"endpoint\": \"getQuote\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\"}. Swap: {\"endpoint\": \"getSwap\", \"chain\": 1, \"src\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dst\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"amount\": \"1000000000000000000\", \"from\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\", \"origin\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\", \"slippage\": 1}. Allowance: {\"endpoint\": \"getAllowance\", \"chain\": 1, \"tokenAddress\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\", \"walletAddress\": \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\"}.",
   "type": "object",
   "properties": {
     "endpoint": {
@@ -14,15 +14,15 @@
     },
     "src": {
       "type": "string",
-      "description": "Source token address (REQUIRED for getQuote, getSwap, executeSwap). Example: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' for ETH, '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' for USDC"
+      "description": "Source token address (REQUIRED for getQuote, getSwap, executeSwap). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "dst": {
       "type": "string",
-      "description": "Destination token address (REQUIRED for getQuote, getSwap, executeSwap). Example: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' for USDC, '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' for ETH"
+      "description": "Destination token address (REQUIRED for getQuote, getSwap, executeSwap). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "amount": {
       "type": "string",
-      "description": "Amount to swap in wei/smallest unit (REQUIRED for getQuote, getSwap, executeSwap, executeApprove). Example: '1000000000000000000' for 1 ETH, '1000000' for 1 USDC (6 decimals)"
+      "description": "Amount to swap in wei/smallest unit (REQUIRED for getQuote, getSwap, executeSwap, executeApprove). CONVERT: 1 ETH = '1000000000000000000', 1 USDC = '1000000', 1 DAI = '1000000000000000000'. For user amounts like '1000 USDC', convert to '1000000' (1000 * 10^6)"
     },
     "from": {
       "type": "string",

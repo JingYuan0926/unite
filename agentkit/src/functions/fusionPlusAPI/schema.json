@@ -1,6 +1,6 @@
 {
   "name": "fusionPlusAPI",
-  "description": "Access 1inch Fusion+ API for cross-chain swaps. This API provides advanced gasless swaps with MEV protection. EXAMPLES: For active orders: {\"endpoint\": \"getActiveOrders\", \"srcChain\": 1, \"dstChain\": 137}. For escrow factory: {\"endpoint\": \"getEscrowFactory\", \"chainId\": 1}. For quote: {\"endpoint\": \"getQuote\", \"srcChain\": 1, \"dstChain\": 137, \"srcTokenAddress\": \"0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2\", \"dstTokenAddress\": \"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174\", \"amount\": 1000000000000000000, \"walletAddress\": \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\", \"enableEstimate\": false}.",
+  "description": "Access 1inch Fusion+ API for cross-chain swaps. This API provides advanced gasless swaps with MEV protection. CRITICAL: When users ask for cross-chain swaps or Fusion quotes, you MUST extract the parameters from their natural language. COMMON PATTERNS: 'Swap 0.1 ETH from Arbitrum to Ethereum mainnet using Fusion' → endpoint='getQuote', srcChain=42161 (Arbitrum), dstChain=1 (Ethereum), srcTokenAddress='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' (ETH), dstTokenAddress='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' (ETH), amount=100000000000000000 (0.1 ETH in wei), walletAddress='USER_WALLET_ADDRESS', enableEstimate=true. 'Get Fusion quote for 1000 USDC from Ethereum to Polygon' → endpoint='getQuote', srcChain=1 (Ethereum), dstChain=137 (Polygon), srcTokenAddress='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' (USDC), dstTokenAddress='0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' (USDC on Polygon), amount=1000000 (1000 USDC in smallest units), walletAddress='USER_WALLET_ADDRESS', enableEstimate=true. TOKEN ADDRESSES: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'. CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56. DECIMALS: ETH=18, USDC=6, DAI=18. EXAMPLES: Quote: {\"endpoint\": \"getQuote\", \"srcChain\": 42161, \"dstChain\": 1, \"srcTokenAddress\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"dstTokenAddress\": \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\", \"amount\": 100000000000000000, \"walletAddress\": \"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6\", \"enableEstimate\": true}. Active Orders: {\"endpoint\": \"getActiveOrders\", \"srcChain\": 1, \"dstChain\": 137}. Escrow Factory: {\"endpoint\": \"getEscrowFactory\", \"chainId\": 1}.",
   "type": "object",
   "properties": {
     "endpoint": {
@@ -18,35 +18,35 @@
     },
     "srcChain": {
       "type": "number",
-      "description": "Source chain ID (required for getActiveOrders and getQuote). Use 1 for Ethereum, 137 for Polygon, etc."
+      "description": "Source chain ID (REQUIRED for getActiveOrders and getQuote). CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56"
     },
     "dstChain": {
       "type": "number",
-      "description": "Destination chain ID (required for getActiveOrders and getQuote). Use 1 for Ethereum, 137 for Polygon, etc."
+      "description": "Destination chain ID (REQUIRED for getActiveOrders and getQuote). CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56"
     },
     "chainId": {
       "type": "number",
-      "description": "Chain ID (required for getEscrowFactory). Use 1 for Ethereum, 137 for Polygon, etc."
+      "description": "Chain ID (REQUIRED for getEscrowFactory). CHAIN IDs: Ethereum=1, Polygon=137, Arbitrum=42161, Optimism=10, BSC=56"
     },
     "srcTokenAddress": {
       "type": "string",
-      "description": "Address of source token (required for getQuote). Example: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 for WETH"
+      "description": "Address of source token (REQUIRED for getQuote). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "dstTokenAddress": {
       "type": "string",
-      "description": "Address of destination token (required for getQuote). Example: 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174 for USDC"
+      "description": "Address of destination token (REQUIRED for getQuote). COMMON TOKENS: ETH='0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', USDC='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', WETH='0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', DAI='0x6b175474e89094c44da98b954eedeac495271d0f'"
     },
     "amount": {
       "type": "number",
-      "description": "Amount to swap (required for getQuote). Amount in wei format"
+      "description": "Amount to swap (REQUIRED for getQuote). CONVERT: 1 ETH = 1000000000000000000, 1 USDC = 1000000, 1 DAI = 1000000000000000000. For user amounts like '0.1 ETH', convert to 100000000000000000 (0.1 * 10^18)"
     },
     "walletAddress": {
       "type": "string",
-      "description": "Wallet address (required for getQuote). Address of the wallet or contract who will create Fusion order"
+      "description": "Wallet address (REQUIRED for getQuote). Address of the wallet or contract who will create Fusion order"
     },
     "enableEstimate": {
       "type": "boolean",
-      "description": "Enable estimation (required for getQuote). If enabled then get estimation from 1inch swap builder and generates quoteId"
+      "description": "Enable estimation (REQUIRED for getQuote). If enabled then get estimation from 1inch swap builder and generates quoteId"
     },
     "fee": {
       "type": "number",

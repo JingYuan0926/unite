@@ -380,6 +380,11 @@ export async function fusionPlusAPI(params: {
   permit?: string;
 }): Promise<any> {
   try {
+    // Validate endpoint parameter
+    if (!params.endpoint) {
+      throw new Error('Endpoint parameter is required. Please specify: getActiveOrders, getEscrowFactory, or getQuote');
+    }
+
     switch (params.endpoint) {
       case 'getActiveOrders':
         return await getActiveOrders({
@@ -391,15 +396,31 @@ export async function fusionPlusAPI(params: {
 
       case 'getEscrowFactory':
         if (!params.chainId) {
-          throw new Error('chainId is required for getEscrowFactory');
+          throw new Error('chainId parameter is required for getEscrowFactory. Please specify a valid chain ID (e.g., 1 for Ethereum, 137 for Polygon, 42161 for Arbitrum)');
         }
         return await getEscrowFactory({ chainId: params.chainId });
 
       case 'getQuote':
-        if (!params.srcChain || !params.dstChain || !params.srcTokenAddress || 
-            !params.dstTokenAddress || !params.amount || !params.walletAddress || 
-            params.enableEstimate === undefined) {
-          throw new Error('srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, and enableEstimate are required for getQuote');
+        if (!params.srcChain) {
+          throw new Error('srcChain parameter is required for getQuote. Please specify the source chain ID (e.g., 1 for Ethereum, 137 for Polygon, 42161 for Arbitrum)');
+        }
+        if (!params.dstChain) {
+          throw new Error('dstChain parameter is required for getQuote. Please specify the destination chain ID (e.g., 1 for Ethereum, 137 for Polygon, 42161 for Arbitrum)');
+        }
+        if (!params.srcTokenAddress) {
+          throw new Error('srcTokenAddress parameter is required for getQuote. Please specify the source token address (e.g., "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" for ETH)');
+        }
+        if (!params.dstTokenAddress) {
+          throw new Error('dstTokenAddress parameter is required for getQuote. Please specify the destination token address (e.g., "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" for ETH)');
+        }
+        if (!params.amount) {
+          throw new Error('amount parameter is required for getQuote. Please specify the amount in wei (e.g., 100000000000000000 for 0.1 ETH)');
+        }
+        if (!params.walletAddress) {
+          throw new Error('walletAddress parameter is required for getQuote. Please specify the wallet address');
+        }
+        if (params.enableEstimate === undefined) {
+          throw new Error('enableEstimate parameter is required for getQuote. Please specify true or false');
         }
         return await getQuote({
           srcChain: params.srcChain,
@@ -415,7 +436,7 @@ export async function fusionPlusAPI(params: {
         });
 
       default:
-        throw new Error(`Unknown endpoint: ${params.endpoint}`);
+        throw new Error(`Unknown endpoint: ${params.endpoint}. Valid endpoints are: getActiveOrders, getEscrowFactory, getQuote`);
     }
   } catch (error) {
     throw new Error(`Fusion+ API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
