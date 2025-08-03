@@ -34,7 +34,7 @@ export default function Header() {
             onClick={() => scrollToSection('home')}
             className={`relative group transition-all duration-300 ${
               activeSection === 'home' 
-                ? 'text-black font-bold text-lg' 
+                ? 'text-black font-bold' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -48,7 +48,7 @@ export default function Header() {
             onClick={() => scrollToSection('how-it-works')}
             className={`relative group transition-all duration-300 ${
               activeSection === 'how-it-works' 
-                ? 'text-black font-bold text-lg' 
+                ? 'text-black font-bold' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -62,7 +62,7 @@ export default function Header() {
             onClick={() => scrollToSection('features')}
             className={`relative group transition-all duration-300 ${
               activeSection === 'features' 
-                ? 'text-black font-bold text-lg' 
+                ? 'text-black font-bold' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
