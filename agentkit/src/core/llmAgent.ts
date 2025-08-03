@@ -97,29 +97,29 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - gasAPI: chain
    - tokenDetailsAPI: endpoint, chain, tokenAddress
 
-5. **Token Addresses by Chain**: 
+5. **Token Addresses by Chain** (FUSION+ USES WETH, NOT NATIVE ETH): 
    - ETHEREUM (Chain 1):
-     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" (for swapAPI only)
+     - WETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" (for fusionPlusAPI)
      - USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-     - WETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
      - DAI = "0x6b175474e89094c44da98b954eedeac495271d0f"
    
    - ARBITRUM (Chain 42161):
-     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" (for swapAPI only)
+     - WETH = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1" (for fusionPlusAPI)
      - USDC = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
-     - WETH = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
      - DAI = "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
    
    - POLYGON (Chain 137):
      - ETH = "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"
-     - USDC = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
      - WETH = "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"
+     - USDC = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
      - DAI = "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063"
    
    - OPTIMISM (Chain 10):
-     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" (for swapAPI only)
+     - WETH = "0x4200000000000000000000000000000000000006" (for fusionPlusAPI)
      - USDC = "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
-     - WETH = "0x4200000000000000000000000000000000000006"
      - DAI = "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
 
 6. **Chain IDs**:
@@ -166,8 +166,8 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
         "endpoint": "getQuote",
         "srcChain": 42161,
         "dstChain": 1,
-        "srcTokenAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-        "dstTokenAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "srcTokenAddress": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
+        "dstTokenAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         "amount": "1000000000000000",
         "walletAddress": "${walletAddress}",
         "enableEstimate": true
@@ -246,6 +246,14 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
     - ❌ action (use endpoint)
     - ❌ fromChain (use srcChain)
     - ❌ toChain (use dstChain)
+
+21. **FUSION+ TOKEN RULES**:
+    - Fusion+ API requires WETH addresses, NOT native ETH addresses
+    - For ETH swaps in Fusion+, use WETH addresses:
+      - Arbitrum WETH: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+      - Ethereum WETH: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      - Optimism WETH: "0x4200000000000000000000000000000000000006"
+    - Only swapAPI can use native ETH addresses (0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee)
 
 IMPORTANT: If you cannot extract required parameters from the user's query, ask them to provide more specific information rather than calling functions with empty arguments.`;
   }
@@ -421,12 +429,23 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
       return { content: "No wallet connected. Please connect your wallet first." };
     }
 
+    // Use WETH addresses for Fusion+ API (it doesn't support native ETH)
+    const getWETHAddress = (chainId: number) => {
+      switch (chainId) {
+        case 1: return "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"; // Ethereum WETH
+        case 42161: return "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // Arbitrum WETH
+        case 10: return "0x4200000000000000000000000000000000000006"; // Optimism WETH
+        case 137: return "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"; // Polygon WETH
+        default: return "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+      }
+    };
+
     const buildOrderArgs = {
       endpoint: "buildOrder",
       srcChain: quote.srcChain || 42161,
       dstChain: quote.dstChain || 1,
-      srcTokenAddress: quote.srcTokenAddress || "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      dstTokenAddress: quote.dstTokenAddress || "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      srcTokenAddress: getWETHAddress(quote.srcChain || 42161),
+      dstTokenAddress: getWETHAddress(quote.dstChain || 1),
       amount: quote.srcTokenAmount || "1000000000000000",
       walletAddress: walletAddress,
       quote: quote,
@@ -463,6 +482,7 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
    */
   private async executeSubmitOrder(): Promise<AgentResponse> {
     const order = this.conversationState!.order;
+    const quote = this.conversationState!.quote; // Get the original quote
     const walletAddress = walletManager.getWalletContext().wallet?.address;
     
     if (!walletAddress) {
@@ -474,8 +494,8 @@ IMPORTANT: If you cannot extract required parameters from the user's query, ask 
       order: order,
       srcChainId: order.srcChainId || 42161,
       signature: "0x", // This would need to be generated by the wallet
-      extension: "0x",
-      quoteId: order.quoteId || ""
+      extension: order.extension || "0x", // Use the extension from the built order
+      quoteId: quote.quoteId || "" // Use the quoteId from the original quote
     };
 
     try {
