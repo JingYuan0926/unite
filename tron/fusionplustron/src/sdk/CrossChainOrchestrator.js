@@ -160,20 +160,20 @@ class CrossChainOrchestrator {
     const now = Math.floor(Date.now() / 1000);
     const expiry = now + 3600; // Set expiry to 1 hour from now (critical for LOP)
     // Create standard 8-field order for LOP v4 configured for DemoResolver pattern
-    // 🎯 BREAKTHROUGH FIX: Use FULL ADDRESS encoding, not bottom 80 bits!
-    // Research showed that LOP expects full address in makerTraits for allowedSender
-    // This fixes the 0xa4f62a96 "PrivateOrder" error
+    // 🎯 BACK TO WORKING CONFIG: Use DemoResolver address as allowedSender
+    // Based on user's successful run where this was working
+    // The LOP sees DemoResolver as msg.sender when it calls fillOrderArgs
     const demoResolverAddress = this.config.DEMO_RESOLVER_ADDRESS;
-    const encodedAllowedSender = BigInt(demoResolverAddress); // Use full address!
+    const encodedAllowedSender = BigInt(demoResolverAddress); // DemoResolver as allowedSender
     const orderForSigning = {
-      salt: BigInt(Date.now()),
+      salt: BigInt(Date.now() + Math.floor(Math.random() * 1000000)), // Ensure uniqueness
       maker: ethSigner.address,
       receiver: ethSigner.address, // Receiver of the ETH (for cancellation)
       makerAsset: ethers_1.ethers.ZeroAddress, // ETH (what maker is giving)
       takerAsset: ethers_1.ethers.ZeroAddress, // 🎯 ETH-ONLY: Both assets are ETH for cross-chain swaps
       makingAmount: params.ethAmount,
       takingAmount: 1n, // 🎯 MINIMAL: Avoid division by zero, minimal wei
-      makerTraits: encodedAllowedSender, // 🎯 FIXED: Full address authorization (not bottom 80 bits)
+      makerTraits: encodedAllowedSender, // 🎯 FIXED: DemoResolver authorized as allowedSender (msg.sender match)
     };
     const preparedOrder = {
       order: orderForSigning, // Use the full object

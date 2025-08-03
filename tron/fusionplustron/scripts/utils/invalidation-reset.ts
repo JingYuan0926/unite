@@ -10,11 +10,11 @@ import { ethers } from "hardhat";
  */
 
 export class InvalidationReset {
-  private provider: ethers.Provider;
+  private provider: any;
   private lopAddress: string;
 
   constructor(
-    provider: ethers.Provider,
+    provider: any,
     lopAddress: string = "0x04C7BDA8049Ae6d87cc2E793ff3cc342C47784f0"
   ) {
     this.provider = provider;
@@ -285,7 +285,7 @@ export async function quickInvalidationReset(
 ): Promise<void> {
   require("dotenv").config();
 
-  const provider = ethers.provider;
+  const provider = new ethers.JsonRpcProvider(process.env.ETH_RPC_URL!);
   const invalidationReset = new InvalidationReset(provider);
 
   const keyToUse = privateKey || process.env.USER_A_ETH_PRIVATE_KEY;
@@ -317,7 +317,7 @@ export async function prepareAccountForTesting(
 ): Promise<void> {
   require("dotenv").config();
 
-  const provider = ethers.provider;
+  const provider = new ethers.JsonRpcProvider(process.env.ETH_RPC_URL!);
   const invalidationReset = new InvalidationReset(provider);
 
   const keyToUse = privateKey || process.env.USER_A_ETH_PRIVATE_KEY;
