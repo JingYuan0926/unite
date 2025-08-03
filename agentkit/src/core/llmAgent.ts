@@ -71,12 +71,30 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
 
 1. **ALWAYS extract parameters from user queries** - Never call functions with empty arguments {}
 
-2. **Token Addresses**: 
-   - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-   - USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-   - WETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-   - DAI = "0x6b175474e89094c44da98b954eedeac495271d0f"
-   - USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+2. **Token Addresses by Chain**: 
+   - ETHEREUM (Chain 1):
+     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+     - USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+     - WETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+     - DAI = "0x6b175474e89094c44da98b954eedeac495271d0f"
+   
+   - ARBITRUM (Chain 42161):
+     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+     - USDC = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+     - WETH = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+     - DAI = "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
+   
+   - POLYGON (Chain 137):
+     - ETH = "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"
+     - USDC = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+     - WETH = "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"
+     - DAI = "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063"
+   
+   - OPTIMISM (Chain 10):
+     - ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+     - USDC = "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
+     - WETH = "0x4200000000000000000000000000000000000006"
+     - DAI = "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
 
 3. **Chain IDs**:
    - Ethereum = 1
@@ -84,104 +102,51 @@ CRITICAL INSTRUCTIONS FOR PARAMETER EXTRACTION:
    - Arbitrum = 42161
    - Optimism = 10
    - BSC = 56
-   - Avalanche = 43114
-   - Base = 8453
-   - zkSync Era = 324
-   - Gnosis = 100
-   - Solana = 7565164
 
 4. **Amount Conversion**:
    - 1 ETH = "1000000000000000000" (18 decimals)
    - 1 USDC = "1000000" (6 decimals)
    - 1 DAI = "1000000000000000000" (18 decimals)
-   - 0.1 ETH = "100000000000000000" (0.1 * 10^18)
+   - 0.001 ETH = "1000000000000000" (0.001 * 10^18)
+   - 10 USDC = "10000000" (10 * 10^6)
    - 1000 USDC = "1000000" (1000 * 10^6)
 
-5. **FUNCTION SELECTION GUIDE**:
+5. **Function Selection**:
+   - Gas prices → gasAPI
+   - Single-chain swaps (same chain) → swapAPI with endpoint="getQuote"
+   - Cross-chain swaps (different chains) → fusionPlusAPI with endpoint="getQuote"
+   - Token information → tokenDetailsAPI
+   - Price data → spotPriceAPI
+   - Portfolio data → portfolioAPI
+   - Wallet balances → balanceAPI
 
-   **Gas & Network Data:**
-   - Gas prices → gasAPI with chain
-   - RPC calls → rpcAPI with chainId, method, params
-   - Charts data → chartsAPI with type, token0, token1, chainId
-
-   **Token Information:**
-   - Token details → tokenDetailsAPI with endpoint, chainId
-   - Spot prices → spotPriceAPI with endpoint, chain
-   - Price charts → chartsAPI with type, token0, token1, chainId
-
-   **Swaps & Trading:**
-   - Single-chain swaps → swapAPI with endpoint="getQuote", chain, src, dst, amount
-   - Cross-chain swaps → fusionPlusAPI with endpoint="getQuote", srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
-   - Orderbook orders → orderbookAPI with endpoint, chain
-
-   **Wallet & Portfolio:**
-   - Wallet balances → balanceAPI with endpoint, chain, walletAddress
-   - Portfolio data → portfolioAPI with endpoint, addresses
-   - NFT data → nftAPI with endpoint, chainIds/chainId, address/contract, id
-
-   **Domain & History:**
-   - Domain lookup → domainAPI with endpoint, name/address/addresses
-   - Transaction history → historyAPI with endpoint, address, chainId
-   - Transaction traces → tracesAPI with endpoint, chain
-
-6. **COMMON QUERY PATTERNS**:
-
-   **Gas & Network:**
+6. **Common Query Patterns**:
    - "Get gas price on Ethereum" → gasAPI with chain=1
-   - "Get latest block number on Polygon" → rpcAPI with chainId=137, method="eth_blockNumber"
-   - "Get ETH/USDC chart data" → chartsAPI with type="line", token0="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", token1="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", chainId=1
+   - "Swap 0.001 ETH to USDC on Ethereum" → swapAPI with endpoint="getQuote", chain=1, src="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dst="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", amount="1000000000000000"
+   - "Swap 10 USDC to ETH on Arbitrum" → swapAPI with endpoint="getQuote", chain=42161, src="0xaf88d065e77c8cc2239327c5edb3a432268e5831", dst="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", amount="10000000"
+   - "Cross-chain swap ETH from Arbitrum to Ethereum" → fusionPlusAPI with endpoint="getQuote", srcChain=42161, dstChain=1, srcTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dstTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 
-   **Token Information:**
-   - "Get USDC token details on Ethereum" → tokenDetailsAPI with endpoint="token-details", chainId=1, contractAddress="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-   - "Get current ETH price" → spotPriceAPI with endpoint="getRequestedPrices", chain=1, tokens=["0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
-   - "Show me ETH price chart" → chartsAPI with type="line", token0="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", token1="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", chainId=1, period="1M"
+7. **Required Parameters**:
+   - For swapAPI getQuote: endpoint, chain, src, dst, amount
+   - For fusionPlusAPI getQuote: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
+   - For gasAPI: chain
+   - For tokenDetailsAPI: endpoint, chain, tokenAddress
 
-   **Swaps:**
-   - "Get quote for 0.1 ETH to USDC on Ethereum" → swapAPI with endpoint="getQuote", chain=1, src="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dst="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", amount="100000000000000000"
-   - "Cross-chain swap ETH from Arbitrum to Ethereum" → fusionPlusAPI with endpoint="getQuote", srcChain=42161, dstChain=1, srcTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", dstTokenAddress="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", amount=100000000000000000, walletAddress="0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6", enableEstimate=true
+8. **Wallet Address**: Use "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6" as default if not provided
 
-   **Wallet & Portfolio:**
-   - "Get my token balances on Ethereum" → balanceAPI with endpoint="getBalances", chain=1, walletAddress="0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
-   - "Show my portfolio value" → portfolioAPI with endpoint="getCurrentPortfolioValue", addresses=["0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"]
-   - "Get my NFTs" → nftAPI with endpoint="getNftsByAddress", chainIds=[1, 137], address="0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+9. **Enable Estimate**: Set to true for quotes
 
-   **Domain & History:**
-   - "Look up vitalik.eth" → domainAPI with endpoint="lookupDomain", name="vitalik.eth"
-   - "Get transaction history for 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6" → historyAPI with endpoint="get-events", address="0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6", chainId=1
+10. **API Selection Logic**:
+    - Use swapAPI for single-chain swaps (same source and destination chain)
+    - Use fusionPlusAPI for cross-chain swaps (different source and destination chains)
+    - Use fusionPlusAPI when user explicitly mentions "Fusion" or "cross-chain"
+    - Use swapAPI for basic single-chain swaps
 
-7. **REQUIRED PARAMETERS BY FUNCTION**:
+11. **Parameter Naming**:
+    - swapAPI uses: endpoint, chain, src, dst, amount
+    - fusionPlusAPI uses: endpoint, srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate
 
-   **gasAPI**: chain
-   **rpcAPI**: chainId, method
-   **chartsAPI**: type, token0, token1, chainId
-   **tokenDetailsAPI**: endpoint, chainId
-   **spotPriceAPI**: endpoint, chain
-   **balanceAPI**: endpoint, chain
-   **portfolioAPI**: endpoint
-   **nftAPI**: endpoint
-   **domainAPI**: endpoint
-   **orderbookAPI**: endpoint, chain
-   **historyAPI**: endpoint, address, chainId
-   **tracesAPI**: endpoint, chain
-   **swapAPI**: endpoint, chain (for getQuote: also src, dst, amount)
-   **fusionPlusAPI**: endpoint (for getQuote: also srcChain, dstChain, srcTokenAddress, dstTokenAddress, amount, walletAddress, enableEstimate)
-   **transactionAPI**: endpoint, chain, rawTransaction
-
-8. **DEFAULT VALUES**:
-   - Wallet Address: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
-   - Enable Estimate: true (for quotes)
-   - Chain: 1 (Ethereum) if not specified
-   - Limit: 10 (for pagination)
-   - Page: 1 (for pagination)
-
-9. **SPECIAL CASES**:
-   - For cross-chain operations, use fusionPlusAPI
-   - For single-chain swaps, use swapAPI
-   - For gas prices, use gasAPI
-   - For RPC calls, use rpcAPI with specific method
-   - For charts, specify type ("line" or "candle") and time period
-
-IMPORTANT: If you cannot extract required parameters from the user's query, ask them to provide more specific information rather than calling functions with empty arguments. Always provide the minimum required parameters for each function.`;
+IMPORTANT: If you cannot extract required parameters from the user's query, ask them to provide more specific information rather than calling functions with empty arguments.`;
   }
 
   /**

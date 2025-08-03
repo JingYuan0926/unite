@@ -360,10 +360,133 @@ export async function getQuote(params: {
 }
 
 /**
+ * Build order by given quote
+ */
+export async function buildOrder(params: {
+  srcChain: number;
+  dstChain: number;
+  srcTokenAddress: string;
+  dstTokenAddress: string;
+  amount: number;
+  walletAddress: string;
+  quote: GetQuoteOutput;
+  secretsHashList: string[];
+  fee?: number;
+  source?: string;
+  isPermit2?: string;
+  isMobile?: string;
+  feeReceiver?: string;
+  permit?: string;
+  preset?: string;
+}): Promise<BuildOrderOutput> {
+  const apiKey = process.env.ONEINCH_API_KEY;
+  if (!apiKey) {
+    throw new Error("1inch API key is required. Set ONEINCH_API_KEY environment variable.");
+  }
+
+  const fetcher = new OneInchFetcher(apiKey);
+  const queryParams = new URLSearchParams();
+  
+  queryParams.append('srcChain', params.srcChain.toString());
+  queryParams.append('dstChain', params.dstChain.toString());
+  queryParams.append('srcTokenAddress', params.srcTokenAddress);
+  queryParams.append('dstTokenAddress', params.dstTokenAddress);
+  queryParams.append('amount', params.amount.toString());
+  queryParams.append('walletAddress', params.walletAddress);
+  if (params.fee !== undefined) queryParams.append('fee', params.fee.toString());
+  if (params.source) queryParams.append('source', params.source);
+  if (params.isPermit2) queryParams.append('isPermit2', params.isPermit2);
+  if (params.isMobile) queryParams.append('isMobile', params.isMobile);
+  if (params.feeReceiver) queryParams.append('feeReceiver', params.feeReceiver);
+  if (params.permit) queryParams.append('permit', params.permit);
+  if (params.preset) queryParams.append('preset', params.preset);
+
+  const url = `/fusion-plus/quoter/v1.0/quote/build?${queryParams.toString()}`;
+  
+  const body = {
+    quote: params.quote,
+    secretsHashList: params.secretsHashList
+  };
+  
+  return await fetcher.post<BuildOrderOutput>(url, body);
+}
+
+/**
+ * Submit a cross chain order that resolvers will be able to fill
+ */
+export async function submitOrder(params: {
+  order: OrderInput;
+  srcChainId: number;
+  signature: string;
+  extension: string;
+  quoteId: string;
+  secretHashes?: string[];
+}): Promise<any> {
+  const apiKey = process.env.ONEINCH_API_KEY;
+  if (!apiKey) {
+    throw new Error("1inch API key is required. Set ONEINCH_API_KEY environment variable.");
+  }
+
+  const fetcher = new OneInchFetcher(apiKey);
+  const url = `/fusion-plus/relayer/v1.0/submit`;
+  
+  const body: SignedOrderInput = {
+    order: params.order,
+    srcChainId: params.srcChainId,
+    signature: params.signature,
+    extension: params.extension,
+    quoteId: params.quoteId,
+    secretHashes: params.secretHashes || []
+  };
+  
+  return await fetcher.post<any>(url, body);
+}
+
+/**
+ * Submit many cross chain orders that resolvers will be able to fill
+ */
+export async function submitManyOrders(params: {
+  orderHashes: string[];
+}): Promise<any> {
+  const apiKey = process.env.ONEINCH_API_KEY;
+  if (!apiKey) {
+    throw new Error("1inch API key is required. Set ONEINCH_API_KEY environment variable.");
+  }
+
+  const fetcher = new OneInchFetcher(apiKey);
+  const url = `/fusion-plus/relayer/v1.0/submit/many`;
+  
+  return await fetcher.post<any>(url, params.orderHashes);
+}
+
+/**
+ * Submit a secret for order fill after SrcEscrow and DstEscrow deployed and DstChain finality lock passed
+ */
+export async function submitSecret(params: {
+  secret: string;
+  orderHash: string;
+}): Promise<any> {
+  const apiKey = process.env.ONEINCH_API_KEY;
+  if (!apiKey) {
+    throw new Error("1inch API key is required. Set ONEINCH_API_KEY environment variable.");
+  }
+
+  const fetcher = new OneInchFetcher(apiKey);
+  const url = `/fusion-plus/relayer/v1.0/submit/secret`;
+  
+  const body: SecretInput = {
+    secret: params.secret,
+    orderHash: params.orderHash
+  };
+  
+  return await fetcher.post<any>(url, body);
+}
+
+/**
  * Main fusionPlusAPI function that handles all Fusion+ operations
  */
 export async function fusionPlusAPI(params: {
-  endpoint: 'getActiveOrders' | 'getEscrowFactory' | 'getQuote';
+  endpoint: 'getActiveOrders' | 'getEscrowFactory' | 'getQuote' | 'buildOrder' | 'submitOrder' | 'submitManyOrders' | 'submitSecret';
   // Parameters for different endpoints
   page?: number;
   limit?: number;
@@ -378,11 +501,30 @@ export async function fusionPlusAPI(params: {
   fee?: number;
   isPermit2?: string;
   permit?: string;
+  // Build order parameters
+  quote?: GetQuoteOutput;
+  secretsHashList?: string[];
+  source?: string;
+  isMobile?: string;
+  feeReceiver?: string;
+  preset?: string;
+  // Submit order parameters
+  order?: OrderInput;
+  srcChainId?: number; // Separate parameter for submitOrder
+  signature?: string;
+  extension?: string;
+  quoteId?: string;
+  secretHashes?: string[];
+  // Submit many orders parameters
+  orderHashes?: string[];
+  // Submit secret parameters
+  secret?: string;
+  orderHash?: string;
 }): Promise<any> {
   try {
     // Validate endpoint parameter
     if (!params.endpoint) {
-      throw new Error('Endpoint parameter is required. Please specify: getActiveOrders, getEscrowFactory, or getQuote');
+      throw new Error('Endpoint parameter is required. Please specify: getActiveOrders, getEscrowFactory, getQuote, buildOrder, submitOrder, submitManyOrders, or submitSecret');
     }
 
     switch (params.endpoint) {
@@ -435,10 +577,98 @@ export async function fusionPlusAPI(params: {
           permit: params.permit
         });
 
+      case 'buildOrder':
+        if (!params.srcChain) {
+          throw new Error('srcChain parameter is required for buildOrder');
+        }
+        if (!params.dstChain) {
+          throw new Error('dstChain parameter is required for buildOrder');
+        }
+        if (!params.srcTokenAddress) {
+          throw new Error('srcTokenAddress parameter is required for buildOrder');
+        }
+        if (!params.dstTokenAddress) {
+          throw new Error('dstTokenAddress parameter is required for buildOrder');
+        }
+        if (!params.amount) {
+          throw new Error('amount parameter is required for buildOrder');
+        }
+        if (!params.walletAddress) {
+          throw new Error('walletAddress parameter is required for buildOrder');
+        }
+        if (!params.quote) {
+          throw new Error('quote parameter is required for buildOrder');
+        }
+        if (!params.secretsHashList) {
+          throw new Error('secretsHashList parameter is required for buildOrder');
+        }
+        return await buildOrder({
+          srcChain: params.srcChain,
+          dstChain: params.dstChain,
+          srcTokenAddress: params.srcTokenAddress,
+          dstTokenAddress: params.dstTokenAddress,
+          amount: params.amount,
+          walletAddress: params.walletAddress,
+          quote: params.quote,
+          secretsHashList: params.secretsHashList,
+          fee: params.fee,
+          source: params.source,
+          isPermit2: params.isPermit2,
+          isMobile: params.isMobile,
+          feeReceiver: params.feeReceiver,
+          permit: params.permit,
+          preset: params.preset
+        });
+
+      case 'submitOrder':
+        if (!params.order) {
+          throw new Error('order parameter is required for submitOrder');
+        }
+        if (!params.srcChainId) {
+          throw new Error('srcChainId parameter is required for submitOrder');
+        }
+        if (!params.signature) {
+          throw new Error('signature parameter is required for submitOrder');
+        }
+        if (!params.extension) {
+          throw new Error('extension parameter is required for submitOrder');
+        }
+        if (!params.quoteId) {
+          throw new Error('quoteId parameter is required for submitOrder');
+        }
+        return await submitOrder({
+          order: params.order,
+          srcChainId: params.srcChainId,
+          signature: params.signature,
+          extension: params.extension,
+          quoteId: params.quoteId,
+          secretHashes: params.secretHashes
+        });
+
+      case 'submitManyOrders':
+        if (!params.orderHashes) {
+          throw new Error('orderHashes parameter is required for submitManyOrders');
+        }
+        return await submitManyOrders({
+          orderHashes: params.orderHashes
+        });
+
+      case 'submitSecret':
+        if (!params.secret) {
+          throw new Error('secret parameter is required for submitSecret');
+        }
+        if (!params.orderHash) {
+          throw new Error('orderHash parameter is required for submitSecret');
+        }
+        return await submitSecret({
+          secret: params.secret,
+          orderHash: params.orderHash
+        });
+
       default:
-        throw new Error(`Unknown endpoint: ${params.endpoint}. Valid endpoints are: getActiveOrders, getEscrowFactory, getQuote`);
+        throw new Error(`Unknown endpoint: ${params.endpoint}`);
     }
   } catch (error) {
-    throw new Error(`Fusion+ API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Fusion+ API error: ${error instanceof Error ? error.message : String(error)}`);
   }
 } 

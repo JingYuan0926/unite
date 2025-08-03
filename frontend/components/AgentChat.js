@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useAccount } from 'wagmi';
 
 const AgentChat = () => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [wallet, setWallet] = useState(null);
-  const [isConnecting, setIsConnecting] = useState(false);
   const messagesEndRef = useRef(null);
+  
+  // Use wagmi's useAccount hook to get wallet information
+  const { address, isConnected: walletConnected, chainId } = useAccount();
 
   // Check connection status on mount
   useEffect(() => {
@@ -18,7 +20,7 @@ const AgentChat = () => {
       {
         id: 1,
         type: 'bot',
-        content: 'Hello! I\'m your 1inch DeFi assistant. I can help you with:\n\n• Getting token quotes and swaps\n• Checking gas prices and balances\n• Exploring DeFi protocols\n• Portfolio analysis\n• NFT and domain lookups\n• And much more!\n\n💡 Connect your wallet to access personalized features like balance checks and portfolio analysis.',
+        content: 'Hello! I\'m your 1inch DeFi assistant. I can help you with:\n\n• Getting token quotes and swaps\n• Checking gas prices and balances\n• Exploring DeFi protocols\n• Portfolio analysis\n• NFT and domain lookups\n• And much more!\n\n💡 Connect your wallet using the button in the header to access personalized features like balance checks and portfolio analysis.',
         timestamp: new Date()
       }
     ]);
@@ -40,61 +42,6 @@ const AgentChat = () => {
     }
   };
 
-  const connectWallet = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      setIsConnecting(true);
-      try {
-        // Request account access
-        const accounts = await window.ethereum.request({ 
-          method: 'eth_requestAccounts' 
-        });
-        
-        const account = accounts[0];
-        const chainId = await window.ethereum.request({ 
-          method: 'eth_chainId' 
-        });
-
-        const walletData = {
-          address: account,
-          chainId: parseInt(chainId, 16),
-          walletType: 'metamask'
-        };
-
-        // Send wallet data to unified API
-        const response = await fetch('/api/agent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'wallet',
-            wallet: walletData
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setWallet(walletData);
-          addMessage('bot', `✅ Wallet connected: ${account.slice(0, 6)}...${account.slice(-4)} on chain ${walletData.chainId}\n\nYou can now ask me about your balances, portfolio, or execute transactions!`);
-        } else {
-          addMessage('bot', '❌ Failed to connect wallet to the agent');
-        }
-      } catch (error) {
-        console.error('Wallet connection error:', error);
-        addMessage('bot', '❌ Failed to connect wallet. Please make sure MetaMask is installed and unlocked.');
-      } finally {
-        setIsConnecting(false);
-      }
-    } else {
-      addMessage('bot', '❌ MetaMask not found. Please install MetaMask to connect your wallet.');
-    }
-  };
-
-  const disconnectWallet = () => {
-    setWallet(null);
-    addMessage('bot', '🔌 Wallet disconnected. You can still ask me general DeFi questions!');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
@@ -111,13 +58,20 @@ const AgentChat = () => {
     setIsLoading(true);
 
     try {
+      // Prepare wallet data if connected
+      const walletData = walletConnected && address ? {
+        address: address,
+        chainId: chainId || 1,
+        walletType: 'rainbowkit'
+      } : null;
+
       const response = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'chat',
           message: inputMessage,
-          wallet: wallet // Send wallet data with chat request
+          wallet: walletData // Send wallet data with chat request
         }),
       });
 
@@ -232,37 +186,21 @@ const AgentChat = () => {
           <div className="agent-info">
             <div className="agent-avatar">🤖</div>
             <div className="agent-details">
-              <h1>1inch DeFi Assistant</h1>
+              <h1>AI Assistant</h1>
               <div className="connection-status">
                 <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
                 {isConnected ? 'Connected' : 'Disconnected'}
               </div>
-              {wallet && (
+              {walletConnected && address && (
                 <div className="wallet-info">
                   <span className="wallet-address">
-                    💼 {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)} (Chain: {wallet.chainId})
+                    💼 {address.slice(0, 6)}...{address.slice(-4)} (Chain: {chainId})
                   </span>
                 </div>
               )}
             </div>
           </div>
           <div className="header-actions">
-            {!wallet ? (
-              <button 
-                onClick={connectWallet} 
-                className="connect-wallet-button"
-                disabled={isConnecting}
-              >
-                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-              </button>
-            ) : (
-              <button 
-                onClick={disconnectWallet} 
-                className="disconnect-wallet-button"
-              >
-                Disconnect Wallet
-              </button>
-            )}
             <button onClick={clearChat} className="clear-button">
               Clear Chat
             </button>
@@ -329,7 +267,7 @@ const AgentChat = () => {
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder={wallet ? "Ask me about DeFi, your balances, or execute transactions..." : "Ask me about DeFi, swaps, gas prices, or anything else..."}
+            placeholder={walletConnected ? "Ask me about DeFi, your balances, or execute transactions..." : "Ask me about DeFi, swaps, gas prices, or anything else..."}
             disabled={isLoading || !isConnected}
             className="chat-input"
           />
@@ -347,17 +285,21 @@ const AgentChat = () => {
         .agent-chat-container {
           max-width: 1200px;
           margin: 0 auto;
-          height: 100vh;
+          height: calc(100vh - 80px); /* Account for header height */
           display: flex;
           flex-direction: column;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          margin-top: 1rem;
+          margin-bottom: 1rem;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .chat-header {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+          border-radius: 12px 12px 0 0;
           padding: 1rem;
         }
 
@@ -375,18 +317,19 @@ const AgentChat = () => {
 
         .agent-avatar {
           font-size: 2rem;
-          background: rgba(255, 255, 255, 0.2);
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           border-radius: 50%;
           width: 60px;
           height: 60px;
           display: flex;
           align-items: center;
           justify-content: center;
+          color: white;
         }
 
         .agent-details h1 {
           margin: 0;
-          color: white;
+          color: #1e293b;
           font-size: 1.5rem;
           font-weight: 600;
         }
@@ -395,7 +338,7 @@ const AgentChat = () => {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          color: rgba(255, 255, 255, 0.8);
+          color: #64748b;
           font-size: 0.9rem;
         }
 
@@ -404,7 +347,7 @@ const AgentChat = () => {
         }
 
         .wallet-address {
-          color: #2ed573;
+          color: #059669;
           font-size: 0.8rem;
           font-weight: 500;
         }
@@ -413,11 +356,11 @@ const AgentChat = () => {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: #ff4757;
+          background: #ef4444;
         }
 
         .status-dot.connected {
-          background: #2ed573;
+          background: #10b981;
         }
 
         .header-actions {
@@ -425,55 +368,20 @@ const AgentChat = () => {
           gap: 0.5rem;
         }
 
-        .connect-wallet-button {
-          background: linear-gradient(135deg, #2ed573 0%, #1e90ff 100%);
-          border: none;
-          color: white;
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-weight: 600;
-        }
-
-        .connect-wallet-button:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .connect-wallet-button:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        .disconnect-wallet-button {
-          background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
-          border: none;
-          color: white;
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-weight: 600;
-        }
-
-        .disconnect-wallet-button:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
         .clear-button {
-          background: rgba(255, 255, 255, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          color: white;
+          background: #f1f5f9;
+          border: 1px solid #cbd5e1;
+          color: #475569;
           padding: 0.5rem 1rem;
           border-radius: 8px;
           cursor: pointer;
           transition: all 0.3s ease;
+          font-weight: 500;
         }
 
         .clear-button:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: #e2e8f0;
+          color: #1e293b;
         }
 
         .chat-body {
@@ -509,7 +417,7 @@ const AgentChat = () => {
 
         .message-avatar {
           font-size: 1.5rem;
-          background: rgba(255, 255, 255, 0.2);
+          background: #f1f5f9;
           border-radius: 50%;
           width: 40px;
           height: 40px;
@@ -520,41 +428,42 @@ const AgentChat = () => {
         }
 
         .message-content {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
+          background: #f8fafc;
           border-radius: 12px;
           padding: 1rem;
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          border: 1px solid #e2e8f0;
         }
 
         .message.user .message-content {
-          background: rgba(255, 255, 255, 0.2);
+          background: #dbeafe;
+          border-color: #93c5fd;
         }
 
         .message-text {
-          color: white;
+          color: #1e293b;
           line-height: 1.5;
           white-space: pre-wrap;
         }
 
         .message-timestamp {
-          color: rgba(255, 255, 255, 0.6);
+          color: #64748b;
           font-size: 0.8rem;
           margin-top: 0.5rem;
         }
 
         .function-calls {
           margin-top: 1rem;
-          background: rgba(0, 0, 0, 0.2);
+          background: #f1f5f9;
           border-radius: 8px;
           padding: 1rem;
+          border: 1px solid #e2e8f0;
         }
 
         .function-calls-header {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          color: #ffd700;
+          color: #f59e0b;
           font-weight: 600;
           margin-bottom: 0.5rem;
         }
@@ -562,29 +471,30 @@ const AgentChat = () => {
         .function-call {
           margin-bottom: 1rem;
           padding: 0.5rem;
-          background: rgba(255, 255, 255, 0.05);
+          background: white;
           border-radius: 6px;
+          border: 1px solid #e2e8f0;
         }
 
         .function-name {
-          color: #00d4ff;
+          color: #3b82f6;
           font-weight: 600;
           margin-bottom: 0.5rem;
         }
 
         .function-params pre,
         .function-result pre {
-          background: rgba(0, 0, 0, 0.3);
+          background: #1e293b;
           padding: 0.5rem;
           border-radius: 4px;
           font-size: 0.8rem;
           overflow-x: auto;
-          color: #e0e0e0;
+          color: #e2e8f0;
         }
 
         .params-label,
         .result-label {
-          color: #2ed573;
+          color: #059669;
           font-weight: 600;
           margin-bottom: 0.25rem;
         }
@@ -593,7 +503,7 @@ const AgentChat = () => {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          color: rgba(255, 255, 255, 0.8);
+          color: #64748b;
         }
 
         .typing-dots {
@@ -604,7 +514,7 @@ const AgentChat = () => {
         .typing-dots span {
           width: 6px;
           height: 6px;
-          background: rgba(255, 255, 255, 0.6);
+          background: #94a3b8;
           border-radius: 50%;
           animation: typing 1.4s infinite ease-in-out;
         }
@@ -618,16 +528,17 @@ const AgentChat = () => {
         }
 
         .examples-section {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          border-top: 1px solid rgba(255, 255, 255, 0.2);
+          background: #f8fafc;
+          border-top: 1px solid #e2e8f0;
+          border-radius: 0 0 12px 12px;
           padding: 1rem;
         }
 
         .examples-section h3 {
-          color: white;
+          color: #1e293b;
           margin: 0 0 1rem 0;
           font-size: 1rem;
+          font-weight: 600;
         }
 
         .examples-grid {
@@ -637,9 +548,9 @@ const AgentChat = () => {
         }
 
         .example-button {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          color: white;
+          background: white;
+          border: 1px solid #e2e8f0;
+          color: #475569;
           padding: 0.75rem;
           border-radius: 8px;
           cursor: pointer;
@@ -649,8 +560,10 @@ const AgentChat = () => {
         }
 
         .example-button:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.2);
+          background: #f8fafc;
+          border-color: #cbd5e1;
           transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .example-button:disabled {
@@ -659,9 +572,9 @@ const AgentChat = () => {
         }
 
         .chat-input-form {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          border-top: 1px solid rgba(255, 255, 255, 0.2);
+          background: #f8fafc;
+          border-top: 1px solid #e2e8f0;
+          border-radius: 0 0 12px 12px;
           padding: 1rem;
         }
 
@@ -672,22 +585,22 @@ const AgentChat = () => {
 
         .chat-input {
           flex: 1;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          background: white;
+          border: 1px solid #cbd5e1;
           border-radius: 8px;
           padding: 0.75rem 1rem;
-          color: white;
+          color: #1e293b;
           font-size: 1rem;
         }
 
         .chat-input::placeholder {
-          color: rgba(255, 255, 255, 0.6);
+          color: #94a3b8;
         }
 
         .chat-input:focus {
           outline: none;
-          border-color: rgba(255, 255, 255, 0.5);
-          background: rgba(255, 255, 255, 0.15);
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .send-button {
@@ -714,7 +627,8 @@ const AgentChat = () => {
 
         @media (max-width: 768px) {
           .agent-chat-container {
-            height: 100vh;
+            height: calc(100vh - 80px);
+            margin: 0.5rem;
           }
 
           .message {
@@ -734,8 +648,6 @@ const AgentChat = () => {
             gap: 0.25rem;
           }
 
-          .connect-wallet-button,
-          .disconnect-wallet-button,
           .clear-button {
             font-size: 0.8rem;
             padding: 0.4rem 0.8rem;
