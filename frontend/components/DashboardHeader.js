@@ -1,4 +1,5 @@
 import { LineShadowText } from "@/components/magicui/line-shadow-text";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export default function DashboardHeader() {
   return (
@@ -11,9 +12,9 @@ export default function DashboardHeader() {
           </span>
         </div>
 
-        {/* Right side - Empty for now, can be used for dashboard-specific elements */}
-        <div className="w-32 flex justify-end">
-          {/* Dashboard-specific content can go here */}
+        {/* Right side - Connect Wallet Button */}
+        <div className="flex items-center">
+          <ConnectButton />
         </div>
       </div>
     </header>
