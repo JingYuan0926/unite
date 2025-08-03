@@ -92,8 +92,6 @@ export type { DemoResolver } from "./contracts/ethereum/DemoResolver";
 export { DemoResolver__factory } from "./factories/contracts/ethereum/DemoResolver__factory";
 export type { DemoResolverV2 } from "./contracts/ethereum/DemoResolverV2";
 export { DemoResolverV2__factory } from "./factories/contracts/ethereum/DemoResolverV2__factory";
-export type { Filler } from "./contracts/ethereum/Filler";
-export { Filler__factory } from "./factories/contracts/ethereum/Filler__factory";
 export type { MockTRX } from "./contracts/ethereum/MockTRX";
 export { MockTRX__factory } from "./factories/contracts/ethereum/MockTRX__factory";
 export type { BaseEscrow } from "./contracts/ethereum/official-escrow/BaseEscrow";

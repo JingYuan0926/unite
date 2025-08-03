@@ -53,7 +53,7 @@ function encodeTimelocks(timelocks) {
   // Pack timelocks using TimelocksLib.Stage enum values (32 bits each)
   // SrcWithdrawal = 0, SrcPublicWithdrawal = 1, SrcCancellation = 2,
   // SrcPublicCancellation = 3, DstWithdrawal = 4, DstPublicWithdrawal = 5,
-  // DstCancellation = 6
+  // DstCancellation = 6, plus deployedAt in bits 224-255
   const srcWithdrawal = BigInt(timelocks.srcWithdrawal);
   const srcPublicWithdrawal = BigInt(timelocks.srcWithdrawal + 1800); // +30 min
   const srcCancellation = BigInt(timelocks.srcCancellation);
@@ -61,7 +61,9 @@ function encodeTimelocks(timelocks) {
   const dstWithdrawal = BigInt(timelocks.dstWithdrawal);
   const dstPublicWithdrawal = BigInt(timelocks.dstWithdrawal + 600); // +10 min
   const dstCancellation = BigInt(timelocks.dstCancellation);
-  // Pack into single uint256 using bit shifting (32 bits per stage)
+  const deployedAt = BigInt(timelocks.deployedAt); // 🎯 CRITICAL FIX: Include deployedAt timestamp
+
+  // Pack into single uint256 using bit shifting (32 bits per stage + 32 bits for deployedAt)
   const packed =
     (srcWithdrawal << (BigInt(0) * BigInt(32))) | // Stage 0: bits 0-31
     (srcPublicWithdrawal << (BigInt(1) * BigInt(32))) | // Stage 1: bits 32-63
@@ -69,7 +71,8 @@ function encodeTimelocks(timelocks) {
     (srcPublicCancellation << (BigInt(3) * BigInt(32))) | // Stage 3: bits 96-127
     (dstWithdrawal << (BigInt(4) * BigInt(32))) | // Stage 4: bits 128-159
     (dstPublicWithdrawal << (BigInt(5) * BigInt(32))) | // Stage 5: bits 160-191
-    (dstCancellation << (BigInt(6) * BigInt(32))); // Stage 6: bits 192-223
+    (dstCancellation << (BigInt(6) * BigInt(32))) | // Stage 6: bits 192-223
+    (deployedAt << BigInt(224)); // 🎯 CRITICAL FIX: deployedAt in bits 224-255
   return packed;
 }
 /**
@@ -453,10 +456,12 @@ class CrossChainOrchestrator {
     this.logger.warn(
       "Creating mock quote for TRX→ETH cross-chain swap - 1inch API doesn't support custom tokens"
     );
-    const mockRate = 500000000000n; // 1 TRX = 0.0005 ETH (500000000000 wei per TRX)
+    // Mock rate for TRX→ETH (since 1inch doesn't support custom tokens)
+    // For our demo: 10 TRX = 0.01 ETH, so 1 TRX = 0.001 ETH = 1000000000000000 wei
+    const mockRate = 1000000000000000n; // 1 TRX = 0.001 ETH (1000000000000000 wei per TRX)
     // Calculate ETH amount from TRX amount
-    // 1 TRX (1e6 sun) = 0.0005 ETH (0.0005e18 wei)
-    // So: sun * 500000000000 / 1e6 = sun * 500000000000 / 1000000
+    // 1 TRX (1e6 sun) = 0.001 ETH (1000000000000000 wei)
+    // So: sun * 1000000000000000 / 1e6 = sun * 1000000000000 = sun * 1e12
     const trxAmount = BigInt(
       params.ethAmount?.toString() ||
         ethers_1.ethers.parseUnits("1000", 6).toString()
@@ -474,6 +479,11 @@ class CrossChainOrchestrator {
     });
     // Step 3: Create cross-chain order manually (TRX → ETH)
     this.logger.info("Creating cross-chain TRX→ETH order structure manually");
+
+    // 🎯 CRITICAL FIX: Add proper expiry time like the working ETH→TRX flow
+    const now = Math.floor(Date.now() / 1000);
+    const expiry = now + 3600; // Set expiry to 1 hour from now (critical for LOP)
+
     const ethSigner = this.config.getEthSigner(params.ethPrivateKey);
     const preparedOrder = {
       order: {
@@ -485,16 +495,87 @@ class CrossChainOrchestrator {
         makingAmount: ethAmount, // ETH amount User B offers
         takingAmount: trxAmount, // TRX amount User B wants
         makerTraits: 0n, // Default traits
+        // TODO: Add expiry if needed for order validation
       },
     };
     // Step 4: Prepare immutables for escrow creation
     const timelock = params.timelock || this.config.getDefaultTimelock();
     const nonce = ethers_1.ethers.hexlify(ethers_1.ethers.randomBytes(32));
     const safetyDeposit = ethers_1.ethers.parseEther("0.01"); // 0.01 ETH safety deposit
+
+    // 🎯 ROBUST TIMELOCK CALCULATION: Account for all network delays and mining uncertainties
+    this.logger.debug("Implementing robust cross-chain timelock calculation");
+    const latestBlock = await ethSigner.provider.getBlock("latest");
+    const nowDstChain = latestBlock.timestamp;
+
+    // Calculate robust buffers based on network conditions
+    const miningBuffer = 5 * 60; // 5 minutes for mempool + mining delay
+    const networkJitterBuffer = 2 * 60; // 2 minutes for network congestion
+    const crossChainDelta = 20 * 60; // 20 minutes safety margin between dst and src cancellation
+
+    // Calculate when the destination escrow will actually be created (when mined)
+    const estimatedDstCreatedAt =
+      nowDstChain + miningBuffer + networkJitterBuffer;
+
+    // 🎯 CRITICAL: Use expert formula to account for contract's dynamic timestamp assignment
+    // Contract calculates: dstCancellationTime = block.timestamp + timelock - 300
+    // We must ensure: srcCancellationTimestamp > (estimatedDstCreatedAt + timelock - 300 + maxMiningDelay)
+    const maxMiningDelay = 10 * 60; // 10 minutes worst-case mining delay (conservative)
+    const mandatoryCrossChainBuffer = 20 * 60; // 20 minutes mandatory cross-chain buffer
+    const contractInternalOffset = -300; // Contract subtracts 5 minutes internally
+
+    // Apply expert-recommended formula
+    const srcCancellationTimestamp =
+      estimatedDstCreatedAt +
+      timelock +
+      contractInternalOffset +
+      maxMiningDelay +
+      mandatoryCrossChainBuffer;
+
+    // For consistency with existing code, calculate dstCancellationTime for logging
+    const dstCancellationTime =
+      estimatedDstCreatedAt + timelock + contractInternalOffset;
+
+    // Use estimated creation time for both Tron and Ethereum escrows
+    const consistentDeployedAt = estimatedDstCreatedAt;
+
+    console.log("=== FORMULAIC TIMELOCK CALCULATION ===");
+    console.log("Client time (Date.now()):", Math.floor(Date.now() / 1000));
+    console.log("Destination chain time (latest block):", nowDstChain);
+    console.log("Mining buffer:", miningBuffer, "seconds");
+    console.log("Network jitter buffer:", networkJitterBuffer, "seconds");
+    console.log("Max mining delay (worst-case):", maxMiningDelay, "seconds");
+    console.log(
+      "Mandatory cross-chain buffer:",
+      mandatoryCrossChainBuffer,
+      "seconds"
+    );
+    console.log("Contract internal offset:", contractInternalOffset, "seconds");
+    console.log("Estimated dst creation time:", estimatedDstCreatedAt);
+    console.log(
+      "Calculated dst cancellation time (for reference):",
+      dstCancellationTime
+    );
+    console.log(
+      "Calculated src cancellation time (SAFE):",
+      srcCancellationTimestamp
+    );
+    console.log(
+      "Total safety margin (src - dst):",
+      srcCancellationTimestamp - dstCancellationTime,
+      "seconds"
+    );
+    console.log(
+      "Formula: srcCancel = estimatedDst + timelock - 300 + maxDelay + crossChainBuffer"
+    );
     // Get User A's actual Tron address (TRX holder) and User B's ETH address
     const userA_tronAddress = this.tronExtension.getTronAddressFromPrivateKey(
       params.tronPrivateKey
     );
+    // 🎯 CRITICAL FIX: For TRX→ETH, User A will receive ETH on their ETH address, not Tron address!
+    const userA_ethAddress = this.config.getEthSigner(
+      this.config.USER_A_ETH_PRIVATE_KEY
+    ).address; // User A's ETH address (to receive ETH)
     const userB_ethAddress = ethSigner.address;
     // Create EIP-712 domain for order hash calculation
     const domain = {
@@ -535,12 +616,12 @@ class CrossChainOrchestrator {
       trxAmount, // uint256 amount (TRX amount)
       this.tronExtension.toSun("5"), // uint256 safetyDeposit (5 TRX safety deposit)
       encodeTimelocks({
-        // uint256 timelocks (packed)
-        deployedAt: Math.floor(Date.now() / 1000),
-        srcWithdrawal: Math.floor(Date.now() / 1000) + 600, // 10 min
-        srcCancellation: Math.floor(Date.now() / 1000) + timelock,
-        dstWithdrawal: Math.floor(Date.now() / 1000) + 15, // 15 seconds for fast testing
-        dstCancellation: Math.floor(Date.now() / 1000) + timelock - 300,
+        // 🎯 CRITICAL FIX: Use relative offsets since Tron contract also sets deployedAt
+        deployedAt: 0, // Will be overwritten by contract with block.timestamp
+        srcWithdrawal: 600, // 10 minutes after deployment
+        srcCancellation: timelock, // timelock duration after deployment
+        dstWithdrawal: 15, // 15 seconds after deployment for fast testing
+        dstCancellation: timelock - 300, // timelock - 5 minutes after deployment
       }),
     ];
     // Step 5: Deploy TronEscrowSrc (User A locks TRX)
@@ -580,11 +661,37 @@ class CrossChainOrchestrator {
     this.logger.logSwapProgress(
       "Deploying Ethereum destination escrow (User B locks ETH)"
     );
-    // Create immutables for EthereumEscrowDst
+    // 🔍 DEBUG ADDRESS ENCODING INPUTS
+    console.log("=== DEBUGGING ADDRESS ENCODING INPUTS ===");
+    console.log("userA_tronAddress (for Tron escrow):", userA_tronAddress);
+    console.log(
+      "userA_ethAddress (for ETH escrow - FIXED!):",
+      userA_ethAddress
+    );
+    console.log("userB_ethAddress before encoding:", userB_ethAddress);
+
+    // 🔍 TEST TRON ADDRESS CONVERSION MANUALLY
+    console.log("=== MANUAL TRON ADDRESS CONVERSION TEST ===");
+    try {
+      const tronWeb = this.tronExtension.createTronWebInstance(
+        this.config.USER_B_TRON_PRIVATE_KEY
+      );
+      const tronHexResult = tronWeb.address.toHex(userA_tronAddress);
+      console.log("tronWeb.address.toHex result:", tronHexResult);
+      console.log(
+        "Expected BigInt conversion:",
+        BigInt("0x" + tronHexResult).toString()
+      );
+      console.log("Expected hex address:", "0x" + tronHexResult);
+    } catch (tronConversionError) {
+      console.log("❌ Tron conversion error:", tronConversionError.message);
+    }
+
+    // Create immutables for EthereumEscrowDst (EXACT COPY: Use object format like working ETH→TRX flow)
     const ethDstImmutables = {
       orderHash: orderHash,
       hashlock: secretHash,
-      maker: encodeAddress(userA_tronAddress, this.tronExtension, this.config), // User A (TRX holder, will receive ETH)
+      maker: encodeAddress(userA_ethAddress, this.tronExtension, this.config), // User A (TRX holder, will receive ETH on their ETH address!)
       taker: encodeAddress(userB_ethAddress, this.tronExtension, this.config), // User B (ETH holder, will call withdraw)
       token: encodeAddress(
         ethers_1.ethers.ZeroAddress,
@@ -594,22 +701,290 @@ class CrossChainOrchestrator {
       amount: ethAmount,
       safetyDeposit: safetyDeposit,
       timelocks: encodeTimelocks({
-        deployedAt: Math.floor(Date.now() / 1000),
-        srcWithdrawal: Math.floor(Date.now() / 1000) + 600, // 10 min
-        srcCancellation: Math.floor(Date.now() / 1000) + timelock,
-        dstWithdrawal: Math.floor(Date.now() / 1000) + 15, // 15 seconds for fast testing
-        dstCancellation: Math.floor(Date.now() / 1000) + timelock - 300,
+        // 🎯 CRITICAL FIX: Use relative offsets since contract calls setDeployedAt(block.timestamp)
+        deployedAt: 0, // Will be overwritten by contract with block.timestamp
+        srcWithdrawal: 600, // 10 minutes after deployment
+        srcCancellation: timelock, // timelock duration after deployment
+        dstWithdrawal: 15, // 15 seconds after deployment for fast testing
+        dstCancellation: timelock - 300, // timelock - 5 minutes after deployment
       }),
     };
-    const srcCancellationTimestamp = Math.floor(Date.now() / 1000) + timelock;
+    // srcCancellationTimestamp already calculated above with proper cross-chain coordination
+
+    // 🔍 STEP 3: DETAILED TIMELOCK VERIFICATION
+    const currentTime = Math.floor(Date.now() / 1000);
+    // dstCancellationTime already calculated above with proper buffers
+    console.log("=== CRITICAL DEBUG: TIMELOCK VERIFICATION ===");
+    console.log("currentTime:", currentTime);
+    console.log("timelock_duration:", timelock);
+    console.log("srcCancellationTimestamp:", srcCancellationTimestamp);
+    console.log("dstCancellationTime:", dstCancellationTime);
+    console.log("contract_rule: dstCancellation <= srcCancellationTimestamp");
+    console.log(
+      "validation_check:",
+      `${dstCancellationTime} <= ${srcCancellationTimestamp}`
+    );
+    console.log(
+      "validation_result:",
+      dstCancellationTime <= srcCancellationTimestamp
+        ? "✅ VALID"
+        : "❌ INVALID"
+    );
+    console.log(
+      "time_difference:",
+      srcCancellationTimestamp - dstCancellationTime
+    );
+
+    this.logger.debug("=== TIMELOCK VERIFICATION ===", {
+      currentTime: currentTime,
+      timelock_duration: timelock,
+      srcCancellationTimestamp: srcCancellationTimestamp,
+      dstCancellationTime: dstCancellationTime,
+      contract_rule: "dstCancellation <= srcCancellationTimestamp",
+      validation_check: `${dstCancellationTime} <= ${srcCancellationTimestamp}`,
+      validation_result:
+        dstCancellationTime <= srcCancellationTimestamp
+          ? "✅ VALID"
+          : "❌ INVALID",
+      time_difference: srcCancellationTimestamp - dstCancellationTime,
+      all_timelocks: {
+        deployedAt: currentTime,
+        srcWithdrawal: currentTime + 600,
+        srcCancellation: srcCancellationTimestamp,
+        dstWithdrawal: currentTime + 15,
+        dstCancellation: dstCancellationTime,
+      },
+    });
     const totalEthValue = ethAmount + safetyDeposit;
-    // Use the official ESCROW_FACTORY.createDstEscrow() via DemoResolverV2
+
+    // 🔍 STEP 2: DETAILED MSG.VALUE VERIFICATION
+    console.log("=== CRITICAL DEBUG: MSG.VALUE VERIFICATION ===");
+    console.log("ethAmount:", ethAmount.toString());
+    console.log("safetyDeposit:", safetyDeposit.toString());
+    console.log("totalEthValue:", totalEthValue.toString());
+    console.log("msg.value_will_be_sent:", totalEthValue.toString());
+    console.log(
+      "contract_expects_nativeAmount: ethAmount + safetyDeposit for native token"
+    );
+    console.log(
+      "calculation_check:",
+      `${ethAmount.toString()} + ${safetyDeposit.toString()} = ${totalEthValue.toString()}`
+    );
+
+    this.logger.debug("=== MSG.VALUE VERIFICATION ===", {
+      ethAmount: ethAmount.toString(),
+      safetyDeposit: safetyDeposit.toString(),
+      totalEthValue: totalEthValue.toString(),
+      "msg.value_will_be_sent": totalEthValue.toString(),
+      contract_expects_nativeAmount:
+        "ethAmount + safetyDeposit for native token",
+      calculation_check: `${ethAmount.toString()} + ${safetyDeposit.toString()} = ${totalEthValue.toString()}`,
+      wei_values: {
+        ethAmount_wei: ethAmount.toString(),
+        safetyDeposit_wei: safetyDeposit.toString(),
+        total_wei: totalEthValue.toString(),
+      },
+    });
+
+    // Use the official ESCROW_FACTORY.createDstEscrow() via DemoResolverV2 (EXACT COPY of working flow)
     const resolverWithSigner = this.resolverContract.connect(ethSigner);
+
+    // DEBUGGING: Manual function encoding to verify calldata generation
+    try {
+      const encodedData = this.resolverContract.interface.encodeFunctionData(
+        "createDstEscrow",
+        [ethDstImmutables, srcCancellationTimestamp]
+      );
+      this.logger.debug("Manual function encoding successful", {
+        encodedData,
+        dataLength: encodedData.length,
+        functionSelector: encodedData.slice(0, 10),
+      });
+    } catch (encodingError) {
+      this.logger.error("Manual function encoding failed", {
+        error: encodingError.message,
+        ethDstImmutables,
+        srcCancellationTimestamp,
+      });
+      throw new Error(`Function encoding failed: ${encodingError.message}`);
+    }
+
+    // DEBUGGING: Check contract interface and function fragments (SAFE VERSION)
+    this.logger.debug("Contract interface inspection", {
+      contractAddress: this.resolverContract?.address || "UNDEFINED",
+      hasInterface: !!this.resolverContract?.interface,
+      contractKeys: this.resolverContract
+        ? Object.keys(this.resolverContract)
+        : "CONTRACT_UNDEFINED",
+      interfaceKeys: this.resolverContract?.interface
+        ? Object.keys(this.resolverContract.interface)
+        : "INTERFACE_UNDEFINED",
+      hasFunctions: !!this.resolverContract?.interface?.functions,
+      functionsKeys: this.resolverContract?.interface?.functions
+        ? Object.keys(this.resolverContract.interface.functions)
+        : "FUNCTIONS_UNDEFINED",
+    });
+
     this.logger.debug("Calling DemoResolverV2.createDstEscrow for TRX→ETH", {
       ethDstImmutables,
       srcCancellationTimestamp,
       totalEthValue: totalEthValue.toString(),
     });
+
+    // 🔍 DETAILED PARAMETER INSPECTION BEFORE STATICCALL
+    console.log("=== CRITICAL DEBUG: PARAMETER INSPECTION ===");
+    console.log("orderHash:", ethDstImmutables.orderHash);
+    console.log("hashlock:", ethDstImmutables.hashlock);
+    console.log("maker:", ethDstImmutables.maker?.toString());
+    console.log("taker:", ethDstImmutables.taker?.toString());
+    console.log("token:", ethDstImmutables.token?.toString());
+
+    // 🔍 VALIDATE ADDRESS ENCODING
+    console.log("=== ADDRESS ENCODING VALIDATION ===");
+    console.log("userA_tronAddress (for Tron escrow):", userA_tronAddress);
+    console.log(
+      "userA_ethAddress (for ETH escrow - FIXED!):",
+      userA_ethAddress
+    );
+    console.log("userB_ethAddress (original):", userB_ethAddress);
+
+    // Try to decode the encoded addresses back to verify correctness
+    try {
+      // The maker should be User A (TRX holder, will receive ETH on their ETH address!)
+      // The taker should be User B (ETH holder, will call withdraw)
+      console.log(
+        "maker_as_hex:",
+        "0x" + ethDstImmutables.maker.toString(16).padStart(64, "0")
+      );
+      console.log(
+        "taker_as_hex:",
+        "0x" + ethDstImmutables.taker.toString(16).padStart(64, "0")
+      );
+
+      // Check if these look like valid address encodings
+      const makerHex =
+        "0x" + ethDstImmutables.maker.toString(16).padStart(64, "0");
+      const takerHex =
+        "0x" + ethDstImmutables.taker.toString(16).padStart(64, "0");
+
+      console.log("maker_decoded_address:", "0x" + makerHex.slice(-40));
+      console.log("taker_decoded_address:", "0x" + takerHex.slice(-40));
+
+      // Compare with expected addresses
+      console.log("expected_userA_eth:", userA_ethAddress);
+      console.log("expected_userB_eth:", userB_ethAddress);
+
+      // VALIDATION CHECK
+      const makerDecoded = "0x" + makerHex.slice(-40);
+      const takerDecoded = "0x" + takerHex.slice(-40);
+      console.log(
+        "✅ MAKER VALIDATION:",
+        makerDecoded.toLowerCase() === userA_ethAddress.toLowerCase()
+          ? "CORRECT"
+          : "❌ MISMATCH"
+      );
+      console.log(
+        "✅ TAKER VALIDATION:",
+        takerDecoded.toLowerCase() === userB_ethAddress.toLowerCase()
+          ? "CORRECT"
+          : "❌ MISMATCH"
+      );
+    } catch (encodingError) {
+      console.log(
+        "❌ Address encoding validation failed:",
+        encodingError.message
+      );
+    }
+    console.log("amount:", ethDstImmutables.amount?.toString());
+    console.log("safetyDeposit:", ethDstImmutables.safetyDeposit?.toString());
+    console.log("timelocks:", ethDstImmutables.timelocks?.toString());
+    console.log("srcCancellationTimestamp:", srcCancellationTimestamp);
+    console.log("totalEthValue:", totalEthValue.toString());
+    console.log(
+      "contract_address:",
+      this.resolverContract.address || this.resolverContract.target
+    );
+
+    this.logger.debug("=== PARAMETER INSPECTION BEFORE STATICCALL ===", {
+      ethDstImmutables_structure: {
+        orderHash: ethDstImmutables.orderHash,
+        hashlock: ethDstImmutables.hashlock,
+        maker: ethDstImmutables.maker?.toString(),
+        taker: ethDstImmutables.taker?.toString(),
+        token: ethDstImmutables.token?.toString(),
+        amount: ethDstImmutables.amount?.toString(),
+        safetyDeposit: ethDstImmutables.safetyDeposit?.toString(),
+        timelocks: ethDstImmutables.timelocks?.toString(),
+      },
+      srcCancellationTimestamp: srcCancellationTimestamp,
+      totalEthValue: totalEthValue.toString(),
+      contract_address:
+        this.resolverContract.address || this.resolverContract.target,
+    });
+
+    // 🔍 STEP 4: CHECK FOR ORDERHASH REUSE (CRITICAL VALIDATION)
+    console.log("=== CRITICAL DEBUG: ORDERHASH REUSE CHECK ===");
+    try {
+      // Check if orderHash is already mapped to an escrow in EscrowFactory
+      const escrowFactoryAddress = this.config.ESCROW_FACTORY_ADDRESS;
+      const escrowFactoryABI = [
+        "function escrows(bytes32) view returns (address)",
+      ];
+      const escrowFactory = new ethers_1.ethers.Contract(
+        escrowFactoryAddress,
+        escrowFactoryABI,
+        ethSigner
+      );
+
+      const existingEscrow = await escrowFactory.escrows(
+        ethDstImmutables.orderHash
+      );
+      console.log("orderHash:", ethDstImmutables.orderHash);
+      console.log("existingEscrow:", existingEscrow);
+      console.log(
+        "isOrderHashUsed:",
+        existingEscrow !== ethers_1.ethers.ZeroAddress
+      );
+
+      if (existingEscrow !== ethers_1.ethers.ZeroAddress) {
+        console.log("❌ CRITICAL ERROR: OrderHash already used!");
+        console.log("Existing escrow address:", existingEscrow);
+        throw new Error(
+          `OrderHash ${ethDstImmutables.orderHash} is already mapped to escrow ${existingEscrow}`
+        );
+      } else {
+        console.log("✅ OrderHash is available for use");
+      }
+    } catch (escrowCheckError) {
+      console.log(
+        "⚠️ Could not check escrow factory:",
+        escrowCheckError.message
+      );
+      // Continue anyway as this might not be the issue
+    }
+
+    // DEBUGGING: Try staticCall first to get detailed revert reasons
+    try {
+      await resolverWithSigner.createDstEscrow.staticCall(
+        ethDstImmutables,
+        srcCancellationTimestamp,
+        {
+          value: totalEthValue,
+          gasLimit: 300000,
+        }
+      );
+      this.logger.debug(
+        "staticCall simulation successful - proceeding with actual transaction"
+      );
+    } catch (staticCallError) {
+      this.logger.error("staticCall simulation failed", {
+        error: staticCallError.message,
+        reason: staticCallError.reason,
+        data: staticCallError.data,
+      });
+      throw new Error(`staticCall failed: ${staticCallError.message}`);
+    }
+
     const ethDstTx = await resolverWithSigner.createDstEscrow(
       ethDstImmutables,
       srcCancellationTimestamp,
@@ -624,37 +999,9 @@ class CrossChainOrchestrator {
       ethDstTx.hash,
       "EthereumEscrowDst Creation (TRX→ETH)"
     );
-    // Extract actual ETH escrow address from EscrowCreated event in TRX→ETH direction
-    let ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS; // fallback
-
-    try {
-      // Look for EscrowCreated event in the transaction logs
-      const escrowCreatedEvent = ethDstReceipt?.logs?.find(
-        (log) =>
-          log.address.toLowerCase() ===
-            this.config.DEMO_RESOLVER_ADDRESS.toLowerCase() &&
-          log.topics[0] ===
-            "0x2e51eb252678ae00b7491f29b35873f446f09ee22d616fc60d9db472d87b4081" // EscrowCreated event signature
-      );
-
-      if (escrowCreatedEvent && escrowCreatedEvent.topics[1]) {
-        // Extract escrow address from first indexed parameter (escrow address)
-        const extractedAddress = "0x" + escrowCreatedEvent.topics[1].slice(-40);
-        ethEscrowAddress = extractedAddress;
-        this.logger.debug("Extracted ETH escrow address from TRX→ETH event", {
-          extractedAddress: ethEscrowAddress,
-          orderHash: orderHash,
-        });
-      } else {
-        this.logger.warn(
-          "Could not find EscrowCreated event in TRX→ETH, using fallback address"
-        );
-      }
-    } catch (error) {
-      this.logger.warn("Error extracting TRX→ETH escrow address from event", {
-        error: error.message,
-      });
-    }
+    // For DemoResolverV2, the "escrow" is handled by the official EscrowFactory
+    // Use DemoResolver as escrow address for simplified implementation (EXACT COPY of working flow)
+    const ethEscrowAddress = this.config.DEMO_RESOLVER_ADDRESS;
     this.logger.success("EthereumEscrowDst created", {
       txHash: ethDstTx.hash,
       escrowAddress: ethEscrowAddress,

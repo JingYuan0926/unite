@@ -6,7 +6,6 @@ export * as officialLop from "./official-lop";
 export * as temporaryExtensions from "./temporary-extensions";
 export { DemoResolver__factory } from "./DemoResolver__factory";
 export { DemoResolverV2__factory } from "./DemoResolverV2__factory";
-export { Filler__factory } from "./Filler__factory";
 export { MockTRX__factory } from "./MockTRX__factory";
 export { Resolver__factory } from "./Resolver__factory";
 export { TronFusionExtension__factory } from "./TronFusionExtension__factory";

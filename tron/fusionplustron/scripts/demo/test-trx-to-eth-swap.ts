@@ -38,21 +38,27 @@ async function testTRXtoETHAtomicSwap() {
     // DEPLOY FRESH RESOLVER (Prevents order replay attacks)
     // =================================================================
     console.log("\n🏭 Deploying fresh DemoResolver to prevent order replay...");
-    
+
     // Deploy using hardhat run command
-    const { stdout } = await execAsync("npx hardhat run scripts/deploy-resolver.ts --network sepolia");
+    const { stdout } = await execAsync(
+      "npx hardhat run scripts/deploy-resolver.ts --network sepolia"
+    );
     console.log(stdout);
-    
+
     // Extract the deployed address from the output
-    const addressMatch = stdout.match(/DemoResolver deployed to: (0x[a-fA-F0-9]{40})/);
+    const addressMatch = stdout.match(
+      /DemoResolver deployed to: (0x[a-fA-F0-9]{40})/
+    );
     const demoResolverAddress = addressMatch ? addressMatch[1] : null;
-    
+
     if (!demoResolverAddress) {
-      throw new Error("Failed to extract DemoResolver address from deployment output");
+      throw new Error(
+        "Failed to extract DemoResolver address from deployment output"
+      );
     }
-    
+
     console.log(`✅ Fresh DemoResolver deployed: ${demoResolverAddress}`);
-    
+
     // Small delay to ensure .env file is updated and contracts are ready
     console.log("⏳ Waiting for deployment to settle...");
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
@@ -65,11 +71,15 @@ async function testTRXtoETHAtomicSwap() {
     require("dotenv").config();
 
     // Verify the new address is loaded correctly
-    console.log(`🔍 Loaded DEMO_RESOLVER_ADDRESS: ${process.env.DEMO_RESOLVER_ADDRESS}`);
+    console.log(
+      `🔍 Loaded DEMO_RESOLVER_ADDRESS: ${process.env.DEMO_RESOLVER_ADDRESS}`
+    );
     console.log(`🔍 Expected address: ${demoResolverAddress}`);
-    
+
     if (process.env.DEMO_RESOLVER_ADDRESS !== demoResolverAddress) {
-      console.warn("⚠️ Address mismatch detected! Manually setting environment variable...");
+      console.warn(
+        "⚠️ Address mismatch detected! Manually setting environment variable..."
+      );
       process.env.DEMO_RESOLVER_ADDRESS = demoResolverAddress;
     }
 

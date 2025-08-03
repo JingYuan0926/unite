@@ -178,10 +178,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.DemoResolverV2__factory>;
     getContractFactory(
-      name: "Filler",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.Filler__factory>;
-    getContractFactory(
       name: "MockTRX",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.MockTRX__factory>;
@@ -708,11 +704,6 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.DemoResolverV2>;
     getContractAt(
-      name: "Filler",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer
-    ): Promise<Contracts.Filler>;
-    getContractAt(
       name: "MockTRX",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -1278,10 +1269,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.DemoResolverV2>;
     deployContract(
-      name: "Filler",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.Filler>;
-    deployContract(
       name: "MockTRX",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.MockTRX>;
@@ -1807,11 +1794,6 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.DemoResolverV2>;
-    deployContract(
-      name: "Filler",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.Filler>;
     deployContract(
       name: "MockTRX",
       args: any[],

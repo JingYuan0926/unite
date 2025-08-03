@@ -9,7 +9,6 @@ import type * as temporaryExtensions from "./temporary-extensions";
 export type { temporaryExtensions };
 export type { DemoResolver } from "./DemoResolver";
 export type { DemoResolverV2 } from "./DemoResolverV2";
-export type { Filler } from "./Filler";
 export type { MockTRX } from "./MockTRX";
 export type { Resolver } from "./Resolver";
 export type { TronFusionExtension } from "./TronFusionExtension";
