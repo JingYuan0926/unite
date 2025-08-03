@@ -72,7 +72,7 @@ A modern, AI-powered DeFi assistant chatbot built with Next.js and the 1inch Age
 ## Usage
 
 ### Basic Chat
-1. Open the chatbot at `/agent`
+1. Open the chatbot at `/chat`
 2. Type your DeFi-related question
 3. The AI will respond with helpful information and execute relevant functions
 
