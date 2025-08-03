@@ -20,7 +20,7 @@ export default function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="max-w-7xl mx-auto relative flex items-center">
         {/* Left side - Logo and text */}
         <div className="flex items-center flex-1">
           <span 
@@ -51,7 +51,7 @@ export default function DashboardHeader() {
             onClick={goToDashboard}
             className={`relative group transition-all duration-300 ${
               currentPath === '/dashboard' 
-                ? 'text-black font-bold text-lg' 
+                ? 'text-black font-bold' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -59,6 +59,16 @@ export default function DashboardHeader() {
             {currentPath === '/dashboard' && (
               <div className="absolute -inset-2 rounded-full border-2 border-gray-300 transition-all duration-300"></div>
             )}
+          </button>
+          
+          <button 
+            onClick={goToChat}
+            className={`relative group transition-all duration-300 ${
+              currentPath === '/chat' 
+                ? 'text-black font-bold' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
           </button>
         </nav>
 
