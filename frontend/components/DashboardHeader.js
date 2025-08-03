@@ -16,16 +16,16 @@ export default function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="max-w-7xl mx-auto relative flex items-center">
         {/* Left side - Logo and text */}
-        <div className="flex items-center">
+        <div className="flex items-center flex-shrink-0">
           <span className="text-2xl font-bold text-gray-900 italic">
             1inch Agent Kit
           </span>
         </div>
 
-        {/* Middle - Navigation */}
-        <nav className="flex items-center space-x-8">
+        {/* Middle - Navigation - Absolutely positioned to prevent movement */}
+        <nav className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-8">
           <button 
             onClick={goToDashboard}
             className={`relative group transition-all duration-300 ${
@@ -56,7 +56,7 @@ export default function DashboardHeader() {
         </nav>
 
         {/* Right side - Connect Wallet Button */}
-        <div className="flex items-center">
+        <div className="flex items-center flex-shrink-0 ml-auto">
           <ConnectButton />
         </div>
       </div>
